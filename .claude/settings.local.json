@@ -8,7 +8,10 @@
       "Bash(git init:*)",
       "Bash(echo \"node_modules/:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git remote:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
     ]
   }
 }
