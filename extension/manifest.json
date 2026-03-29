@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "INVEST MONGO Signal Detector",
+  "version": "1.0.0",
+  "description": "Detects Precision v9 buy/sell signals from TradingView chart",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://www.tradingview.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.tradingview.com/chart/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_popup": "popup.html" },
+  "background": { "service_worker": "background.js" }
+}

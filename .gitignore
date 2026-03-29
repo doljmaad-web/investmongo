@@ -1,0 +1,4 @@
+node_modules/
+.env
+invest_mongo.db
+*.db

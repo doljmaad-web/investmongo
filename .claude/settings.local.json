@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(timeout 12 node server/index.js)",
+      "Bash(timeout 8 node server/index.js)",
+      "Bash(gh auth:*)",
+      "Bash(git init:*)",
+      "Bash(echo \"node_modules/:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

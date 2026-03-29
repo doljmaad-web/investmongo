@@ -1,0 +1,21 @@
+{
+  "name": "invest-mongo-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "INVEST MONGO AI Trading Platform",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test-signal": "node scripts/test-signal.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "sql.js": "^1.12.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "rss-parser": "^3.13.0",
+    "ws": "^8.17.0"
+  }
+}

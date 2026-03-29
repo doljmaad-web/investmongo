@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INVEST MONGO AI Terminal</title>
+  <link rel="stylesheet" href="terminal.css">
+</head>
+<body>
+
+<div id="connecting-overlay">
+  <div class="spinner"></div>
+  <p>Connecting to INVEST MONGO bot...</p>
+</div>
+
+<div id="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <div id="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="logo">INVEST MONGO <span>AI TERMINAL</span></div>
+      <div class="badges">
+        <div class="badge green"><div class="live-dot"></div>BOT LIVE</div>
+        <div class="badge amber">PAPER MODE</div>
+        <div class="badge blue">GEMINI 2.5</div>
+        <div class="badge purple" id="fg-badge">F&amp;G: --</div>
+      </div>
+    </div>
+    <div id="aum-display">
+      <span id="aum-value">$10,000.00</span>
+      <span class="change" id="aum-change">+$0.00 (0.0%)</span>
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);" id="clock"></div>
+  </div>
+
+  <!-- ============ MAIN 3-COLUMN LAYOUT ============ -->
+  <div id="main">
+
+    <!-- LEFT: Signal Feed -->
+    <div class="panel" id="panel-left">
+      <div class="panel-header">
+        <h3>Precision v9 Signals</h3>
+        <div class="header-right">
+          <div class="live-dot"></div>
+          <span style="font-size:10px;color:var(--text-muted);" id="signal-count">0</span>
+        </div>
+      </div>
+      <div class="panel-body" id="signal-feed">
+        <div class="empty-state">Waiting for signals...</div>
+      </div>
+    </div>
+
+    <!-- CENTER: AUM Chart + Gemini -->
+    <div class="panel" id="panel-center">
+      <div class="panel-header">
+        <h3>Portfolio Performance</h3>
+        <div class="header-right">
+          <span style="font-size:10px;color:var(--text-muted);">AUM Growth</span>
+        </div>
+      </div>
+
+      <div id="chart-container">
+        <canvas id="aum-chart"></canvas>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="label">Win Rate</div>
+          <div class="value" id="metric-winrate">--%</div>
+          <div class="sub" id="metric-trades">0 trades</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Today P&amp;L</div>
+          <div class="value" id="metric-today-pnl">$0.00</div>
+          <div class="sub" id="metric-today-sub">0 closed today</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Total P&amp;L</div>
+          <div class="value" id="metric-total-pnl">$0.00</div>
+          <div class="sub">all time</div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Open Positions</div>
+          <div class="value" id="metric-open">0</div>
+          <div class="sub" id="metric-exposure">$0 exposure</div>
+        </div>
+      </div>
+
+      <div id="gemini-box">
+        <div class="gemini-header">
+          <div class="gemini-icon">G</div>
+          <h4>Gemini Reasoning</h4>
+        </div>
+        <div id="gemini-reasoning">Waiting for next signal validation...</div>
+        <div class="gemini-footer" id="gemini-footer" style="display:none">
+          <span id="gemini-verdict-badge" class="verdict-badge"></span>
+          <span id="gemini-conf" style="font-size:11px;color:var(--purple);"></span>
+          <span class="gemini-sl-tp">SL: <span id="gemini-sl">--</span> &nbsp;TP: <span id="gemini-tp">--</span> &nbsp;R:R <span id="gemini-rr">--</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Positions + Risk -->
+    <div class="panel" id="panel-right">
+      <div class="panel-header">
+        <h3>Open Positions</h3>
+        <div class="header-right">
+          <span class="badge green" id="open-count-badge" style="padding:1px 7px;font-size:10px;">0</span>
+        </div>
+      </div>
+      <div class="panel-body" id="positions-panel">
+        <div class="empty-state" id="no-positions">No open positions</div>
+
+        <div id="positions-list"></div>
+
+        <div class="section-divider" id="closed-today-header" style="display:none">Closed Today</div>
+        <div id="closed-today-list"></div>
+
+        <!-- Risk Limits -->
+        <div class="risk-section" style="margin-top:12px;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Risk Limits</div>
+          <div class="risk-row">
+            <label>Daily Loss</label>
+            <div class="risk-mini-bar"><div class="risk-mini-fill" id="risk-daily" style="width:0%"></div></div>
+            <span style="font-size:10px;color:var(--text-muted);" id="risk-daily-text">$0 / $200</span>
+          </div>
+          <div class="risk-row">
+            <label>Positions</label>
+            <div class="risk-mini-bar"><div class="risk-mini-fill" id="risk-pos" style="width:0%"></div></div>
+            <span style="font-size:10px;color:var(--text-muted);" id="risk-pos-text">0 / 5</span>
+          </div>
+          <div class="risk-row">
+            <label>Exposure</label>
+            <div class="risk-mini-bar"><div class="risk-mini-fill" id="risk-exp" style="width:0%"></div></div>
+            <span style="font-size:10px;color:var(--text-muted);" id="risk-exp-text">$0 / $3000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#main -->
+
+  <!-- ============ BOTTOM NEWS TERMINAL ============ -->
+  <div id="bottom">
+    <div class="panel-header">
+      <h3>Live Intelligence Feed</h3>
+      <div class="header-right">
+        <div class="source-pills">
+          <div class="source-pill active" id="pill-ct">COINTELEGRAPH</div>
+          <div class="source-pill active" id="pill-cd">COINDESK</div>
+          <div class="source-pill active" id="pill-rt">REUTERS</div>
+          <div class="source-pill" id="pill-wh">WHALE</div>
+          <div class="source-pill" id="pill-rd">REDDIT</div>
+        </div>
+        <span id="news-counter" style="margin-left:8px;">0 items</span>
+      </div>
+    </div>
+    <div id="news-feed"></div>
+  </div>
+
+</div><!-- /#app -->
+
+<script src="terminal.js"></script>
+</body>
+</html>
