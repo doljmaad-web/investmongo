@@ -396,6 +396,7 @@ function activatePills() {
     'pill-rd': ['REDDIT', 'REDDIT_BTC'],
     'pill-dl': ['DEFILLAMA'],
     'pill-gn': ['GLASSNODE'],
+    'pill-mm': ['MMCRYPTO_TG'],
   };
   for (const [id, srcs] of Object.entries(pillMap)) {
     const el = document.getElementById(id);

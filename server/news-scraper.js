@@ -9,6 +9,7 @@ const FEEDS = [
   { url: 'https://decrypt.co/feed',                               source: 'DECRYPT'       },
   { url: 'https://www.reddit.com/r/CryptoCurrency/hot.rss',       source: 'REDDIT'        },
   { url: 'https://www.reddit.com/r/Bitcoin/hot.rss',              source: 'REDDIT_BTC'    },
+  { url: 'https://rsshub.app/telegram/channel/mmcryptoeng',       source: 'MMCRYPTO_TG'   },
 ];
 
 const FEAR_GREED_URL = 'https://api.alternative.me/fng/';
