@@ -28,12 +28,14 @@ const PERIOD_MS = {
 // STATE
 // ============================================================
 let state = {
-  portfolio:  null,
-  signals:    [],
-  news:       [],
-  snapshots:  [],
-  fearGreed:  { value: 50, classification: 'Neutral' },
-  newsCount:  0,
+  portfolio:       null,
+  signals:         [],
+  news:            [],
+  snapshots:       [],
+  fearGreed:       { value: 50, classification: 'Neutral' },
+  newsCount:       0,
+  tradeIntelItems: [],
+  activeTiFilters: new Set(['BTC','GOLD','GEO','AI','CT','CD','DEFI','WHALE']),
 };
 
 let ws       = null;
@@ -112,6 +114,7 @@ function handleMessage(msg) {
         state.news = [...fresh, ...state.news].slice(0, 60);
         if (msg.data.fearGreed) state.fearGreed = msg.data.fearGreed;
         appendNewsLines(fresh);
+        renderTradeIntel();
         updateFGBadge();
       }
       break;
@@ -145,6 +148,7 @@ function renderAll() {
   renderSignals();
   renderPositions();
   renderNewsTerminal();
+  renderTradeIntel();
   updateFGBadge();
   drawChart();
 }
@@ -348,6 +352,7 @@ function updateGeminiBox(decision, signal) {
 // ============================================================
 function renderNewsTerminal() {
   const feed = document.getElementById('news-feed');
+  if (!feed) return;
   feed.innerHTML = '';
   const items = state.news.slice(0, MAX_NEWS_LINES);
   items.forEach((n, i) => appendNewsLine(n, i < items.length - MAX_NEWS_LINES + NEWS_FADE_AFTER));
@@ -366,6 +371,7 @@ function appendNewsLines(items) {
 
 function appendNewsLine(n, fading = false) {
   const feed = document.getElementById('news-feed');
+  if (!feed) return;
   // Remove old cursor if present
   const oldCursor = feed.querySelector('.cursor-blink');
   if (oldCursor) oldCursor.remove();
@@ -389,6 +395,7 @@ function appendNewsLine(n, fading = false) {
 
 function addCursor() {
   const feed = document.getElementById('news-feed');
+  if (!feed) return;
   const cursor = document.createElement('span');
   cursor.className = 'cursor-blink';
   feed.appendChild(cursor);
@@ -396,6 +403,7 @@ function addCursor() {
 
 function trimNewsLines() {
   const feed  = document.getElementById('news-feed');
+  if (!feed) return;
   const lines = feed.querySelectorAll('.news-line');
   if (lines.length > MAX_NEWS_LINES) {
     lines[0].classList.add('fading');
@@ -404,8 +412,9 @@ function trimNewsLines() {
 }
 
 function updateNewsCounter() {
-  document.getElementById('news-counter').textContent =
-    `${state.newsCount || state.news.length} items`;
+  const el = document.getElementById('news-counter');
+  if (!el) return;
+  el.textContent = `${state.newsCount || state.news.length} items`;
 }
 
 function activatePills() {
@@ -587,55 +596,100 @@ function escHtml(str) {
 }
 
 // ============================================================
-// X INTELLIGENCE FEED
+// TRADE INTELLIGENCE FEED
 // ============================================================
-async function fetchXFeed() {
+function categorizSource(src) {
+  if (!src) return 'BTC';
+  const s = src.toUpperCase();
+  if (s.includes('COINTELEGRAPH') || s.includes('BITCOIN_MAG') || s.includes('CRYPTOSLATE') || s.includes('DECRYPT')) return 'CT';
+  if (s.includes('COINDESK')) return 'CD';
+  if (s.includes('DEFILLAMA') || s.includes('DEFI')) return 'DEFI';
+  if (s.includes('REDDIT')) return 'BTC';
+  if (s.includes('WHALEALERT') || s.includes('WHALE') || s.includes('COINGECKO') || s.includes('MEMPOOL')) return 'WHALE';
+  if (s.includes('GLASSNODE')) return 'BTC';
+  return 'BTC';
+}
+
+async function fetchTradeIntel() {
   try {
-    const res  = await fetch('/api/x-feed');
-    const data = await res.json();
-    renderXFeed(data.items || []);
-  } catch (e) {
-    renderXFeedEmpty();
+    const [newsRes, xRes] = await Promise.allSettled([
+      fetch('/api/news'),
+      fetch('/api/x-feed')
+    ]);
+
+    let items = [];
+
+    if (newsRes.status === 'fulfilled' && newsRes.value.ok) {
+      const data = await newsRes.value.json();
+      const newsItems = (data.news || []).map(n => ({
+        id:          n.title,
+        source:      n.source || 'NEWS',
+        category:    categorizSource(n.source),
+        headline:    n.title || '',
+        description: n.description || n.summary || '',
+        time:        n.publishedAt || n.pubDate || null,
+        link:        n.link || n.url || null,
+        sentiment:   n.sentiment || 'neutral',
+      }));
+      items.push(...newsItems);
+    }
+
+    if (xRes.status === 'fulfilled' && xRes.value.ok) {
+      const data = await xRes.value.json();
+      const xItems = (data.items || []).map(x => ({
+        id:          x.text,
+        source:      x.handle || 'INTEL',
+        category:    'GEO',
+        headline:    x.text || '',
+        description: '',
+        time:        x.time || null,
+        link:        x.link || null,
+        sentiment:   'neutral',
+      }));
+      items.push(...xItems);
+    }
+
+    items.sort((a, b) => {
+      const ta = a.time ? new Date(a.time).getTime() : 0;
+      const tb = b.time ? new Date(b.time).getTime() : 0;
+      return tb - ta;
+    });
+
+    state.tradeIntelItems = items;
+    renderTradeIntel();
+  } catch(e) {
+    console.error('[TRADE-INTEL]', e.message);
   }
 }
 
-function renderXFeed(items) {
-  const feed = document.getElementById('x-feed');
+function renderTradeIntel() {
+  const feed = document.getElementById('ti-feed');
   if (!feed) return;
-  if (!items.length) {
-    feed.innerHTML = '<div class="x-empty">Waiting for posts...</div>';
+
+  const active   = state.activeTiFilters;
+  const filtered = state.tradeIntelItems.filter(item => active.has(item.category));
+
+  if (!filtered.length) {
+    feed.innerHTML = '<div style="color:var(--text-dim);font-size:11px;padding:12px 10px;">Waiting for intelligence feed...</div>';
     return;
   }
 
-  const html = items.map(item => {
-    const d       = item.time ? new Date(item.time) : null;
-    const timeStr = d && !isNaN(d)
-      ? `[${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]`
+  feed.innerHTML = filtered.map(item => {
+    const timeStr = item.time
+      ? new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : '';
-    const text = (item.text || '').length > 100
-      ? item.text.slice(0, 100) + '\u2026'
-      : (item.text || '');
-    const href = item.link ? ` href="${escHtml(item.link)}" target="_blank" rel="noopener"` : '';
-    return `<a class="x-line"${href}>
-      <span class="x-handle">${escHtml(item.handle || '')}</span>
-      <span class="x-text">${escHtml(text)}</span>
-      ${timeStr ? `<span class="x-time">${timeStr}</span>` : ''}
+    const desc = item.description ? item.description.slice(0, 200) : '';
+    const href = item.link ? `href="${escHtml(item.link)}" target="_blank" rel="noopener"` : '';
+    return `<a class="ti-item sentiment-${escHtml(item.sentiment)}" ${href}>
+      <div class="ti-top">
+        <span class="ti-source ti-cat-${escHtml(item.category)}">${escHtml(item.source)}</span>
+        <span class="ti-headline">${escHtml(item.headline)}</span>
+        ${timeStr ? `<span class="ti-time">${timeStr}</span>` : ''}
+      </div>
+      ${desc ? `<div class="ti-preview">${escHtml(desc)}</div>` : ''}
+      <div class="ti-readmore">→ Read full article</div>
     </a>`;
   }).join('');
-
-  // Fade out → replace → fade in
-  feed.style.opacity = '0';
-  feed.style.transition = 'opacity 0.15s';
-  setTimeout(() => {
-    feed.innerHTML = html;
-    feed.style.opacity = '1';
-    feed.style.transition = 'opacity 0.3s';
-  }, 150);
-}
-
-function renderXFeedEmpty() {
-  const feed = document.getElementById('x-feed');
-  if (feed) feed.innerHTML = '<div class="x-empty">X feed temporarily unavailable</div>';
 }
 
 // ============================================================
@@ -646,8 +700,22 @@ window.addEventListener('load', () => {
   setInterval(updateClock, 1000);
   updateClock();
   window.addEventListener('resize', () => drawChart());
-  fetchXFeed();
-  setInterval(fetchXFeed, 90000);
+  fetchTradeIntel();
+  setInterval(fetchTradeIntel, 60000);
+
+  document.querySelectorAll('.ti-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const f = pill.dataset.filter;
+      if (state.activeTiFilters.has(f)) {
+        state.activeTiFilters.delete(f);
+        pill.classList.remove('active');
+      } else {
+        state.activeTiFilters.add(f);
+        pill.classList.add('active');
+      }
+      renderTradeIntel();
+    });
+  });
 
   document.querySelectorAll('.period-btn').forEach(btn => {
     btn.addEventListener('click', () => {

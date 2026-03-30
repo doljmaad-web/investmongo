@@ -139,29 +139,31 @@
 
   </div><!-- /#main -->
 
-  <!-- ============ BOTTOM 3-COLUMN SECTION ============ -->
+  <!-- ============ BOTTOM 2-COLUMN SECTION ============ -->
   <div id="bottom-section">
 
-    <!-- Left: Live Intelligence Feed -->
-    <div class="bottom-panel" id="news-panel">
+    <!-- Left: Trade Intelligence News -->
+    <div class="bottom-panel" id="trade-intel-panel">
       <div class="panel-header">
-        <span>LIVE INTELLIGENCE FEED</span>
-        <div class="source-pills">
-          <div class="source-pill active" id="pill-ct">CT</div>
-          <div class="source-pill active" id="pill-cd">CD</div>
-          <div class="source-pill active" id="pill-rt">RT</div>
-          <div class="source-pill" id="pill-wh">WHALE</div>
-          <div class="source-pill" id="pill-rd">REDDIT</div>
-          <div class="source-pill" id="pill-dl">DEFI</div>
-          <div class="source-pill" id="pill-gn">GLASS</div>
-          <div class="source-pill" id="pill-mm">MM</div>
-          <span id="news-counter" style="margin-left:4px;font-size:9px;color:var(--text-dim);">0</span>
+        <span>TRADE INTELLIGENCE NEWS</span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div class="live-dot"></div>
         </div>
       </div>
-      <div id="news-feed" class="feed-scroll"></div>
+      <div class="ti-pills">
+        <div class="ti-pill active" data-filter="BTC">BTC</div>
+        <div class="ti-pill active" data-filter="GOLD">GOLD</div>
+        <div class="ti-pill active" data-filter="GEO">GEO</div>
+        <div class="ti-pill active" data-filter="AI">AI</div>
+        <div class="ti-pill active" data-filter="CT">CT</div>
+        <div class="ti-pill active" data-filter="CD">CD</div>
+        <div class="ti-pill active" data-filter="DEFI">DEFI</div>
+        <div class="ti-pill active" data-filter="WHALE">WHALE</div>
+      </div>
+      <div id="ti-feed" class="feed-scroll"></div>
     </div>
 
-    <!-- Middle: Gemini Reasoning -->
+    <!-- Right: Gemini Reasoning -->
     <div class="bottom-panel" id="gemini-panel">
       <div class="panel-header">
         <span style="display:flex;align-items:center;gap:6px;">
@@ -176,18 +178,6 @@
           <span class="gemini-sl-tp">SL: <span id="gemini-sl">--</span> &nbsp;TP: <span id="gemini-tp">--</span> &nbsp;R:R <span id="gemini-rr">--</span></span>
         </div>
       </div>
-    </div>
-
-    <!-- Right: X Intelligence -->
-    <div class="bottom-panel" id="x-panel">
-      <div class="panel-header">
-        <span>X INTELLIGENCE</span>
-        <span style="display:flex;align-items:center;gap:4px;">
-          <div class="live-dot"></div>
-          <span style="font-size:10px;color:var(--blue);">LIVE</span>
-        </span>
-      </div>
-      <div id="x-feed" class="feed-scroll"><div class="x-empty">Loading X feed...</div></div>
     </div>
 
   </div><!-- /#bottom-section -->

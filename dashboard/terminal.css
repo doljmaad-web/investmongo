@@ -371,7 +371,7 @@ html, body {
 /* ====== BOTTOM 3-COLUMN SECTION ====== */
 #bottom-section {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   height: 220px;
   flex-shrink: 0;
   border-top: 1px solid var(--border);
@@ -440,45 +440,76 @@ html, body {
 .news-line.alert   .news-source { background: var(--amber-dark); color: var(--amber); }
 .news-line.neutral .news-source { background: var(--border);     color: var(--text-muted); }
 
-/* ====== X INTELLIGENCE FEED ====== */
-#x-feed {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 10px;
+/* ====== TRADE INTELLIGENCE FEED ====== */
+.ti-pills {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ti-pill {
+  font-size: 9px; padding: 1px 5px; border-radius: 2px;
+  border: 1px solid var(--border); color: var(--text-dim);
+  cursor: pointer; user-select: none;
+  transition: all 0.15s;
+}
+.ti-pill.active {
+  border-color: var(--amber); color: var(--amber);
+  background: var(--amber-dark);
+}
+
+.ti-item {
   display: flex;
   flex-direction: column;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
 }
-#x-feed::-webkit-scrollbar { width: 4px; }
-#x-feed::-webkit-scrollbar-thumb { background: var(--border); }
+.ti-item:hover { background: var(--bg-card-hover); }
 
-.x-line {
+.ti-top {
   display: flex;
-  gap: 6px;
   align-items: baseline;
-  padding: 2px 0;
-  font-size: 11px;
-  animation: fadeIn 0.3s ease;
-  border-bottom: 1px solid var(--bg-primary);
+  gap: 6px;
 }
-.x-handle {
-  color: var(--blue);
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: bold;
-  flex-shrink: 0;
-  min-width: 140px;
+.ti-source {
+  font-size: 10px; font-weight: bold; flex-shrink: 0;
+  padding: 0px 5px; border-radius: 2px;
 }
-.x-text {
-  color: #fff;
-  font-size: 11px;
-  flex-grow: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ti-headline {
+  color: var(--text-primary); font-size: 11px; flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.x-time  { color: #666; font-size: 10px; white-space: nowrap; flex-shrink: 0; }
-.x-empty { color: var(--text-dim); font-size: 11px; padding: 8px 0; }
-.x-line:hover { background: rgba(255,255,255,0.03); }
+.ti-item:hover .ti-headline {
+  white-space: normal; overflow: visible; text-overflow: unset;
+}
+.ti-time {
+  color: var(--text-muted); font-size: 10px; flex-shrink: 0;
+}
+.ti-preview {
+  display: none;
+  font-size: 10px; color: var(--text-muted);
+  line-height: 1.5; padding-top: 4px;
+}
+.ti-item:hover .ti-preview { display: block; }
+.ti-readmore {
+  display: none;
+  font-size: 10px; color: var(--blue);
+  padding-top: 2px;
+}
+.ti-item:hover .ti-readmore { display: block; }
+
+/* Source badge colors by category */
+.ti-cat-BTC,  .ti-cat-CT, .ti-cat-CD  { background: var(--green-dark); color: var(--green); }
+.ti-cat-GOLD, .ti-cat-GEO             { background: var(--amber-dark); color: var(--amber); }
+.ti-cat-AI,   .ti-cat-DEFI            { background: rgba(56,189,248,0.1); color: var(--blue); }
+.ti-cat-WHALE                          { background: var(--red-dark);   color: var(--red);   }
 
 .cursor-blink {
   display: inline-block;
