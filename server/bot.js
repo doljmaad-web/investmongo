@@ -39,7 +39,7 @@ export async function handleSignal(rawSignal, source = 'server') {
   }
 
   // Gather market context for Gemini
-  const { news, fearGreed, whales } = await fetchAllNews();
+  const { news, fearGreed, whales, macroEvent } = await fetchAllNews();
   const fundingRate = await getFundingRate(signal.asset).catch(() => 0);
 
   const marketContext = {
@@ -47,7 +47,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     fearGreed,
     whaleAlerts:    whales.slice(0, 5),
     fundingRate:    (fundingRate * 100).toFixed(4),
-    nextMacroEvent: null, // Future: plug in economic calendar API
+    nextMacroEvent: macroEvent,
   };
 
   // Gemini validates

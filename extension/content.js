@@ -1,9 +1,19 @@
 // INVEST MONGO — TradingView Signal Detector
 // Watches for Precision v9 yellow dots (BUY) and pink dots (SELL)
 
-const BOT_URL        = 'https://your-app.fly.dev'; // UPDATE after deploy
 const WEBHOOK_SECRET = 'investmongo_webhook_2024';  // Must match server .env
 const COOLDOWN_MS    = 60 * 60 * 1000;              // 1 hour cooldown per asset+direction
+
+// BOT_URL is loaded from chrome.storage (set via extension popup)
+let BOT_URL = '';
+chrome.storage.sync.get({ botUrl: '' }, ({ botUrl }) => {
+  BOT_URL = botUrl;
+  if (!BOT_URL) {
+    console.warn('[INVEST MONGO] Bot URL not configured. Open the extension popup to set it.');
+  } else {
+    console.log('[INVEST MONGO] Bot URL loaded:', BOT_URL);
+  }
+});
 
 const lastSignals = new Map();
 
@@ -111,6 +121,10 @@ function getChartInfo() {
 }
 
 async function sendToBot(signal) {
+  if (!BOT_URL) {
+    console.error('[INVEST MONGO] Cannot send signal — Bot URL not configured. Open the extension popup to set it.');
+    return;
+  }
   try {
     const res = await fetch(`${BOT_URL}/webhook/extension`, {
       method:  'POST',
