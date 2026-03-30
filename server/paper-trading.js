@@ -62,8 +62,8 @@ export function updateOpenTrades(prices) {
       : (t.entry_price - price) / t.entry_price * t.size_usd;
     const pnlPct  = pnlUsd / t.size_usd * 100;
 
-    // Hit stop loss?
-    if ((isLong && price <= t.stop_loss) || (!isLong && price >= t.stop_loss)) {
+    // Hit stop loss? (only if stop_loss is set — 0 means disabled)
+    if (t.stop_loss > 0 && ((isLong && price <= t.stop_loss) || (!isLong && price >= t.stop_loss))) {
       const finalPnl = isLong
         ? (t.stop_loss - t.entry_price) / t.entry_price * t.size_usd
         : (t.entry_price - t.stop_loss) / t.entry_price * t.size_usd;

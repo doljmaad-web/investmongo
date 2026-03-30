@@ -1,6 +1,6 @@
 // ============================================================
 // PRECISION v9 INDICATOR — JavaScript port
-// Scans last 10 candles for yellow/pink dot conditions
+// Matches Pine Script exactly (Precision Dynamic Historical v9)
 // ============================================================
 
 // --- RSI — Wilder's smoothing (matches Pine Script ta.rsi) ---
@@ -17,7 +17,7 @@ function calcRSI(closes, period = 14) {
   avgGain /= period;
   avgLoss /= period;
 
-  // Wilder's smoothing for all remaining bars
+  // Wilder's smoothing for remaining bars
   for (let i = period + 1; i < closes.length; i++) {
     const diff = closes[i] - closes[i - 1];
     const gain = diff > 0 ? diff : 0;
@@ -30,15 +30,15 @@ function calcRSI(closes, period = 14) {
   return parseFloat((100 - 100 / (1 + avgGain / avgLoss)).toFixed(2));
 }
 
-// --- SMA Calculation ---
+// --- SMA ---
 function calcSMA(closes, period) {
   if (closes.length < period) return null;
   const slice = closes.slice(-period);
   return parseFloat((slice.reduce((a, b) => a + b, 0) / period).toFixed(4));
 }
 
-// --- RSI history array (last N values) using Wilder's ---
-function calcRSIHistory(closes, period = 14, bars = 15) {
+// --- RSI history array (Wilder's, last N values) ---
+function calcRSIHistory(closes, period = 14, bars = 20) {
   const arr = [];
   for (let i = Math.max(period + 1, closes.length - bars); i <= closes.length; i++) {
     arr.push(calcRSI(closes.slice(0, i), period));
@@ -46,62 +46,33 @@ function calcRSIHistory(closes, period = 14, bars = 15) {
   return arr.filter(v => v !== null);
 }
 
-// --- RSI hook check: rising/falling for at least 2 of last 3 bars ---
-function rsiHookUp(rsiHist) {
-  if (rsiHist.length < 3) return rsiHist.at(-1) > rsiHist.at(-2);
-  const [a, b, c] = rsiHist.slice(-3);
-  return (c > b) || (c > a); // turning up in last 2 or last 3
-}
-
-function rsiHookDown(rsiHist) {
-  if (rsiHist.length < 3) return rsiHist.at(-1) < rsiHist.at(-2);
-  const [a, b, c] = rsiHist.slice(-3);
-  return (c < b) || (c < a); // turning down in last 2 or last 3
-}
-
-// --- Candlestick patterns ---
+// --- Candlestick patterns (matches Pine Script) ---
 function getPatterns(candles) {
   if (candles.length < 2) return {};
   const cur = candles.at(-1);
   const prv = candles.at(-2);
   const bodySize = Math.abs(cur.open - cur.close);
-  const range = cur.high - cur.low;
+  const range    = cur.high - cur.low;
 
   return {
     isDoji: range > 0 && bodySize <= range * 0.1,
     isBullishEngulfing:
       cur.close > cur.open &&
-      cur.open < prv.close &&
-      cur.close > prv.open &&
-      bodySize > Math.abs(prv.open - prv.close),
+      cur.open  < prv.close &&
+      cur.close > prv.open  &&
+      bodySize  > Math.abs(prv.open - prv.close),
     isBearishEngulfing:
       cur.close < cur.open &&
-      cur.open > prv.close &&
-      cur.close < prv.open &&
-      bodySize > Math.abs(prv.open - prv.close),
+      cur.open  > prv.close &&
+      cur.close < prv.open  &&
+      bodySize  > Math.abs(prv.open - prv.close),
   };
 }
 
-// --- SMA cross detection (golden / death cross) ---
-function detectSmaCross(closes, sma50Len, sma200Len, lookback = 3) {
-  if (closes.length < sma200Len + lookback) return null;
-  // Check last `lookback` bars for a crossover
-  for (let i = 1; i <= lookback; i++) {
-    const slice     = closes.slice(0, closes.length - i + 1);
-    const slicePrev = closes.slice(0, closes.length - i);
-    const sma50now  = calcSMA(slice,     sma50Len);
-    const sma200now = calcSMA(slice,     sma200Len);
-    const sma50prv  = calcSMA(slicePrev, sma50Len);
-    const sma200prv = calcSMA(slicePrev, sma200Len);
-    if (!sma50now || !sma200now || !sma50prv || !sma200prv) continue;
-    if (sma50prv <= sma200prv && sma50now > sma200now) return { type: 'golden_cross', barsAgo: i - 1 };
-    if (sma50prv >= sma200prv && sma50now < sma200now) return { type: 'death_cross',  barsAgo: i - 1 };
-  }
-  return null;
-}
-
 // ============================================================
-// MAIN: detectSignals — scans last 10 candles for missed signals
+// MAIN: detectSignals
+// Scans last `lookback` candles for yellow/pink dot conditions
+// matching Pine Script exactly
 // ============================================================
 export function detectSignals(candles, cfg = {}) {
   const {
@@ -112,67 +83,59 @@ export function detectSignals(candles, cfg = {}) {
     rsiObMax  = 85,
     rsiOsMin  = 18,
     rsiOsMax  = 60,
-    lookback  = 10,
+    lookback  = 10,  // RSI 50-level memory window (lookback_50 in Pine)
   } = cfg;
 
-  if (candles.length < sma50Len + 10) {
+  if (candles.length < sma50Len + lookback) {
     return { signal: null, reason: 'insufficient_candles' };
   }
 
   const closes = candles.map(c => c.close);
   const sma50  = calcSMA(closes, sma50Len);
   const sma200 = candles.length >= sma200Len ? calcSMA(closes, sma200Len) : null;
-  const cur    = candles.at(-1); // current (most recent) candle — used for live entry price
+  const cur    = candles.at(-1);
 
-  // --- Check for golden/death cross first (strong signals) ---
-  if (candles.length >= sma200Len + 3) {
-    const cross = detectSmaCross(closes, sma50Len, sma200Len, 3);
-    if (cross) {
-      const isBuy = cross.type === 'golden_cross';
-      console.log(`[INDICATOR] ${cross.type.toUpperCase()} found ${cross.barsAgo} bars ago`);
-      return {
-        signal:   isBuy ? 'BUY' : 'SELL',
-        type:     isBuy ? 'strong_buy' : 'strong_sell',
-        strength: 'strong',
-        price:    cur.close,
-        low:      cur.low,
-        high:     cur.high,
-        rsi:      calcRSI(closes, rsiLen),
-        sma50,
-        sma200,
-        pattern:  cross.type,
-        trend:    isBuy ? 'uptrend' : 'downtrend',
-        barsAgo:  cross.barsAgo,
-      };
-    }
-  }
-
-  // --- Scan last N candles for yellow/pink dot ---
+  // Scan last `lookback` candles for dot signal
   for (let i = 0; i < lookback; i++) {
     const slice       = candles.slice(0, candles.length - i);
     const sliceCloses = slice.map(c => c.close);
 
-    // Need enough bars for Wilder's RSI seed + some history
-    if (sliceCloses.length < rsiLen + 3) continue;
+    // Need enough history for Wilder's RSI + 50-level memory window
+    if (sliceCloses.length < rsiLen + lookback + 2) continue;
 
-    const rsiHist = calcRSIHistory(sliceCloses, rsiLen, 6);
+    // RSI history: need at least lookback+2 values (for highest/lowest + hook)
+    const rsiHist = calcRSIHistory(sliceCloses, rsiLen, lookback + 2);
+    if (rsiHist.length < lookback + 1) continue;
+
     const rsiNow  = rsiHist.at(-1);
+    const rsiPrev = rsiHist.at(-2);
 
-    if (rsiNow === null || rsiHist.length < 2) continue;
+    // --- Pine Script exact hook logic ---
+    // rsi_hook_up   = rsi_val > rsi_val[1]
+    // rsi_hook_down = rsi_val < rsi_val[1]
+    const hookUp   = rsiNow > rsiPrev;
+    const hookDown = rsiNow < rsiPrev;
 
-    const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax;
-    const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax;
+    // --- Pine Script 50-level memory ---
+    // os_zone: rsi in [18,60] AND ta.highest(rsi_val, 10) < 50
+    // ob_zone: rsi in [40,85] AND ta.lowest(rsi_val, 10)  > 50
+    const last10 = rsiHist.slice(-lookback);
+    const rsiHigh10 = Math.max(...last10);
+    const rsiLow10  = Math.min(...last10);
+
+    const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHigh10 < 50;
+    const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLow10  > 50;
 
     const { isDoji, isBullishEngulfing, isBearishEngulfing } = getPatterns(slice);
 
-    // Yellow dot — BUY: oversold zone + bullish pattern + RSI hooking up
-    if (osZone && (isDoji || isBullishEngulfing) && rsiHookUp(rsiHist)) {
-      console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} isDoji=${isDoji} bullEng=${isBullishEngulfing}`);
+    // Yellow dot — BUY
+    if (osZone && (isDoji || isBullishEngulfing) && hookUp) {
+      console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} highest10=${rsiHigh10.toFixed(1)} isDoji=${isDoji} bullEng=${isBullishEngulfing}`);
       return {
         signal:   'BUY',
         type:     'yellow_dot',
         strength: 'normal',
-        price:    cur.close,   // current price — realistic execution price
+        price:    cur.close,
         low:      slice.at(-1).low,
         high:     slice.at(-1).high,
         rsi:      rsiNow,
@@ -184,9 +147,9 @@ export function detectSignals(candles, cfg = {}) {
       };
     }
 
-    // Pink dot — SELL: overbought zone + bearish pattern + RSI hooking down
-    if (obZone && (isDoji || isBearishEngulfing) && rsiHookDown(rsiHist)) {
-      console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} isDoji=${isDoji} bearEng=${isBearishEngulfing}`);
+    // Pink dot — SELL
+    if (obZone && (isDoji || isBearishEngulfing) && hookDown) {
+      console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} lowest10=${rsiLow10.toFixed(1)} isDoji=${isDoji} bearEng=${isBearishEngulfing}`);
       return {
         signal:   'SELL',
         type:     'pink_dot',
@@ -205,6 +168,6 @@ export function detectSignals(candles, cfg = {}) {
   }
 
   const rsiNow = calcRSI(closes, rsiLen);
-  console.log(`[INDICATOR] No signal in last ${lookback} candles. Current RSI=${rsiNow} sma50=${sma50?.toFixed(0)}`);
+  console.log(`[INDICATOR] No signal. RSI=${rsiNow} sma50=${sma50?.toFixed(0)}`);
   return { signal: null };
 }
