@@ -49,6 +49,22 @@ function updateMarketBias(signal) {
 }
 
 // ============================================================
+// 1H BIAS — used to tighten SL on counter-trend 5m trades
+// ============================================================
+let bias1h = {
+  direction: null,   // 'BULLISH' | 'BEARISH' | null
+  updatedAt: null,
+};
+
+function updateBias1h(signal) {
+  bias1h = {
+    direction: signal.signal === 'BUY' ? 'BULLISH' : 'BEARISH',
+    updatedAt: new Date().toISOString(),
+  };
+  console.log(`[BOT] 1h bias → ${bias1h.direction}`);
+}
+
+// ============================================================
 // POST-TRADE ADVISORY — runs in background after trade opens
 // Fetches minimal news, calls lightweight Gemini, sends to Telegram
 // Never blocks trade execution
@@ -109,9 +125,16 @@ export async function handleSignal(rawSignal, source = 'server') {
     }
   }
 
+  // Counter-trend check: 5m trade against 1h bias → tight 0.7% SL, else normal 6%
+  const isCounterTrend = !signal.force && signal.timeframe === '5m' && (
+    (signal.signal === 'BUY'  && bias1h.direction === 'BEARISH') ||
+    (signal.signal === 'SELL' && bias1h.direction === 'BULLISH')
+  );
+  const slPct   = isCounterTrend ? 0.007 : 0.06;
   const stopLoss = signal.signal === 'BUY'
-    ? parseFloat((signal.price * 0.94).toFixed(2))
-    : parseFloat((signal.price * 1.06).toFixed(2));
+    ? parseFloat((signal.price * (1 - slPct)).toFixed(2))
+    : parseFloat((signal.price * (1 + slPct)).toFixed(2));
+  if (isCounterTrend) console.log(`[BOT] Counter-trend trade (5m vs 1h ${bias1h.direction}) — tight SL 0.7% @ $${stopLoss}`);
 
   const defaultDecision = {
     verdict:    'CONFIRMED',
@@ -164,12 +187,13 @@ export async function handleSignal(rawSignal, source = 'server') {
   console.log(`[BOT] Trade opened: tradeId=${tradeId}`);
 
   const dir = signal.signal === 'BUY' ? '📈' : '📉';
-  const biasNote = marketBias.direction ? ` | 4h: ${marketBias.direction}` : '';
+  const biasNote     = marketBias.direction ? ` | 4h: ${marketBias.direction}` : '';
   const authorityNote = signal.force ? ' ⚡ 1H AUTHORITY' : '';
+  const ctNote       = isCounterTrend ? ' ⚠️ COUNTER-TREND' : '';
   await sendTelegram(
-    `${dir} TRADE OPENED [${signal.timeframe}]${authorityNote}\n` +
+    `${dir} TRADE OPENED [${signal.timeframe}]${authorityNote}${ctNote}\n` +
     `${signal.signal} BTC @ $${signal.price}${biasNote}\n` +
-    `Stop: $${stopLoss} | Size: 50% | Mode: PAPER\n` +
+    `Stop: $${stopLoss} (${isCounterTrend ? '0.7% tight' : '6%'}) | Size: 50% | Mode: PAPER\n` +
     `Holds until opposite signal fires`
   );
 
@@ -198,6 +222,7 @@ export async function runServerLoop(broadcastFn) {
       const result1h = detectSignals(candles1h);
       console.log(`[BOT] 1h detectSignals: signal=${result1h.signal || 'none'}`);
       if (result1h.signal) {
+        updateBias1h(result1h);
         console.log(`[BOT] *** 1h AUTHORITY SIGNAL: ${result1h.signal} — closing all trades and re-entering ***`);
         const outcome1h = await handleSignal({
           ...result1h, asset: ASSET, timeframe: '1h', force: true,
