@@ -15,15 +15,26 @@ Trading model: Signal-based position flipping on BTC perpetual futures.
 
 Your default is to CONFIRM and execute. Only VETO for serious reasons.
 
+4H MARKET BIAS RULES (most important factor):
+- If the 5m signal ALIGNS with the 4h bias → CONFIRM confidently, full 50% size
+- If the 5m signal is AGAINST the 4h bias → be cautious:
+    * If news/macro is also against → VETO
+    * If news/macro is neutral → REDUCE to 25% size, lower confidence
+    * Only CONFIRM against bias if there is a very strong reversal reason
+- If no 4h bias yet → treat as neutral, apply normal rules
+
 CONFIRM when:
+- Signal aligns with 4h bias, OR no strong reason to reject
 - No major breaking news (hack, exchange collapse, government ban)
 - No FOMC or CPI announcement within 4 hours
 - Fear & Greed not at extreme (not above 92 on BUY, not below 8 on SELL)
 
 REDUCE to 25% size when:
-- Macro event within 24h or mixed/uncertain sentiment
+- 5m signal is against the 4h bias but news/macro is neutral
+- Macro event within 24h or mixed sentiment
 
 VETO only when:
+- 5m signal is against 4h bias AND news/macro also opposes it
 - Major breaking news directly threatening BTC
 - FOMC or CPI within 4 hours
 - Fear & Greed above 92 on BUY or below 8 on SELL
@@ -54,15 +65,23 @@ const model = genAI.getGenerativeModel({
 });
 
 export async function validateWithGemini(signal, marketContext) {
-  const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent } = marketContext;
+  const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent, fourHourBias } = marketContext;
 
   // Emergency SL only — 6% from entry (position exits by opposite signal, not TP)
   const emergencySL = signal.signal === 'BUY'
     ? (signal.price * 0.94).toFixed(2)
     : (signal.price * 1.06).toFixed(2);
 
+  const biasLine = fourHourBias?.direction
+    ? `4H MARKET BIAS: ${fourHourBias.direction} (last 4h signal: ${fourHourBias.signalType} @ $${fourHourBias.price})`
+    : '4H MARKET BIAS: Not yet established — treat as neutral';
+
+  const alignsWithBias = !fourHourBias?.direction ||
+    (signal.signal === 'BUY'  && fourHourBias.direction === 'BULLISH') ||
+    (signal.signal === 'SELL' && fourHourBias.direction === 'BEARISH');
+
   const prompt = `
-SIGNAL FROM PRECISION v9 INDICATOR:
+SIGNAL FROM PRECISION v9 INDICATOR [${signal.timeframe} chart]:
 Direction: ${signal.signal}
 Type: ${signal.type} (${signal.strength} signal)
 Asset: ${signal.asset}
@@ -72,10 +91,13 @@ Pattern: ${signal.pattern}
 Trend: ${signal.trend} (SMA50 ${signal.sma50 > signal.sma200 ? 'above' : 'below'} SMA200)
 Emergency SL: $${emergencySL} (6% — position held until opposite signal, not TP)
 
+${biasLine}
+Signal vs 4h bias: ${alignsWithBias ? '✅ ALIGNED — confirm confidently' : '⚠️ AGAINST BIAS — be cautious, consider reducing or vetoing'}
+
 MARKET CONTEXT:
 Fear & Greed: ${fearGreed?.value ?? 50} — ${fearGreed?.classification ?? 'Neutral'}
 Funding Rate: ${fundingRate ?? 0.01}%
-Next macro event: ${nextMacroEvent ?? 'None in next 48h'}
+Next macro event: ${nextMacroEvent ? `${nextMacroEvent.event} in ${nextMacroEvent.hoursAway}h` : 'None in next 48h'}
 
 RECENT NEWS (last 2 hours):
 ${recentNews.slice(0, 8).map(n => `[${n.source}] ${n.title}`).join('\n') || 'No recent news'}
