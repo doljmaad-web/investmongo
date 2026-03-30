@@ -65,7 +65,7 @@ export async function handleSignal(rawSignal, source = 'server') {
   }
 
   // Gather market context for Gemini
-  const { news, fearGreed, whales, macroEvent } = await fetchAllNews();
+  const { news, fearGreed, whales, macroEvent, newsSentiment } = await fetchAllNews();
   const fundingRate = await getFundingRate(signal.asset).catch(() => 0);
 
   const marketContext = {
@@ -74,7 +74,8 @@ export async function handleSignal(rawSignal, source = 'server') {
     whaleAlerts:    whales.slice(0, 5),
     fundingRate:    (fundingRate * 100).toFixed(4),
     nextMacroEvent: macroEvent,
-    fourHourBias:   marketBias,   // Pass 4h market direction to Gemini
+    fourHourBias:   marketBias,
+    newsSentiment,  // Pre-computed sentiment summary from last 20 articles
   };
 
   // Gemini validates

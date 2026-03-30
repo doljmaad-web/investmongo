@@ -65,7 +65,7 @@ const model = genAI.getGenerativeModel({
 });
 
 export async function validateWithGemini(signal, marketContext) {
-  const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent, fourHourBias } = marketContext;
+  const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent, fourHourBias, newsSentiment } = marketContext;
 
   // Emergency SL only — 6% from entry (position exits by opposite signal, not TP)
   const emergencySL = signal.signal === 'BUY'
@@ -98,6 +98,9 @@ MARKET CONTEXT:
 Fear & Greed: ${fearGreed?.value ?? 50} — ${fearGreed?.classification ?? 'Neutral'}
 Funding Rate: ${fundingRate ?? 0.01}%
 Next macro event: ${nextMacroEvent ? `${nextMacroEvent.event} in ${nextMacroEvent.hoursAway}h` : 'None in next 48h'}
+News Sentiment (last 20 articles): ${newsSentiment?.summary ?? 'No data'}
+Top bullish headlines: ${newsSentiment?.topBullish?.join(' | ') || 'none'}
+Top bearish headlines: ${newsSentiment?.topBearish?.join(' | ') || 'none'}
 
 RECENT NEWS (last 2 hours):
 ${recentNews.slice(0, 8).map(n => `[${n.source}] ${n.title}`).join('\n') || 'No recent news'}

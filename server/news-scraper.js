@@ -3,11 +3,12 @@ import Parser from 'rss-parser';
 const parser = new Parser({ timeout: 10000, headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' } });
 
 const FEEDS = [
-  { url: 'https://cointelegraph.com/rss',                              source: 'COINTELEGRAPH' },
-  { url: 'https://coindesk.com/arc/outboundfeeds/rss/',               source: 'COINDESK'      },
-  { url: 'https://feeds.reuters.com/reuters/businessNews',            source: 'REUTERS'       },
-  { url: 'https://www.reddit.com/r/CryptoCurrency/hot.rss',           source: 'REDDIT'        },
-  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/category/markets/', source: 'COINDESK_MKT' },
+  { url: 'https://cointelegraph.com/rss',                         source: 'COINTELEGRAPH' },
+  { url: 'https://bitcoinmagazine.com/.rss/full/',                source: 'BITCOIN_MAG'   },
+  { url: 'https://cryptoslate.com/feed/',                         source: 'CRYPTOSLATE'   },
+  { url: 'https://decrypt.co/feed',                               source: 'DECRYPT'       },
+  { url: 'https://www.reddit.com/r/CryptoCurrency/hot.rss',       source: 'REDDIT'        },
+  { url: 'https://www.reddit.com/r/Bitcoin/hot.rss',              source: 'REDDIT_BTC'    },
 ];
 
 const FEAR_GREED_URL = 'https://api.alternative.me/fng/';
@@ -19,6 +20,7 @@ let whaleCache       = [];
 let macroEvent       = null;
 let defiLlamaCache   = [];
 let glassnodeCache   = [];
+let newsSentiment    = { score: 'neutral', bullish: 0, bearish: 0, neutral: 0, summary: 'No data yet' };
 let lastFetch        = 0;
 let lastMacroFetch   = 0;
 let lastDefiLlama    = 0;
@@ -258,6 +260,37 @@ function guessSentiment(title) {
   return 'neutral';
 }
 
+// Pre-compute a rolling sentiment summary from the latest articles
+// Called after every news fetch — gives Gemini a ready-made market mood signal
+function computeNewsSentiment(articles) {
+  const recent = articles.slice(0, 20);
+  const counts = { bullish: 0, bearish: 0, neutral: 0 };
+  for (const a of recent) counts[a.sentiment || 'neutral']++;
+
+  const total  = recent.length || 1;
+  const score  = counts.bullish > counts.bearish + 2 ? 'bullish'
+               : counts.bearish > counts.bullish + 2 ? 'bearish'
+               : 'neutral';
+
+  const topBullish = articles.filter(a => a.sentiment === 'bullish').slice(0, 2).map(a => a.title);
+  const topBearish = articles.filter(a => a.sentiment === 'bearish').slice(0, 2).map(a => a.title);
+
+  newsSentiment = {
+    score,
+    bullish:  counts.bullish,
+    bearish:  counts.bearish,
+    neutral:  counts.neutral,
+    total,
+    summary:  `${score.toUpperCase()} — ${counts.bullish}B/${counts.bearish}Be/${counts.neutral}N from last ${total} articles`,
+    topBullish,
+    topBearish,
+    updatedAt: new Date().toISOString(),
+  };
+
+  console.log(`[NEWS] Sentiment: ${newsSentiment.summary}`);
+  return newsSentiment;
+}
+
 export async function fetchAllNews(force = false) {
   const now = Date.now();
   if (!force && now - lastFetch < CACHE_TTL) {
@@ -310,6 +343,9 @@ export async function fetchAllNews(force = false) {
     .filter(n => n.title && n.title.length > 10)
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
+  // Pre-compute sentiment summary so Gemini gets analyzed context, not just raw headlines
+  computeNewsSentiment(newsCache);
+
   // Fear & Greed index
   if (fngResult.status === 'fulfilled') {
     try {
@@ -324,8 +360,8 @@ export async function fetchAllNews(force = false) {
     console.warn('[NEWS] Fear & Greed fetch failed:', fngResult.reason?.message);
   }
 
-  console.log(`[NEWS] Fetched ${newsCache.length} articles, ${whaleCache.length} whale txs. F&G: ${fearGreed.value}. Next macro: ${macroEvent?.event || 'none'}`);
-  return { news: newsCache, fearGreed, whales: whaleCache, macroEvent };
+  console.log(`[NEWS] Fetched ${newsCache.length} articles, ${whaleCache.length} whale txs. F&G: ${fearGreed.value}. Sentiment: ${newsSentiment.score}. Next macro: ${macroEvent?.event || 'none'}`);
+  return { news: newsCache, fearGreed, whales: whaleCache, macroEvent, newsSentiment };
 }
 
-export { newsCache, fearGreed, whaleCache, macroEvent, defiLlamaCache, glassnodeCache };
+export { newsCache, fearGreed, whaleCache, macroEvent, defiLlamaCache, glassnodeCache, newsSentiment };

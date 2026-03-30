@@ -388,11 +388,11 @@ function updateNewsCounter() {
 function activatePills() {
   const sources = new Set(state.news.map(n => n.source));
   const pillMap = {
-    'pill-ct': ['COINTELEGRAPH'],
+    'pill-ct': ['COINTELEGRAPH', 'BITCOIN_MAG', 'CRYPTOSLATE', 'DECRYPT'],
     'pill-cd': ['COINDESK', 'COINDESK_MKT'],
     'pill-rt': ['REUTERS'],
     'pill-wh': ['WHALEALERT'],
-    'pill-rd': ['REDDIT'],
+    'pill-rd': ['REDDIT', 'REDDIT_BTC'],
     'pill-dl': ['DEFILLAMA'],
     'pill-gn': ['GLASSNODE'],
   };
