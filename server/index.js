@@ -133,6 +133,15 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
 });
 
+app.get('/api/spatial/price', async (req, res) => {
+  try {
+    const prices = await getCurrentPrices(['BTC']);
+    res.json({ price: prices['BTC'] || null, ts: Date.now() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============================================================
 // X INTELLIGENCE FEED — Telegram mirrors via tg.i-c-a.su proxy
 // ============================================================

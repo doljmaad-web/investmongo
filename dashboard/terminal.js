@@ -103,6 +103,9 @@ function handleMessage(msg) {
         state.signals.unshift(buildSignalRecord(msg.data));
         renderSignals();
         if (msg.data.decision) updateGeminiBox(msg.data.decision, msg.data.signal);
+        if (msg.data.decision && window.SpatialPlanner) {
+          window.SpatialPlanner.onSignal(msg.data.signal, msg.data.decision);
+        }
       }
       break;
 
@@ -697,6 +700,7 @@ function renderTradeIntel() {
 // ============================================================
 window.addEventListener('load', () => {
   connect();
+  if (window.SpatialPlanner) window.SpatialPlanner.init();
   setInterval(updateClock, 1000);
   updateClock();
   window.addEventListener('resize', () => drawChart());

@@ -50,53 +50,69 @@
       </div>
     </div>
 
-    <!-- CENTER: AUM Chart + Stats -->
+    <!-- CENTER: Spatial Trade Planner (left) + AUM Chart (right) -->
     <div class="panel" id="panel-center">
-      <div class="panel-header">
-        <h3>Portfolio Performance</h3>
-        <div class="header-right">
-          <span style="font-size:10px;color:var(--text-muted);">AUM Growth</span>
+
+      <!-- SPATIAL TRADE PLANNER -->
+      <div id="spatial-panel">
+        <div id="spatial-header">
+          <span class="sp-label">
+            <div class="live-dot"></div>
+            Spatial Trade Planner
+          </span>
+          <span style="font-size:9px;color:var(--text-dim);letter-spacing:1px;">AI · PARTICLE · FEED</span>
+        </div>
+        <div id="spatial-canvas-wrap">
+          <canvas id="spatial-canvas"></canvas>
+        </div>
+        <div id="sp-panel">
+          <div class="sp-row">
+            <div class="sp-cell"><div class="sp-cell-label">Asset</div><div class="sp-cell-val" id="sp-asset">--</div></div>
+            <div class="sp-cell"><div class="sp-cell-label">Direction</div><span class="sp-dir-badge" id="sp-direction">--</span></div>
+            <div class="sp-cell"><div class="sp-cell-label">Entry</div><div class="sp-cell-val amber" id="sp-entry">--</div></div>
+            <div class="sp-cell"><div class="sp-cell-label">R:R</div><div class="sp-cell-val purple" id="sp-rr">--</div></div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-cell"><div class="sp-cell-label">TP1</div><div class="sp-cell-val green" id="sp-tp1">--</div></div>
+            <div class="sp-cell"><div class="sp-cell-label">TP2</div><div class="sp-cell-val green" id="sp-tp2">--</div></div>
+            <div class="sp-cell"><div class="sp-cell-label">TP3</div><div class="sp-cell-val green" id="sp-tp3">--</div></div>
+            <div class="sp-cell"><div class="sp-cell-label">Stop Loss</div><div class="sp-cell-val red" id="sp-sl">--</div></div>
+          </div>
+          <div class="sp-conviction-row">
+            <span class="sp-conv-label">Conviction</span>
+            <div class="sp-conv-bar-wrap"><div id="sp-conv-bar"></div></div>
+            <span id="sp-conv">--%</span>
+          </div>
+          <div id="sp-thesis">Waiting for AI trade plan...</div>
         </div>
       </div>
 
-      <div id="chart-periods">
-        <button class="period-btn" data-period="30m">30M</button>
-        <button class="period-btn" data-period="1h">1H</button>
-        <button class="period-btn" data-period="4h">4H</button>
-        <button class="period-btn active" data-period="1d">1D</button>
-        <button class="period-btn" data-period="7d">7D</button>
-        <button class="period-btn" data-period="30d">30D</button>
-        <button class="period-btn" data-period="90d">90D</button>
-        <button class="period-btn" data-period="180d">180D</button>
-        <button class="period-btn" data-period="365d">365D</button>
+      <!-- AUM CHART COLUMN -->
+      <div id="chart-column">
+        <div class="panel-header">
+          <h3>Portfolio Performance</h3>
+          <div class="header-right"><span style="font-size:10px;color:var(--text-muted);">AUM Growth</span></div>
+        </div>
+        <div id="chart-periods">
+          <button class="period-btn" data-period="30m">30M</button>
+          <button class="period-btn" data-period="1h">1H</button>
+          <button class="period-btn" data-period="4h">4H</button>
+          <button class="period-btn active" data-period="1d">1D</button>
+          <button class="period-btn" data-period="7d">7D</button>
+          <button class="period-btn" data-period="30d">30D</button>
+          <button class="period-btn" data-period="90d">90D</button>
+          <button class="period-btn" data-period="180d">180D</button>
+          <button class="period-btn" data-period="365d">365D</button>
+        </div>
+        <div id="chart-container"><canvas id="aum-chart"></canvas></div>
+        <div class="metrics-grid">
+          <div class="metric-card"><div class="label">Win Rate</div><div class="value" id="metric-winrate">--%</div><div class="sub" id="metric-trades">0 trades</div></div>
+          <div class="metric-card"><div class="label">Today P&amp;L</div><div class="value" id="metric-today-pnl">$0.00</div><div class="sub" id="metric-today-sub">0 closed today</div></div>
+          <div class="metric-card"><div class="label">Total P&amp;L</div><div class="value" id="metric-total-pnl">$0.00</div><div class="sub">all time</div></div>
+          <div class="metric-card"><div class="label">Open Positions</div><div class="value" id="metric-open">0</div><div class="sub" id="metric-exposure">$0 exposure</div></div>
+        </div>
       </div>
 
-      <div id="chart-container">
-        <canvas id="aum-chart"></canvas>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="label">Win Rate</div>
-          <div class="value" id="metric-winrate">--%</div>
-          <div class="sub" id="metric-trades">0 trades</div>
-        </div>
-        <div class="metric-card">
-          <div class="label">Today P&amp;L</div>
-          <div class="value" id="metric-today-pnl">$0.00</div>
-          <div class="sub" id="metric-today-sub">0 closed today</div>
-        </div>
-        <div class="metric-card">
-          <div class="label">Total P&amp;L</div>
-          <div class="value" id="metric-total-pnl">$0.00</div>
-          <div class="sub">all time</div>
-        </div>
-        <div class="metric-card">
-          <div class="label">Open Positions</div>
-          <div class="value" id="metric-open">0</div>
-          <div class="sub" id="metric-exposure">$0 exposure</div>
-        </div>
-      </div>
     </div>
 
     <!-- RIGHT: Positions + Risk -->
@@ -184,6 +200,7 @@
 
 </div><!-- /#app -->
 
+<script src="spatial.js"></script>
 <script src="terminal.js"></script>
 </body>
 </html>

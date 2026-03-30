@@ -552,3 +552,128 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 #connecting-overlay p { color: var(--text-muted); font-size: 13px; }
+
+/* ====== SPATIAL TRADE PLANNER ====== */
+#panel-center {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  overflow: hidden;
+}
+
+#spatial-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+#spatial-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.sp-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+#spatial-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+#spatial-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#chart-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+#sp-panel {
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 8px 10px;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  max-height: 140px;
+  overflow: hidden;
+}
+#sp-panel.active { transform: translateY(0); }
+
+.sp-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.sp-cell {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+.sp-cell-label {
+  font-size: 8px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.sp-cell-val {
+  font-size: 11px; font-weight: bold;
+  color: var(--text-primary); font-family: monospace;
+}
+.sp-cell-val.green  { color: var(--green); }
+.sp-cell-val.red    { color: var(--red);   }
+.sp-cell-val.amber  { color: var(--amber); }
+.sp-cell-val.purple { color: var(--purple); }
+
+.sp-dir-badge {
+  display: inline-block; font-size: 10px; font-weight: bold;
+  padding: 2px 8px; border-radius: 3px; letter-spacing: 0.5px;
+}
+.sp-dir-badge.long  { background: var(--green-mid); color: var(--green); }
+.sp-dir-badge.short { background: var(--red-mid);   color: var(--red);   }
+
+.sp-conviction-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+}
+.sp-conv-label {
+  font-size: 9px; color: var(--text-muted);
+  text-transform: uppercase; width: 60px;
+}
+.sp-conv-bar-wrap {
+  flex: 1; height: 4px; background: var(--border);
+  border-radius: 2px; overflow: hidden;
+}
+#sp-conv-bar {
+  height: 100%; background: var(--purple);
+  border-radius: 2px; transition: width 0.4s; width: 0%;
+}
+#sp-conv { font-size: 10px; color: var(--purple); width: 32px; text-align: right; }
+#sp-thesis {
+  font-size: 10px; color: var(--text-muted);
+  line-height: 1.4; font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
