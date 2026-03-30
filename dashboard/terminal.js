@@ -393,6 +393,8 @@ function activatePills() {
     'pill-rt': ['REUTERS'],
     'pill-wh': ['WHALEALERT'],
     'pill-rd': ['REDDIT'],
+    'pill-dl': ['DEFILLAMA'],
+    'pill-gn': ['GLASSNODE'],
   };
   for (const [id, srcs] of Object.entries(pillMap)) {
     const el = document.getElementById(id);

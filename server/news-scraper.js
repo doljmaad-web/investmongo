@@ -13,14 +13,20 @@ const FEEDS = [
 const FEAR_GREED_URL = 'https://api.alternative.me/fng/';
 
 // In-memory cache
-let newsCache    = [];
-let fearGreed    = { value: 50, classification: 'Neutral' };
-let whaleCache   = [];
-let macroEvent   = null;
-let lastFetch    = 0;
-let lastMacroFetch = 0;
-const CACHE_TTL  = 10 * 60 * 1000; // 10 minutes
-const MACRO_TTL  = 60 * 60 * 1000; // 1 hour
+let newsCache        = [];
+let fearGreed        = { value: 50, classification: 'Neutral' };
+let whaleCache       = [];
+let macroEvent       = null;
+let defiLlamaCache   = [];
+let glassnodeCache   = [];
+let lastFetch        = 0;
+let lastMacroFetch   = 0;
+let lastDefiLlama    = 0;
+let lastGlassnode    = 0;
+const CACHE_TTL      = 10 * 60 * 1000; // 10 minutes
+const MACRO_TTL      = 60 * 60 * 1000; // 1 hour
+const DEFILLAMA_TTL  = 30 * 60 * 1000; // 30 minutes
+const GLASSNODE_TTL  = 60 * 60 * 1000; // 1 hour
 
 const BULLISH_WORDS = ['surge','rally','bull','gain','rise','high','buy','etf','approval','adoption','inflow','pump','accumulate','breakout'];
 const BEARISH_WORDS = ['crash','fall','drop','bear','sell','hack','ban','regulation','fine','loss','dump','outflow','liquidat','lawsuit'];
@@ -100,6 +106,105 @@ async function fetchWhaleAlerts() {
 }
 
 // ============================================================
+// DEFILLAMA — Total DeFi TVL trend + top chains (no API key)
+// ============================================================
+async function fetchDeFiLlama() {
+  const now = Date.now();
+  if (now - lastDefiLlama < DEFILLAMA_TTL && defiLlamaCache.length) return defiLlamaCache;
+
+  const items = [];
+
+  // Global TVL trend (daily history)
+  try {
+    const res  = await fetch('https://api.llama.fi/v2/historicalChainTvl');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length >= 2) {
+      const latest = data[data.length - 1];
+      const prev   = data[data.length - 2];
+      const change = ((latest.tvl - prev.tvl) / prev.tvl) * 100;
+      const tvlB   = (latest.tvl / 1e9).toFixed(1);
+      const dir    = change > 0 ? 'IN ↑' : 'OUT ↓';
+      items.push({
+        source:      'DEFILLAMA',
+        title:       `DeFi Total TVL: $${tvlB}B (${change > 0 ? '+' : ''}${change.toFixed(1)}% 24h) — liquidity flowing ${dir}`,
+        sentiment:   change > 2 ? 'bullish' : change < -2 ? 'bearish' : 'neutral',
+        publishedAt: new Date().toISOString(),
+      });
+    }
+  } catch (e) {
+    console.warn('[NEWS] DeFiLlama TVL fetch failed:', e.message);
+  }
+
+  // Top 3 chains by TVL
+  try {
+    const res    = await fetch('https://api.llama.fi/v2/chains');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const chains = await res.json();
+    const top3   = chains.sort((a, b) => b.tvl - a.tvl).slice(0, 3);
+    const summary = top3.map(c => `${c.name} $${(c.tvl / 1e9).toFixed(1)}B`).join(' | ');
+    items.push({
+      source:      'DEFILLAMA',
+      title:       `Top Chain TVL — ${summary}`,
+      sentiment:   'neutral',
+      publishedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn('[NEWS] DeFiLlama chains fetch failed:', e.message);
+  }
+
+  defiLlamaCache = items;
+  lastDefiLlama  = now;
+  console.log(`[NEWS] DeFiLlama: ${items.length} items fetched`);
+  return items;
+}
+
+// ============================================================
+// GLASSNODE — BTC exchange balance (free tier, needs GLASSNODE_API_KEY)
+// Get a free key at: https://glassnode.com
+// ============================================================
+async function fetchGlassnode() {
+  const apiKey = process.env.GLASSNODE_API_KEY;
+  if (!apiKey) return [];
+
+  const now = Date.now();
+  if (now - lastGlassnode < GLASSNODE_TTL && glassnodeCache.length) return glassnodeCache;
+
+  const items = [];
+
+  try {
+    // BTC balance held on exchanges — decreasing = coins leaving = bullish
+    const url = `https://api.glassnode.com/v1/metrics/distribution/balance_exchanges?a=BTC&api_key=${apiKey}&i=24h&limit=8`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length >= 2) {
+      const latest  = data[data.length - 1];
+      const weekAgo = data[Math.max(0, data.length - 7)];
+      const change  = latest.v - weekAgo.v;
+      const pct     = ((change / weekAgo.v) * 100).toFixed(2);
+      const btcAmt  = (latest.v / 1000).toFixed(0);
+      const signal  = change < 0 ? 'outflow — accumulation signal' : 'inflow — sell pressure signal';
+      items.push({
+        source:      'GLASSNODE',
+        title:       `BTC Exchange Balance: ${btcAmt}K BTC (${change < 0 ? '' : '+'}${pct}% 7d) — ${signal}`,
+        sentiment:   change < 0 ? 'bullish' : 'bearish',
+        publishedAt: new Date().toISOString(),
+      });
+    }
+  } catch (e) {
+    console.warn('[NEWS] Glassnode fetch failed:', e.message);
+  }
+
+  glassnodeCache = items;
+  lastGlassnode  = now;
+  console.log(`[NEWS] Glassnode: ${items.length} items fetched`);
+  return items;
+}
+
+// ============================================================
 // MACRO EVENTS — Finnhub economic calendar (free tier)
 // Set FINNHUB_API_KEY in .env to enable
 // Returns the next high-impact event within 7 days, or null
@@ -162,8 +267,8 @@ export async function fetchAllNews(force = false) {
   lastFetch = now;
   const fresh = [];
 
-  // Fetch RSS feeds, whale alerts, macro events, Fear & Greed concurrently
-  const [feedResults, whaleResults, macroResult, fngResult] = await Promise.allSettled([
+  // Fetch RSS feeds, whale alerts, macro events, Fear & Greed, DeFiLlama, Glassnode concurrently
+  const [feedResults, whaleResults, macroResult, fngResult, defiResult, glassResult] = await Promise.allSettled([
     Promise.allSettled(
       FEEDS.map(async feed => {
         const parsed = await parser.parseURL(feed.url);
@@ -179,6 +284,8 @@ export async function fetchAllNews(force = false) {
     fetchWhaleAlerts(),
     fetchNextMacroEvent(),
     fetch(FEAR_GREED_URL).then(r => r.json()),
+    fetchDeFiLlama(),
+    fetchGlassnode(),
   ]);
 
   // Process RSS feeds
@@ -199,6 +306,10 @@ export async function fetchAllNews(force = false) {
   // Macro event
   if (macroResult.status === 'fulfilled') macroEvent = macroResult.value;
 
+  // DeFiLlama + Glassnode — inject into news feed
+  if (defiResult.status === 'fulfilled')  fresh.push(...defiResult.value);
+  if (glassResult.status === 'fulfilled') fresh.push(...glassResult.value);
+
   // Fear & Greed index
   if (fngResult.status === 'fulfilled') {
     try {
@@ -217,4 +328,4 @@ export async function fetchAllNews(force = false) {
   return { news: newsCache, fearGreed, whales: whaleCache, macroEvent };
 }
 
-export { newsCache, fearGreed, whaleCache, macroEvent };
+export { newsCache, fearGreed, whaleCache, macroEvent, defiLlamaCache, glassnodeCache };
