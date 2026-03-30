@@ -1,6 +1,12 @@
 import Parser from 'rss-parser';
 
-const parser = new Parser({ timeout: 10000, headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' } });
+const parser = new Parser({
+  timeout: 10000,
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (compatible; RSS/1.0)',
+    'Accept': 'application/rss+xml, application/xml, text/xml',
+  },
+});
 
 const FEEDS = [
   { url: 'https://cointelegraph.com/rss',                         source: 'COINTELEGRAPH' },

@@ -16,7 +16,7 @@ process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception:', err.message);
   console.error('[FATAL] Stack:', err.stack);
 });
-import { fetchAllNews } from './news-scraper.js';
+import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { getPortfolioStats }           from './paper-trading.js';
 import { getCurrentPrices }            from './hyperliquid.js';
 import { db }                          from './database.js';
@@ -34,31 +34,42 @@ app.use(express.static(path.join(__dirname, '../dashboard')));
 // ============================================================
 function broadcast(data) {
   const msg = JSON.stringify(data);
-  wss.clients.forEach(ws => {
-    if (ws.readyState === 1) ws.send(msg);
+  wss.clients.forEach(client => {
+    try {
+      if (client.readyState === 1) client.send(msg);
+    } catch (e) {
+      console.error('[WS] Broadcast error:', e.message);
+    }
   });
 }
 
-wss.on('connection', async ws => {
+wss.on('connection', (ws) => {
   console.log('[WS] Dashboard client connected');
 
   try {
-    const stats   = getPortfolioStats();
-    const { news, fearGreed } = await fetchAllNews();
-    const signals = db.prepare('SELECT * FROM signals ORDER BY created_at DESC LIMIT 30').all();
+    const stats     = getPortfolioStats();
+    const signals   = db.prepare('SELECT * FROM signals ORDER BY created_at DESC LIMIT 20').all();
+    const news      = newsCache.slice(0, 25);
     const snapshots = db.prepare(
-      'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 50'
+      'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
     ).all().reverse();
 
     ws.send(JSON.stringify({
       type: 'init',
-      data: { stats, news: news.slice(0, 25), signals, fearGreed, snapshots },
+      data: { stats, signals, news, fearGreed, snapshots },
     }));
-  } catch (err) {
-    console.error('[WS] Init error:', err.message);
+  } catch (initErr) {
+    console.error('[WS] Init send failed:', initErr.message);
+    try {
+      ws.send(JSON.stringify({
+        type: 'init',
+        data: { stats: {}, signals: [], news: [], fearGreed: { value: 50 }, snapshots: [] },
+      }));
+    } catch (e) {}
   }
 
-  ws.on('error', e => console.error('[WS] Error:', e.message));
+  ws.on('error', (err) => console.error('[WS] Client error:', err.message));
+  ws.on('close', ()  => console.log('[WS] Client disconnected'));
 });
 
 // ============================================================
