@@ -140,24 +140,41 @@
 
   </div><!-- /#main -->
 
-  <!-- ============ BOTTOM NEWS TERMINAL ============ -->
+  <!-- ============ BOTTOM BAR ============ -->
   <div id="bottom">
-    <div class="panel-header">
-      <h3>Live Intelligence Feed</h3>
-      <div class="header-right">
-        <div class="source-pills">
-          <div class="source-pill active" id="pill-ct">COINTELEGRAPH</div>
-          <div class="source-pill active" id="pill-cd">COINDESK</div>
-          <div class="source-pill active" id="pill-rt">REUTERS</div>
-          <div class="source-pill" id="pill-wh">WHALE</div>
-          <div class="source-pill" id="pill-rd">REDDIT</div>
-          <div class="source-pill" id="pill-dl">DEFILLAMA</div>
-          <div class="source-pill" id="pill-gn">GLASSNODE</div>
+
+    <!-- Left: Live Intelligence Feed -->
+    <div id="bottom-left">
+      <div class="panel-header">
+        <h3>Live Intelligence Feed</h3>
+        <div class="header-right">
+          <div class="source-pills">
+            <div class="source-pill active" id="pill-ct">COINTELEGRAPH</div>
+            <div class="source-pill active" id="pill-cd">COINDESK</div>
+            <div class="source-pill active" id="pill-rt">REUTERS</div>
+            <div class="source-pill" id="pill-wh">WHALE</div>
+            <div class="source-pill" id="pill-rd">REDDIT</div>
+            <div class="source-pill" id="pill-dl">DEFILLAMA</div>
+            <div class="source-pill" id="pill-gn">GLASSNODE</div>
+          </div>
+          <span id="news-counter" style="margin-left:8px;">0 items</span>
         </div>
-        <span id="news-counter" style="margin-left:8px;">0 items</span>
       </div>
+      <div id="news-feed"></div>
     </div>
-    <div id="news-feed"></div>
+
+    <!-- Right: X Intelligence -->
+    <div id="bottom-right">
+      <div class="panel-header">
+        <h3>X Intelligence</h3>
+        <div class="header-right">
+          <div class="live-dot"></div>
+          <span style="font-size:10px;color:var(--blue);">LIVE</span>
+        </div>
+      </div>
+      <div id="x-feed"><div class="x-empty">Loading X feed...</div></div>
+    </div>
+
   </div>
 
 </div><!-- /#app -->

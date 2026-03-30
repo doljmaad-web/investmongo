@@ -352,13 +352,14 @@ function appendNewsLine(n, fading = false) {
   const sent = n.sentiment || 'neutral';
   div.className = `news-line ${sent}${fading ? ' fading' : ''}`;
 
-  const time = new Date(n.publishedAt || Date.now());
-  const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeStr = n.publishedAt
+    ? new Date(n.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   div.innerHTML = `
     <span class="news-source">${escHtml(n.source || '?')}</span>
-    <span class="news-time">${timeStr}</span>
-    <span class="news-text">${escHtml(n.title || '')}</span>`;
+    <span class="news-text">${escHtml(n.title || '')}</span>
+    ${timeStr ? `<span class="news-time">[${timeStr}]</span>` : ''}`;
 
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
@@ -574,6 +575,45 @@ function escHtml(str) {
 }
 
 // ============================================================
+// X INTELLIGENCE FEED
+// ============================================================
+async function fetchXFeed() {
+  try {
+    const res  = await fetch('/api/x-feed');
+    const data = await res.json();
+    renderXFeed(data.items || []);
+  } catch (e) {
+    renderXFeedEmpty();
+  }
+}
+
+function renderXFeed(items) {
+  const feed = document.getElementById('x-feed');
+  if (!feed) return;
+  if (!items.length) { renderXFeedEmpty(); return; }
+
+  feed.innerHTML = items.map(item => {
+    const d       = item.pubDate ? new Date(item.pubDate) : null;
+    const timeStr = d && !isNaN(d)
+      ? `[${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]`
+      : '';
+    const text = (item.title || '').length > 80
+      ? item.title.slice(0, 80) + '\u2026'
+      : (item.title || '');
+    return `<div class="x-line">
+      <span class="x-handle">${escHtml(item.handle)}</span>
+      <span class="x-text">${escHtml(text)}</span>
+      ${timeStr ? `<span class="x-time">${timeStr}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderXFeedEmpty() {
+  const feed = document.getElementById('x-feed');
+  if (feed) feed.innerHTML = '<div class="x-empty">X feed temporarily unavailable</div>';
+}
+
+// ============================================================
 // INIT
 // ============================================================
 window.addEventListener('load', () => {
@@ -581,4 +621,6 @@ window.addEventListener('load', () => {
   setInterval(updateClock, 1000);
   updateClock();
   window.addEventListener('resize', () => drawChart());
+  fetchXFeed();
+  setInterval(fetchXFeed, 60000);
 });

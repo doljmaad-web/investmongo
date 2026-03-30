@@ -377,7 +377,22 @@ html, body {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
   display: flex;
+  flex-direction: row;
+}
+
+#bottom-left {
+  flex: 3;
+  display: flex;
   flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+#bottom-right {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 #bottom .panel-header { border-bottom: 1px solid var(--border); }
@@ -419,7 +434,7 @@ html, body {
   font-size: 10px; font-weight: bold; flex-shrink: 0;
   padding: 0px 5px; border-radius: 2px;
 }
-.news-time { color: var(--text-dim); font-size: 10px; flex-shrink: 0; }
+.news-time { color: var(--text-muted); font-size: 10px; flex-shrink: 0; }
 .news-text  { color: var(--text-muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .news-line.bullish .news-text { color: var(--green); }
@@ -430,6 +445,43 @@ html, body {
 .news-line.bearish .news-source { background: var(--red-dark);   color: var(--red);   }
 .news-line.alert   .news-source { background: var(--amber-dark); color: var(--amber); }
 .news-line.neutral .news-source { background: var(--border);     color: var(--text-muted); }
+
+/* ====== X INTELLIGENCE FEED ====== */
+#x-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+}
+#x-feed::-webkit-scrollbar { width: 4px; }
+#x-feed::-webkit-scrollbar-thumb { background: var(--border); }
+
+.x-line {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+  font-size: 11px;
+  animation: fadeIn 0.3s ease;
+  border-bottom: 1px solid var(--bg-primary);
+}
+.x-handle {
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: bold;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+.x-text {
+  color: var(--text-muted);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.x-time  { color: #666; font-size: 10px; flex-shrink: 0; }
+.x-empty { color: var(--text-dim); font-size: 11px; padding: 8px 0; }
 
 .cursor-blink {
   display: inline-block;

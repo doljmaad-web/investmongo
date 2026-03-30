@@ -111,6 +111,77 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
 });
 
+// ============================================================
+// X / TWITTER FEED — via Nitter public RSS mirrors (no API key)
+// ============================================================
+const NITTER_FEEDS = [
+  { url: 'https://nitter.poast.org/MarioNawfal/rss',     handle: '@MarioNawfal'     },
+  { url: 'https://nitter.poast.org/CryptoHayes/rss',     handle: '@CryptoHayes'     },
+  { url: 'https://nitter.poast.org/spectatorindex/rss',  handle: '@spectatorindex'  },
+  { url: 'https://nitter.poast.org/coinbureau/rss',      handle: '@coinbureau'      },
+  { url: 'https://nitter.poast.org/RoundtableSpace/rss', handle: '@RoundtableSpace' },
+  { url: 'https://nitter.poast.org/MyLordBebo/rss',      handle: '@MyLordBebo'      },
+  { url: 'https://nitter.poast.org/untaxxable/rss',      handle: '@untaxxable'      },
+  { url: 'https://nitter.poast.org/MMCrypto/rss',        handle: '@MMCrypto'        },
+];
+
+let xFeedCache = { items: [], cached_at: 0 };
+const X_CACHE_TTL = 60 * 1000;
+
+function parseNitterRSS(xml, handle) {
+  const items = [];
+  const itemRx = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = itemRx.exec(xml)) !== null) {
+    const block    = m[1];
+    const rawTitle = (/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/.exec(block)?.[1] ||
+                      /<title>([\s\S]*?)<\/title>/.exec(block)?.[1] || '').trim();
+    const pubDate  = (/<pubDate>([\s\S]*?)<\/pubDate>/.exec(block)?.[1] || '').trim();
+    const title    = rawTitle
+      .replace(/^R to @\w+: /, '').replace(/^RT by @\w+: /, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+      .trim();
+    if (title.length > 5) {
+      items.push({ handle, title, pubDate, ts: pubDate ? new Date(pubDate).getTime() : 0 });
+    }
+  }
+  return items;
+}
+
+app.get('/api/x-feed', async (req, res) => {
+  const now = Date.now();
+  if (now - xFeedCache.cached_at < X_CACHE_TTL && xFeedCache.items.length > 0) {
+    return res.json(xFeedCache);
+  }
+  try {
+    const results = await Promise.allSettled(
+      NITTER_FEEDS.map(async ({ url, handle }) => {
+        const ac      = new AbortController();
+        const timer   = setTimeout(() => ac.abort(), 8000);
+        try {
+          const r = await fetch(url, {
+            headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' },
+            signal: ac.signal,
+          });
+          clearTimeout(timer);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return parseNitterRSS(await r.text(), handle);
+        } finally {
+          clearTimeout(timer);
+        }
+      })
+    );
+    const all    = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    const sorted = all.sort((a, b) => b.ts - a.ts).slice(0, 20)
+                      .map(({ handle, title, pubDate }) => ({ handle, title, pubDate }));
+    xFeedCache = { items: sorted, cached_at: now };
+    res.json(xFeedCache);
+  } catch (err) {
+    console.error('[X-FEED] Error:', err.message);
+    res.json({ items: [], cached_at: now });
+  }
+});
+
 // Serve dashboard for all other routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../dashboard/index.html'));
