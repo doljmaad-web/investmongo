@@ -18,7 +18,7 @@ process.on('uncaughtException', (err) => {
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { getPortfolioStats }           from './paper-trading.js';
-import { getCurrentPrices }            from './hyperliquid.js';
+import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
 import { db }                          from './database.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -133,12 +133,46 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
 });
 
+// Spatial Trade Planner — live BTC price for particle feed
 app.get('/api/spatial/price', async (req, res) => {
   try {
     const prices = await getCurrentPrices(['BTC']);
     res.json({ price: prices['BTC'] || null, ts: Date.now() });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Spatial Trade Planner — candle data for neon candlestick chart
+app.get('/api/spatial/candles', async (req, res) => {
+  try {
+    const coin     = req.query.coin     || 'BTC';
+    const interval = req.query.interval || '1d';
+    // Support explicit year range: ?year=2026
+    const year = parseInt(req.query.year);
+    if (year && !isNaN(year)) {
+      const startTime = new Date(year, 0, 1).getTime();          // Jan 1
+      const endTime   = Math.min(new Date(year, 11, 31, 23, 59, 59).getTime(), Date.now());
+      const HL_URL    = 'https://api.hyperliquid.xyz/info';
+      const r = await fetch(HL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'candleSnapshot', req: { coin, interval, startTime, endTime } }),
+      });
+      if (!r.ok) throw new Error(`HL ${r.status}`);
+      const raw = await r.json();
+      const candles = raw.map(c => ({
+        time: c.t, open: parseFloat(c.o), high: parseFloat(c.h),
+        low: parseFloat(c.l), close: parseFloat(c.c), volume: parseFloat(c.v),
+      }));
+      return res.json({ candles, ts: Date.now(), year, interval });
+    }
+    // Fallback: bars-based fetch
+    const bars    = Math.min(parseInt(req.query.bars) || 200, 500);
+    const candles = await fetchCandles(coin, interval, bars);
+    res.json({ candles, ts: Date.now(), interval });
+  } catch (e) {
+    res.status(500).json({ error: e.message, candles: [] });
   }
 });
 
