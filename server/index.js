@@ -7,6 +7,15 @@ import { fileURLToPath } from 'url';
 import cron              from 'node-cron';
 
 import { handleSignal, runServerLoop } from './bot.js';
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
+  console.error('[FATAL] Stack:', reason?.stack);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err.message);
+  console.error('[FATAL] Stack:', err.stack);
+});
 import { fetchAllNews } from './news-scraper.js';
 import { getPortfolioStats }           from './paper-trading.js';
 import { getCurrentPrices }            from './hyperliquid.js';
@@ -247,8 +256,12 @@ app.get('/', (req, res) => {
 // ============================================================
 
 // Track B: Run indicator every 5 minutes
-cron.schedule('*/5 * * * *', () => {
-  runServerLoop(broadcast).catch(err => console.error('[CRON] Loop error:', err.message));
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    await runServerLoop(broadcast);
+  } catch (err) {
+    console.error('[CRON] Loop error:', err.message, err.stack);
+  }
 });
 
 // Refresh news feed every 10 minutes
@@ -268,10 +281,15 @@ cron.schedule('* * * * *', async () => {
     const prices = await getCurrentPrices(['BTC','ETH','DOGE','XAU','HYPE']);
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
-    const freshSnaps = db.prepare(
-      'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
-    ).all().reverse();
-    broadcast({ type: 'portfolio_update', data: { ...stats, snapshots: freshSnaps } });
+    try {
+      const freshSnaps = db.prepare(
+        'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
+      ).all().reverse();
+      broadcast({ type: 'portfolio_update', data: { ...stats, snapshots: freshSnaps } });
+    } catch (snapErr) {
+      console.error('[BROADCAST] Snapshot fetch failed:', snapErr.message);
+      broadcast({ type: 'portfolio_update', data: stats });
+    }
   } catch (err) {
     console.error('[CRON] P&L update error:', err.message);
   }
@@ -290,5 +308,12 @@ server.listen(PORT, async () => {
 
   // Warm up on start
   await fetchAllNews(true).catch(console.error);
-  await runServerLoop(broadcast).catch(console.error);
+  setTimeout(async () => {
+    try {
+      console.log('[STARTUP] Running initial bot loop...');
+      await runServerLoop(broadcast);
+    } catch (e) {
+      console.error('[STARTUP] Error:', e.message, e.stack);
+    }
+  }, 15000);
 });
