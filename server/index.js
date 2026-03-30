@@ -165,7 +165,10 @@ async function fetchXFeed() {
         const url = `https://tg.i-c-a.su/rss/${channel}`;
         const res = await fetch(url, {
           signal: AbortSignal.timeout(6000),
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RSS reader)' },
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+          },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const xml = await res.text();
@@ -187,6 +190,20 @@ async function fetchXFeed() {
     return xFeedCache.items; // serve stale on error
   }
 }
+
+app.get('/api/x-feed/debug', async (req, res) => {
+  const url = 'https://tg.i-c-a.su/rss/coinbureau';
+  try {
+    const r = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+    });
+    const text = await r.text();
+    res.json({ status: r.status, ok: r.ok, length: text.length, preview: text.slice(0, 500) });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
 
 app.get('/api/x-feed', async (req, res) => {
   try {
@@ -232,7 +249,10 @@ cron.schedule('* * * * *', async () => {
     const prices = await getCurrentPrices(['BTC','ETH','DOGE','XAU','HYPE']);
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
-    broadcast({ type: 'portfolio_update', data: stats });
+    const freshSnaps = db.prepare(
+      'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
+    ).all().reverse();
+    broadcast({ type: 'portfolio_update', data: { ...stats, snapshots: freshSnaps } });
   } catch (err) {
     console.error('[CRON] P&L update error:', err.message);
   }

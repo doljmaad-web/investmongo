@@ -70,8 +70,17 @@ function handleMessage(msg) {
 
     case 'portfolio_update':
       state.portfolio = msg.data;
+      if (msg.data.snapshots) state.snapshots = msg.data.snapshots;
+      if (msg.data.totalValue !== undefined) {
+        state.snapshots.push({
+          total_value: msg.data.totalValue,
+          snapshot_at: new Date().toISOString(),
+        });
+        if (state.snapshots.length > 100) state.snapshots.shift();
+      }
       renderPortfolio();
       renderPositions();
+      drawChart();
       break;
 
     case 'new_signal':
