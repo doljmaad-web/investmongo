@@ -112,22 +112,21 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================================
-// X INTELLIGENCE FEED — Telegram mirrors labeled as X accounts
+// X INTELLIGENCE FEED — Telegram mirrors via tg.i-c-a.su proxy
 // ============================================================
 const X_MIRROR_SOURCES = [
   { channel: 'marionawfal',     handle: '@MarioNawfal'     },
-  { channel: 'arthurhayes',     handle: '@CryptoHayes'     },
+  { channel: 'arthurhayescio',  handle: '@CryptoHayes'     },
   { channel: 'coinbureau',      handle: '@coinbureau'      },
-  { channel: 'MMCryptoTA',      handle: '@MMCrypto'        },
+  { channel: 'mmcryptota',      handle: '@MMCrypto'        },
   { channel: 'spectatorindex',  handle: '@spectatorindex'  },
   { channel: 'roundtablespace', handle: '@RoundtableSpace' },
-  { channel: 'MyLordBebo',      handle: '@MyLordBebo'      },
+  { channel: 'mylordbebo',      handle: '@MyLordBebo'      },
   { channel: 'untaxxable',      handle: '@untaxxable'      },
 ];
 
 const X_CACHE_TTL = 90 * 1000;
-let xCache = null;
-let xCachedAt = 0;
+const xFeedCache  = { items: [], cached_at: 0 };
 
 function cleanText(raw) {
   return raw
@@ -160,43 +159,46 @@ function parseItems(xml, handle) {
 }
 
 async function fetchXFeed() {
-  const testChannel = 'coinbureau';
-  const sources = [
-    `https://rsshub.app/telegram/channel/${testChannel}`,
-    `https://rsshub.app/telegram/channel/${testChannel}?limit=10`,
-    `https://rss.app/feeds/telegram/${testChannel}.xml`,
-    `https://fetchrss.com/rss/telegram/${testChannel}`,
-    `https://tg.i-c-a.su/rss/${testChannel}`,
-    `https://tt.rss.io/telegram/${testChannel}`,
-  ];
+  try {
+    const results = await Promise.allSettled(
+      X_MIRROR_SOURCES.map(async ({ channel, handle }) => {
+        const url = `https://tg.i-c-a.su/rss/${channel}`;
+        const res = await fetch(url, {
+          signal: AbortSignal.timeout(6000),
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RSS reader)' },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const xml = await res.text();
+        return parseItems(xml, handle);
+      })
+    );
 
-  const results = [];
-  for (const url of sources) {
-    try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RSS reader)' },
-      });
-      const text = await res.text();
-      results.push({
-        url,
-        status: res.status,
-        ok: res.ok,
-        length: text.length,
-        preview: text.slice(0, 300),
-      });
-    } catch (err) {
-      results.push({ url, error: err.message });
-    }
+    const all = results
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.value)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 30);
+
+    xFeedCache.items     = all;
+    xFeedCache.cached_at = Date.now();
+    return all;
+  } catch (err) {
+    console.error('[X-FEED] fetchXFeed error:', err.message);
+    return xFeedCache.items; // serve stale on error
   }
-
-  console.log('[X-FEED DEBUG]', JSON.stringify(results, null, 2));
-  return results;
 }
 
 app.get('/api/x-feed', async (req, res) => {
-  const results = await fetchXFeed();
-  res.json({ debug: true, results, cached_at: Date.now() });
+  try {
+    if (xFeedCache.items.length > 0 && Date.now() - xFeedCache.cached_at < X_CACHE_TTL) {
+      return res.json({ items: xFeedCache.items, cached_at: xFeedCache.cached_at });
+    }
+    const items = await fetchXFeed();
+    res.json({ items, cached_at: Date.now() });
+  } catch (err) {
+    console.error('[X-FEED] Route error:', err.message);
+    res.json({ items: [], cached_at: Date.now() });
+  }
 });
 
 // Serve dashboard for all other routes
