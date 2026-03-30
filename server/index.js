@@ -16,6 +16,15 @@ process.on('uncaughtException', (err) => {
   console.error('[FATAL] Uncaught exception:', err.message);
   console.error('[FATAL] Stack:', err.stack);
 });
+process.on('SIGTERM', () => {
+  console.log('[SHUTDOWN] SIGTERM received — closing gracefully');
+  server.close(() => {
+    console.log('[SHUTDOWN] Server closed');
+    process.exit(0);
+  });
+  // Force exit after 10s if server.close hangs
+  setTimeout(() => process.exit(0), 10000).unref();
+});
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { getPortfolioStats }           from './paper-trading.js';
 import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
