@@ -5,21 +5,31 @@ import {
   openPaperTrade, closeOpenPosition,
   updateOpenTrades, getPortfolioStats,
 } from './paper-trading.js';
-import { checkRiskLimits }            from './risk.js';
-import { sendTelegram }               from './telegram.js';
+import { checkRiskLimits }               from './risk.js';
+import { sendTelegram }                  from './telegram.js';
 import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
-import { db }                         from './database.js';
+import { db }                            from './database.js';
 
 // ============================================================
-// Strategy: Precision v9 — 5m yellow/pink dots only
-//   - Yellow dot in last 5 candles → enter LONG
-//   - Pink dot  in last 5 candles → enter SHORT (and close LONG)
-//   - Hold position until opposite dot fires — no fixed TP/SL
+// Strategy: Precision v9 — 5m yellow/pink dots
+//
+// Holding conditions:
+//   COUNTER-TREND (5m opposes 1h last signal):
+//     SL = 0.1% from entry
+//     TP = 10% from entry (fixed target)
+//
+//   WITH-TREND (5m aligns with 1h last signal, or no 1h bias yet):
+//     SL = 2% from entry
+//     TP = none — hold until opposite 5m dot fires
 // ============================================================
 const ASSET         = 'BTC';
-const SIGNAL_WINDOW = 5;   // act only if dot fired within last 5 candles
+const SIGNAL_WINDOW = 5;          // act only if dot fired within last 5 candles
 
-// Dedup: 25 min window (5 candles × 5 min) prevents re-entry on same dot
+const SL_COUNTER    = 0.001;      // 0.1% stop loss for counter-trend
+const TP_COUNTER    = 0.10;       // 10% take profit for counter-trend
+const SL_WITH       = 0.02;       // 2% stop loss for with-trend
+
+// Dedup: 25 min window prevents re-entry on same dot
 const recentSignals = new Map();
 const DEDUP_MS      = 25 * 60 * 1000;
 
@@ -29,6 +39,31 @@ function isDuplicate(asset, action) {
   if (last && Date.now() - last < DEDUP_MS) return true;
   recentSignals.set(key, Date.now());
   return false;
+}
+
+// ============================================================
+// 1H BIAS — tracks last 1h dot signal, never trades on its own
+// ============================================================
+let bias1h = {
+  direction: null,   // 'BULLISH' | 'BEARISH' | null
+  updatedAt: null,
+};
+
+async function update1hBias() {
+  try {
+    const candles1h = await fetchCandles(ASSET, '1h', 250);
+    if (!candles1h || candles1h.length < 60) return;
+    const result = detectSignals(candles1h);
+    if (result.signal) {
+      bias1h = {
+        direction: result.signal === 'BUY' ? 'BULLISH' : 'BEARISH',
+        updatedAt: new Date().toISOString(),
+      };
+      console.log(`[BOT] 1h bias updated → ${bias1h.direction} (RSI=${result.rsi})`);
+    }
+  } catch (err) {
+    console.error('[BOT] 1h bias scan error:', err.message);
+  }
 }
 
 // ============================================================
@@ -45,7 +80,6 @@ async function postTradeAdvisory(tradeId, signal) {
       `${advisory.hold ? 'HOLD' : 'REVIEW'} | Caution: ${advisory.caution ? 'YES' : 'NO'}\n` +
       `${advisory.reason}`
     );
-    console.log(`[ADVISORY] Trade #${tradeId}: hold=${advisory.hold} caution=${advisory.caution}`);
   } catch (err) {
     console.error(`[ADVISORY] Failed for trade #${tradeId}:`, err.message);
   }
@@ -56,9 +90,9 @@ async function postTradeAdvisory(tradeId, signal) {
 // ============================================================
 export async function handleSignal(rawSignal, source = 'server') {
   const signal = { ...rawSignal, source };
-  console.log(`[BOT] handleSignal: ${signal.signal} ${signal.asset} @ $${signal.price} barsAgo=${signal.barsAgo ?? '?'} src=${source}`);
+  console.log(`[BOT] handleSignal: ${signal.signal} ${signal.asset} @ $${signal.price} barsAgo=${signal.barsAgo ?? '?'}`);
 
-  // Dedup — block same direction re-entry within 25 min
+  // Dedup
   if (isDuplicate(signal.asset, signal.signal)) {
     console.log(`[BOT] Duplicate ${signal.signal} — skipping`);
     return null;
@@ -66,7 +100,7 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   const direction = signal.signal === 'BUY' ? 'LONG' : 'SHORT';
 
-  // Don't re-enter if already in same direction
+  // Don't re-enter same direction
   const existing = db.prepare(
     `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`
   ).get(signal.asset, direction);
@@ -75,14 +109,46 @@ export async function handleSignal(rawSignal, source = 'server') {
     return null;
   }
 
-  // No fixed stop loss — exit triggered only by opposite signal
+  // ── Determine counter-trend vs with-trend ───────────────────
+  const isCounterTrend =
+    bias1h.direction !== null && (
+      (signal.signal === 'BUY'  && bias1h.direction === 'BEARISH') ||
+      (signal.signal === 'SELL' && bias1h.direction === 'BULLISH')
+    );
+
+  const slPct = isCounterTrend ? SL_COUNTER : SL_WITH;
+  const tpPct = isCounterTrend ? TP_COUNTER : 0;
+
+  const stopLoss = parseFloat((
+    signal.signal === 'BUY'
+      ? signal.price * (1 - slPct)
+      : signal.price * (1 + slPct)
+  ).toFixed(2));
+
+  const takeProfit = tpPct > 0
+    ? parseFloat((
+        signal.signal === 'BUY'
+          ? signal.price * (1 + tpPct)
+          : signal.price * (1 - tpPct)
+      ).toFixed(2))
+    : 0;
+
+  const tradeType = isCounterTrend ? 'COUNTER-TREND' : 'WITH-TREND';
+  const biasNote  = bias1h.direction ? ` | 1h: ${bias1h.direction}` : ' | 1h: no bias';
+  console.log(`[BOT] ${tradeType}${biasNote} → SL=$${stopLoss} (${slPct*100}%) TP=${takeProfit || 'next signal'}`);
+
   const defaultDecision = {
     verdict:    'CONFIRMED',
     confidence: 75,
     size_pct:   50,
     entry:      signal.price,
-    stop_loss:  0,   // disabled — hold until opposite signal
-    reasoning:  { summary: 'Precision v9 dot signal — hold until opposite dot' },
+    stop_loss:  stopLoss,
+    take_profit: takeProfit,
+    reasoning:  {
+      summary: isCounterTrend
+        ? `Counter-trend vs 1h ${bias1h.direction} — tight SL 0.1%, TP 10%`
+        : `With-trend (1h ${bias1h.direction || 'no bias'}) — SL 2%, exit on opposite dot`,
+    },
     validated_news: [],
   };
 
@@ -98,10 +164,9 @@ export async function handleSignal(rawSignal, source = 'server') {
     signal.type || 'yellow_dot', signal.price,
     signal.rsi || null, signal.sma50 || null, signal.sma200 || null,
     '5m', signal.pattern || null, signal.strength || 'normal',
-    'ADVISORY', 75, 'Auto-executed — advisory pending', 'pending', 'low', '[]',
+    'ADVISORY', 75, defaultDecision.reasoning.summary, 'pending', 'low', '[]',
   );
   const signalId = signalRow.lastInsertRowid;
-  console.log(`[BOT] Signal saved id=${signalId}`);
 
   // Close any existing opposite position (signal flip)
   const closed = closeOpenPosition(signal.asset, signal.price);
@@ -117,40 +182,46 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   // Open trade
   const tradeId = openPaperTrade(signalId, defaultDecision, signal);
-  console.log(`[BOT] Trade opened: #${tradeId}`);
+  console.log(`[BOT] Trade #${tradeId} opened — ${tradeType}`);
 
-  const icon = signal.signal === 'BUY' ? '📈' : '📉';
+  const icon     = signal.signal === 'BUY' ? '📈' : '📉';
   const dotLabel = signal.type === 'yellow_dot' ? '🟡 Yellow dot' : '🩷 Pink dot';
+  const exitNote = isCounterTrend
+    ? `SL: $${stopLoss} (0.1%) | TP: $${takeProfit} (10%)`
+    : `SL: $${stopLoss} (2%) | TP: next opposite dot`;
+
   await sendTelegram(
-    `${icon} TRADE OPENED\n` +
+    `${icon} TRADE OPENED [${tradeType}]\n` +
     `${dotLabel} — ${signal.signal} BTC @ $${signal.price}\n` +
-    `RSI: ${signal.rsi?.toFixed(1) || '--'} | Pattern: ${signal.pattern || '--'}\n` +
-    `Size: 50% | No fixed SL — exits on opposite dot\n` +
-    `Mode: PAPER`
+    `RSI: ${signal.rsi?.toFixed(1) || '--'} | Pattern: ${signal.pattern || '--'}${biasNote}\n` +
+    `${exitNote}\nSize: 50% | Mode: PAPER`
   );
 
-  // Advisory in background — non-blocking
   setImmediate(() => postTradeAdvisory(tradeId, signal));
 
   return { signal, decision: defaultDecision, signalId, tradeId };
 }
 
 // ============================================================
-// TRACK B: Server loop (runs every 5 minutes via cron)
-// Scans 5m candles — acts if yellow/pink dot within last 5 bars
+// TRACK B: Server loop (every 5 minutes via cron)
+// 1. Update 1h bias (read-only, no trades)
+// 2. Scan 5m — act if dot within last 5 candles
 // ============================================================
 export async function runServerLoop(broadcastFn) {
   console.log('[BOT] Running Precision v9 5m scan...');
 
+  // Step 1 — refresh 1h bias
+  await update1hBias();
+
+  // Step 2 — 5m signal scan
   try {
     const candles5m = await fetchCandles(ASSET, '5m', 250);
     if (!candles5m || candles5m.length < 60) {
       console.log('[BOT] Insufficient 5m candles — skipping');
     } else {
       const result = detectSignals(candles5m);
-      console.log(`[BOT] 5m scan: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
+      console.log(`[BOT] 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
 
-      // Only act if dot fired within last SIGNAL_WINDOW candles
       if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
         const outcome = await handleSignal({ ...result, asset: ASSET, timeframe: '5m' }, 'server');
         if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
@@ -160,13 +231,13 @@ export async function runServerLoop(broadcastFn) {
     console.error('[BOT] 5m scan error:', err.message, err.stack);
   }
 
-  // Update open trade P&L
+  // Step 3 — update P&L and broadcast
   try {
     const prices = await getCurrentPrices([ASSET]);
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     if (broadcastFn) broadcastFn({ type: 'portfolio_update', data: stats });
-    console.log(`[BOT] Done. Open: ${stats.openCount} | P&L: $${stats.totalPnl}`);
+    console.log(`[BOT] Done. 1h bias: ${bias1h.direction || 'none'} | Open: ${stats.openCount} | P&L: $${stats.totalPnl}`);
   } catch (err) {
     console.error('[BOT] P&L update error:', err.message);
   }

@@ -39,7 +39,7 @@ export function openPaperTrade(signalId, decision, signal) {
     signal.signal === 'BUY' ? 'LONG' : 'SHORT',
     decision.entry || signal.price,
     decision.stop_loss,
-    0,     // No take profit — exit triggered by opposite signal
+    decision.take_profit || 0,
     sizeUsd,
     decision.size_pct,
   );
@@ -62,7 +62,7 @@ export function updateOpenTrades(prices) {
       : (t.entry_price - price) / t.entry_price * t.size_usd;
     const pnlPct  = pnlUsd / t.size_usd * 100;
 
-    // Hit stop loss? (only if stop_loss is set — 0 means disabled)
+    // Hit stop loss? (only if stop_loss > 0 — 0 means disabled)
     if (t.stop_loss > 0 && ((isLong && price <= t.stop_loss) || (!isLong && price >= t.stop_loss))) {
       const finalPnl = isLong
         ? (t.stop_loss - t.entry_price) / t.entry_price * t.size_usd
@@ -70,8 +70,23 @@ export function updateOpenTrades(prices) {
       db.prepare(`
         UPDATE trades SET status='STOPPED', exit_price=?, pnl_usd=?,
         pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
-      `).run(t.stop_loss, finalPnl, finalPnl / t.size_usd * 100, t.id);
-      console.log(`[PAPER] Stop loss hit: ${t.asset} ${t.direction} PnL: $${finalPnl.toFixed(2)}`);
+      `).run(t.stop_loss, parseFloat(finalPnl.toFixed(2)), parseFloat((finalPnl / t.size_usd * 100).toFixed(2)), t.id);
+      console.log(`[PAPER] Stop loss hit: ${t.asset} ${t.direction} @ $${t.stop_loss} PnL: $${finalPnl.toFixed(2)}`);
+      snapshotPortfolio();
+      continue;
+    }
+
+    // Hit take profit? (only if take_profit > 0 — 0 means hold until signal)
+    if (t.take_profit > 0 && ((isLong && price >= t.take_profit) || (!isLong && price <= t.take_profit))) {
+      const finalPnl = isLong
+        ? (t.take_profit - t.entry_price) / t.entry_price * t.size_usd
+        : (t.entry_price - t.take_profit) / t.entry_price * t.size_usd;
+      db.prepare(`
+        UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?,
+        pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
+      `).run(t.take_profit, parseFloat(finalPnl.toFixed(2)), parseFloat((finalPnl / t.size_usd * 100).toFixed(2)), t.id);
+      console.log(`[PAPER] Take profit hit: ${t.asset} ${t.direction} @ $${t.take_profit} PnL: $${finalPnl.toFixed(2)}`);
+      snapshotPortfolio();
       continue;
     }
 
