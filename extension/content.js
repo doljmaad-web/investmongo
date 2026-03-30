@@ -1,7 +1,7 @@
 // INVEST MONGO — TradingView Signal Detector
 // Watches for Precision v9 yellow dots (BUY) and pink dots (SELL)
 
-const WEBHOOK_SECRET = 'investmongo_webhook_2024';  // Must match server .env
+const WEBHOOK_SECRET = 'ab7383fba12d67ff287ba87de0fc87ed733ccf23c66a2372d3a65ed055c7643d';  // Must match server .env
 const COOLDOWN_MS    = 60 * 60 * 1000;              // 1 hour cooldown per asset+direction
 
 // BOT_URL is loaded from chrome.storage (set via extension popup)
