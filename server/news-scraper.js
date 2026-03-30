@@ -296,19 +296,19 @@ export async function fetchAllNews(force = false) {
     }
   }
 
-  newsCache = fresh
-    .filter(n => n.title.length > 10)
-    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-
   // Whale alerts
   if (whaleResults.status === 'fulfilled') whaleCache = whaleResults.value;
 
   // Macro event
   if (macroResult.status === 'fulfilled') macroEvent = macroResult.value;
 
-  // DeFiLlama + Glassnode — inject into news feed
+  // DeFiLlama + Glassnode — inject into fresh BEFORE building newsCache
   if (defiResult.status === 'fulfilled')  fresh.push(...defiResult.value);
   if (glassResult.status === 'fulfilled') fresh.push(...glassResult.value);
+
+  newsCache = fresh
+    .filter(n => n.title && n.title.length > 10)
+    .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
   // Fear & Greed index
   if (fngResult.status === 'fulfilled') {
