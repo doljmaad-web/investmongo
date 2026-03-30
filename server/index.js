@@ -148,37 +148,48 @@ function parseNitterRSS(xml, handle) {
   return items;
 }
 
-app.get('/api/x-feed', async (req, res) => {
+async function fetchXFeed() {
   const now = Date.now();
   if (now - xFeedCache.cached_at < X_CACHE_TTL && xFeedCache.items.length > 0) {
-    return res.json(xFeedCache);
+    return xFeedCache.items;
   }
+
+  const results = await Promise.allSettled(
+    NITTER_FEEDS.map(async ({ url, handle }) => {
+      try {
+        const r = await fetch(url, {
+          headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return parseNitterRSS(await r.text(), handle);
+      } catch (err) {
+        console.warn(`[X-FEED] ${handle} failed: ${err.message}`);
+        return [];
+      }
+    })
+  );
+
+  const all    = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+  const sorted = all.sort((a, b) => b.ts - a.ts).slice(0, 20)
+                    .map(({ handle, title, pubDate }) => ({ handle, title, pubDate }));
+
+  xFeedCache = { items: sorted, cached_at: now };
+  return sorted;
+}
+
+// Test route — confirms endpoint is registered before debugging fetches
+app.get('/api/x-feed/test', (req, res) => {
+  res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+app.get('/api/x-feed', async (req, res) => {
   try {
-    const results = await Promise.allSettled(
-      NITTER_FEEDS.map(async ({ url, handle }) => {
-        const ac      = new AbortController();
-        const timer   = setTimeout(() => ac.abort(), 8000);
-        try {
-          const r = await fetch(url, {
-            headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' },
-            signal: ac.signal,
-          });
-          clearTimeout(timer);
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return parseNitterRSS(await r.text(), handle);
-        } finally {
-          clearTimeout(timer);
-        }
-      })
-    );
-    const all    = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-    const sorted = all.sort((a, b) => b.ts - a.ts).slice(0, 20)
-                      .map(({ handle, title, pubDate }) => ({ handle, title, pubDate }));
-    xFeedCache = { items: sorted, cached_at: now };
-    res.json(xFeedCache);
+    const items = await fetchXFeed();
+    res.json({ items, cached_at: Date.now() });
   } catch (err) {
-    console.error('[X-FEED] Error:', err.message);
-    res.json({ items: [], cached_at: now });
+    console.error('[X-FEED] Fatal error:', err.message);
+    res.json({ items: [], error: err.message, cached_at: Date.now() });
   }
 });
 
