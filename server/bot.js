@@ -97,14 +97,16 @@ export async function handleSignal(rawSignal, source = 'server') {
     return null;
   }
 
-  // Don't re-enter if already in same direction
+  // Don't re-enter if already in same direction (1h authority signals bypass this)
   const direction = signal.signal === 'BUY' ? 'LONG' : 'SHORT';
-  const existingOpen = db.prepare(
-    `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`
-  ).get(signal.asset, direction);
-  if (existingOpen) {
-    console.log(`[BOT] Already in ${direction} position (trade #${existingOpen.id}) — skipping re-entry`);
-    return null;
+  if (!signal.force) {
+    const existingOpen = db.prepare(
+      `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`
+    ).get(signal.asset, direction);
+    if (existingOpen) {
+      console.log(`[BOT] Already in ${direction} position (trade #${existingOpen.id}) — skipping re-entry`);
+      return null;
+    }
   }
 
   const stopLoss = signal.signal === 'BUY'
@@ -163,8 +165,9 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   const dir = signal.signal === 'BUY' ? '📈' : '📉';
   const biasNote = marketBias.direction ? ` | 4h: ${marketBias.direction}` : '';
+  const authorityNote = signal.force ? ' ⚡ 1H AUTHORITY' : '';
   await sendTelegram(
-    `${dir} TRADE OPENED [${signal.timeframe}]\n` +
+    `${dir} TRADE OPENED [${signal.timeframe}]${authorityNote}\n` +
     `${signal.signal} BTC @ $${signal.price}${biasNote}\n` +
     `Stop: $${stopLoss} | Size: 50% | Mode: PAPER\n` +
     `Holds until opposite signal fires`
@@ -183,6 +186,30 @@ export async function handleSignal(rawSignal, source = 'server') {
 // ============================================================
 export async function runServerLoop(broadcastFn) {
   console.log('[BOT] Running Track B server indicator loop...');
+
+  // --- Step 0: 1h authority signal — overrides all open trades ---
+  try {
+    console.log(`[BOT] Fetching 1h candles for authority scan (${ASSET})...`);
+    const candles1h = await fetchCandles(ASSET, '1h', 250);
+    console.log(`[BOT] 1h candles received: ${candles1h ? candles1h.length : 'null'}`);
+    if (!candles1h || candles1h.length < 60) {
+      console.log(`[BOT] 1h candles insufficient — skipping authority scan`);
+    } else {
+      const result1h = detectSignals(candles1h);
+      console.log(`[BOT] 1h detectSignals: signal=${result1h.signal || 'none'}`);
+      if (result1h.signal) {
+        console.log(`[BOT] *** 1h AUTHORITY SIGNAL: ${result1h.signal} — closing all trades and re-entering ***`);
+        const outcome1h = await handleSignal({
+          ...result1h, asset: ASSET, timeframe: '1h', force: true,
+        }, 'server');
+        if (outcome1h && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome1h });
+      }
+    }
+  } catch (err) {
+    console.error('[BOT] 1h authority scan error:', err.message, err.stack);
+  }
+
+  await new Promise(r => setTimeout(r, 500));
 
   // --- Step 1: 4h bias ---
   try {
