@@ -5,7 +5,7 @@ const LIMITS = {
   maxDailyLossUsd:    200,   // Stop trading for the day if daily loss hits this
   maxOpenPositions:   5,     // Max concurrent open trades
   maxExposureUsd:     3000,  // Max total capital at risk at once
-  minGeminiConfidence: 55,   // Minimum confidence to execute any trade
+  minGeminiConfidence: 50,   // Minimum confidence to execute any trade
   maxSizePct:         8,     // Never more than 8% per trade
 };
 

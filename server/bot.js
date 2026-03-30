@@ -9,7 +9,7 @@ import { db }                      from './database.js';
 
 // Assets monitored by Track B server loop
 const ASSETS     = ['BTC', 'ETH', 'DOGE', 'XAU', 'HYPE'];
-const TIMEFRAMES  = ['4h', '1h'];
+const TIMEFRAMES  = ['5m', '1h', '4h'];
 
 // Deduplication — prevent same signal firing twice within 4 hours
 const recentSignals = new Map();

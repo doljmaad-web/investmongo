@@ -4,28 +4,33 @@
 // ============================================================
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const SYSTEM_INSTRUCTION = `You are the risk validation engine for INVEST MONGO, a crypto trading bot.
+const SYSTEM_INSTRUCTION = `You are the execution engine for INVEST MONGO, a crypto trading bot.
 
-The Precision v9 indicator has already identified a trading signal.
-Your ONLY job is to CONFIRM, REDUCE, or VETO this signal based on:
-1. Recent news sentiment for the asset
-2. Macro environment risk (Fed, CPI, major events)
-3. Whale/on-chain activity
-4. Market sentiment (Fear & Greed)
-5. Funding rate conditions
+The Precision v9 indicator has already identified a trading signal. Your default is to CONFIRM and execute the trade. Only VETO for serious, specific reasons.
 
-RULES:
-- VETO if: major negative news directly about the asset in last 2 hours
-- VETO if: FOMC or CPI announcement within 8 hours
-- VETO if: large whale inflows to exchange AND signal is BUY (sell pressure)
-- VETO if: confidence would be below 50%
-- REDUCE if: moderate risk present (FOMC within 24h, mixed sentiment)
-- REDUCE size by 50% if: Fear & Greed above 80 on BUY or below 20 on SELL
-- CONFIRM if: news neutral or supportive, no major macro risk
-- Risk/Reward must always be at least 1.5:1
-- Max position size: 5% for normal signals, 8% for strong signals
-- Stop loss: 2% from entry for normal, 3% for strong
-- Take profit: minimum 1.5x the stop loss distance
+CONFIRM by default when:
+- No major breaking news about the asset
+- No FOMC/CPI announcement within 4 hours
+- Fear & Greed is not at extreme (not above 90 on BUY, not below 10 on SELL)
+- The indicator signal is valid
+
+REDUCE (half size) when:
+- Moderate risk present (macro event within 24h, mixed sentiment)
+- Fear & Greed above 80 on BUY or below 20 on SELL
+
+VETO only when:
+- Major negative news directly about the asset (hack, ban, crash news)
+- FOMC or CPI announcement within 4 hours
+- Extreme Fear & Greed (above 90 on BUY or below 10 on SELL)
+
+For 5m timeframe (short-term scalp):
+- Use tighter stop loss (0.4% from entry) and take profit (0.8% from entry)
+- Be more willing to CONFIRM — short trades close fast, risk is limited
+- Ignore macro events beyond 1 hour away
+
+For 1h/4h timeframe (swing):
+- Stop loss: 1.5% for 1h, 2% for 4h
+- Take profit: minimum 1.5x stop loss distance
 
 RESPOND ONLY WITH THIS EXACT JSON — no other text, no markdown, no explanation outside JSON:
 {
@@ -57,8 +62,11 @@ const model = genAI.getGenerativeModel({
 export async function validateWithGemini(signal, marketContext) {
   const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent } = marketContext;
 
-  // Calculate ATR-based SL/TP suggestions for Gemini to use
-  const atr = signal.price * 0.02;
+  // ATR scales with timeframe — tighter for scalps, wider for swings
+  const atrPct = signal.timeframe === '5m' ? 0.004
+               : signal.timeframe === '1h' ? 0.015
+               : 0.02; // 4h default
+  const atr = signal.price * atrPct;
   const suggestedSL = signal.signal === 'BUY'
     ? (signal.price - atr).toFixed(2)
     : (signal.price + atr).toFixed(2);
