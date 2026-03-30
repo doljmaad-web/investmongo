@@ -687,7 +687,7 @@ function renderTradeIntel() {
         ${timeStr ? `<span class="ti-time">${timeStr}</span>` : ''}
       </div>
       ${desc ? `<div class="ti-preview">${escHtml(desc)}</div>` : ''}
-      <div class="ti-readmore">→ Read full article</div>
+      ${item.link ? `<div class="ti-readmore">→ Read full article</div>` : ''}
     </a>`;
   }).join('');
 }
