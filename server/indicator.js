@@ -1,6 +1,7 @@
 // ============================================================
 // PRECISION v9 INDICATOR — JavaScript port
 // Exact translation of Pine Script logic
+// Signals: yellow_dot (BUY) and pink_dot (SELL) only
 // ============================================================
 
 // --- RSI Calculation ---
@@ -72,20 +73,17 @@ export function detectSignals(candles, cfg = {}) {
     lookback50 = 10,
   } = cfg;
 
-  if (candles.length < sma200Len + 5) {
+  if (candles.length < sma50Len + 10) {
     return { signal: null, reason: 'insufficient_candles' };
   }
 
-  const closes   = candles.map(c => c.close);
-  const rsiHist  = calcRSIHistory(closes, rsiLen, lookback50 + 3);
-  const rsiNow   = rsiHist.at(-1);
-  const rsiPrev  = rsiHist.at(-2);
-  const rsiLast10 = rsiHist.slice(-lookback50).filter(Boolean);
+  const closes  = candles.map(c => c.close);
+  const rsiHist = calcRSIHistory(closes, rsiLen, lookback50 + 3);
+  const rsiNow  = rsiHist.at(-1);
+  const rsiPrev = rsiHist.at(-2);
 
-  const sma50    = calcSMA(closes, sma50Len);
-  const sma200   = calcSMA(closes, sma200Len);
-  const sma50p   = calcSMA(closes.slice(0, -1), sma50Len);
-  const sma200p  = calcSMA(closes.slice(0, -1), sma200Len);
+  const sma50  = calcSMA(closes, sma50Len);
+  const sma200 = closes.length >= sma200Len ? calcSMA(closes, sma200Len) : null;
 
   const { isDoji, isBullishEngulfing, isBearishEngulfing } = getPatterns(candles);
   const cur = candles.at(-1);
@@ -94,13 +92,11 @@ export function detectSignals(candles, cfg = {}) {
   const rsiHookUp   = rsiNow > rsiPrev;
   const rsiHookDown = rsiNow < rsiPrev;
 
-  // Oversold zone: RSI in range + recent peak below 50
-  const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax &&
-    Math.max(...rsiLast10) < 50;
+  // Oversold zone: RSI in range (hooks up from bottom)
+  const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax;
 
-  // Overbought zone: RSI in range + recent trough above 50
-  const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax &&
-    Math.min(...rsiLast10) > 50;
+  // Overbought zone: RSI in range (hooks down from top)
+  const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax;
 
   // --- YELLOW DOT: BUY ---
   if (osZone && (isDoji || isBullishEngulfing) && rsiHookUp) {
@@ -115,7 +111,7 @@ export function detectSignals(candles, cfg = {}) {
       sma50,
       sma200,
       pattern:  isBullishEngulfing ? 'bullish_engulfing' : 'doji',
-      trend:    sma50 > sma200 ? 'uptrend' : 'downtrend',
+      trend:    sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
     };
   }
 
@@ -132,39 +128,10 @@ export function detectSignals(candles, cfg = {}) {
       sma50,
       sma200,
       pattern:  isBearishEngulfing ? 'bearish_engulfing' : 'doji',
-      trend:    sma50 > sma200 ? 'uptrend' : 'downtrend',
+      trend:    sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
     };
   }
 
-  // --- STRONG BUY: Golden cross ---
-  if (sma50p !== null && sma200p !== null && sma50p <= sma200p && sma50 > sma200) {
-    return {
-      signal:   'BUY',
-      type:     'strong_buy',
-      strength: 'strong',
-      price:    cur.close,
-      rsi:      rsiNow,
-      sma50,
-      sma200,
-      pattern:  'golden_cross',
-      trend:    'uptrend',
-    };
-  }
-
-  // --- STRONG SELL: Death cross ---
-  if (sma50p !== null && sma200p !== null && sma50p >= sma200p && sma50 < sma200) {
-    return {
-      signal:   'SELL',
-      type:     'strong_sell',
-      strength: 'strong',
-      price:    cur.close,
-      rsi:      rsiNow,
-      sma50,
-      sma200,
-      pattern:  'death_cross',
-      trend:    'downtrend',
-    };
-  }
-
+  console.log(`[INDICATOR] No signal. RSI=${rsiNow} hookUp=${rsiHookUp} hookDown=${rsiHookDown} osZone=${osZone} obZone=${obZone} isDoji=${isDoji} bullEng=${isBullishEngulfing} bearEng=${isBearishEngulfing}`);
   return { signal: null };
 }
