@@ -2,11 +2,11 @@ import { db } from './database.js';
 import { getPortfolioStats } from './paper-trading.js';
 
 const LIMITS = {
-  maxDailyLossUsd:    200,   // Stop trading for the day if daily loss hits this
-  maxOpenPositions:   5,     // Max concurrent open trades
-  maxExposureUsd:     3000,  // Max total capital at risk at once
+  maxDailyLossUsd:    1000,  // Stop trading for the day if daily loss hits this
+  maxOpenPositions:   1,     // BTC futures only — one position at a time
+  maxExposureUsd:     9000,  // Up to 90% exposure (50% position size on $10k+)
   minGeminiConfidence: 50,   // Minimum confidence to execute any trade
-  maxSizePct:         8,     // Never more than 8% per trade
+  maxSizePct:         50,    // Up to 50% per trade for BTC futures
 };
 
 export function checkRiskLimits(decision, signal) {

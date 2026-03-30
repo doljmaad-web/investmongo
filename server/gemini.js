@@ -4,43 +4,37 @@
 // ============================================================
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const SYSTEM_INSTRUCTION = `You are the execution engine for INVEST MONGO, a crypto trading bot.
+const SYSTEM_INSTRUCTION = `You are the execution engine for INVEST MONGO, a BTC futures trading bot.
 
-The Precision v9 indicator has already identified a trading signal. Your default is to CONFIRM and execute the trade. Only VETO for serious, specific reasons.
+Trading model: Signal-based position flipping on BTC perpetual futures.
+- Yellow dot (BUY) = go LONG — hold until pink dot (SELL) fires
+- Pink dot (SELL) = go SHORT — hold until yellow dot (BUY) fires
+- NO take profit — positions are held until the opposite signal
+- Only an emergency stop loss is used (6% from entry) to protect against catastrophic moves
+- Position size: 50% of portfolio per trade
 
-CONFIRM by default when:
-- No major breaking news about the asset
-- No FOMC/CPI announcement within 4 hours
-- Fear & Greed is not at extreme (not above 90 on BUY, not below 10 on SELL)
-- The indicator signal is valid
+Your default is to CONFIRM and execute. Only VETO for serious reasons.
 
-REDUCE (half size) when:
-- Moderate risk present (macro event within 24h, mixed sentiment)
-- Fear & Greed above 80 on BUY or below 20 on SELL
+CONFIRM when:
+- No major breaking news (hack, exchange collapse, government ban)
+- No FOMC or CPI announcement within 4 hours
+- Fear & Greed not at extreme (not above 92 on BUY, not below 8 on SELL)
+
+REDUCE to 25% size when:
+- Macro event within 24h or mixed/uncertain sentiment
 
 VETO only when:
-- Major negative news directly about the asset (hack, ban, crash news)
-- FOMC or CPI announcement within 4 hours
-- Extreme Fear & Greed (above 90 on BUY or below 10 on SELL)
-
-For 5m timeframe (short-term scalp):
-- Use tighter stop loss (0.4% from entry) and take profit (0.8% from entry)
-- Be more willing to CONFIRM — short trades close fast, risk is limited
-- Ignore macro events beyond 1 hour away
-
-For 1h/4h timeframe (swing):
-- Stop loss: 1.5% for 1h, 2% for 4h
-- Take profit: minimum 1.5x stop loss distance
+- Major breaking news directly threatening BTC
+- FOMC or CPI within 4 hours
+- Fear & Greed above 92 on BUY or below 8 on SELL
 
 RESPOND ONLY WITH THIS EXACT JSON — no other text, no markdown, no explanation outside JSON:
 {
   "verdict": "CONFIRMED",
   "confidence": 78,
-  "size_pct": 3,
+  "size_pct": 50,
   "entry": 84200,
-  "stop_loss": 82516,
-  "take_profit": 86884,
-  "rr_ratio": 1.6,
+  "stop_loss": 79228,
   "reasoning": {
     "news_sentiment": "bullish",
     "macro_risk": "low",
@@ -48,7 +42,7 @@ RESPOND ONLY WITH THIS EXACT JSON — no other text, no markdown, no explanation
     "fear_greed_status": "greed",
     "key_factors": ["Fed pause narrative", "BTC ETF inflows positive", "No macro events next 48h"],
     "veto_reason": null,
-    "summary": "Signal confirmed. RSI oversold with bullish engulfing pattern. News flow supports upside with no near-term macro risk. Whale data neutral."
+    "summary": "Signal confirmed. RSI oversold with bullish engulfing. Holding LONG until pink dot sell signal fires."
   },
   "validated_news": ["Fed officials signal rate pause — bullish for risk assets", "BTC ETF saw $380M inflows today"]
 }`;
@@ -62,17 +56,10 @@ const model = genAI.getGenerativeModel({
 export async function validateWithGemini(signal, marketContext) {
   const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent } = marketContext;
 
-  // ATR scales with timeframe — tighter for scalps, wider for swings
-  const atrPct = signal.timeframe === '5m' ? 0.004
-               : signal.timeframe === '1h' ? 0.015
-               : 0.02; // 4h default
-  const atr = signal.price * atrPct;
-  const suggestedSL = signal.signal === 'BUY'
-    ? (signal.price - atr).toFixed(2)
-    : (signal.price + atr).toFixed(2);
-  const suggestedTP = signal.signal === 'BUY'
-    ? (signal.price + atr * 2).toFixed(2)
-    : (signal.price - atr * 2).toFixed(2);
+  // Emergency SL only — 6% from entry (position exits by opposite signal, not TP)
+  const emergencySL = signal.signal === 'BUY'
+    ? (signal.price * 0.94).toFixed(2)
+    : (signal.price * 1.06).toFixed(2);
 
   const prompt = `
 SIGNAL FROM PRECISION v9 INDICATOR:
@@ -83,8 +70,7 @@ Price: $${signal.price}
 RSI: ${signal.rsi}
 Pattern: ${signal.pattern}
 Trend: ${signal.trend} (SMA50 ${signal.sma50 > signal.sma200 ? 'above' : 'below'} SMA200)
-Suggested SL: $${suggestedSL}
-Suggested TP: $${suggestedTP}
+Emergency SL: $${emergencySL} (6% — position held until opposite signal, not TP)
 
 MARKET CONTEXT:
 Fear & Greed: ${fearGreed?.value ?? 50} — ${fearGreed?.classification ?? 'Neutral'}

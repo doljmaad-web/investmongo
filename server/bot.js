@@ -1,14 +1,14 @@
 import { detectSignals }           from './indicator.js';
 import { validateWithGemini }      from './gemini.js';
 import { fetchAllNews }            from './news-scraper.js';
-import { openPaperTrade, updateOpenTrades, getPortfolioStats } from './paper-trading.js';
+import { openPaperTrade, closeOpenPosition, updateOpenTrades, getPortfolioStats } from './paper-trading.js';
 import { checkRiskLimits }         from './risk.js';
 import { sendTelegram }            from './telegram.js';
 import { fetchCandles, getCurrentPrices, getFundingRate } from './hyperliquid.js';
 import { db }                      from './database.js';
 
-// Assets monitored by Track B server loop
-const ASSETS     = ['BTC', 'ETH', 'DOGE', 'XAU', 'HYPE'];
+// BTC futures only — signal-flip mode
+const ASSETS     = ['BTC'];
 const TIMEFRAMES  = ['5m', '1h', '4h'];
 
 // Deduplication — prevent same signal firing twice within 4 hours
@@ -84,6 +84,14 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   const signalId = signalRow.lastInsertRowid;
 
+  // Close existing position first (signal flip) so risk check sees 0 open positions
+  if (decision.verdict === 'CONFIRMED' || decision.verdict === 'REDUCED') {
+    const closed = closeOpenPosition(signal.asset, signal.price);
+    if (closed > 0) {
+      console.log(`${tag} Flipped position — closed ${closed} trade(s) at $${signal.price}`);
+    }
+  }
+
   // Check risk limits
   const riskCheck = checkRiskLimits(decision, signal);
   if (!riskCheck.allowed) {
@@ -104,8 +112,8 @@ export async function handleSignal(rawSignal, source = 'server') {
       `${dir} PAPER TRADE OPENED\n` +
       `${signal.signal} ${signal.asset} @ $${signal.price}\n` +
       `Confidence: ${decision.confidence}%\n` +
-      `Size: ${decision.size_pct}% | SL: $${decision.stop_loss} | TP: $${decision.take_profit}\n` +
-      `R:R = ${decision.rr_ratio}\n\n` +
+      `Size: ${decision.size_pct}% | Emergency SL: $${decision.stop_loss}\n` +
+      `Exit: Holds until opposite signal\n\n` +
       `${decision.reasoning?.summary}`
     );
 

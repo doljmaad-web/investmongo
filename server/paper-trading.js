@@ -7,6 +7,23 @@ export function getCashBalance() {
   return snap?.cash_balance ?? parseFloat(process.env.PAPER_BALANCE ?? 10000);
 }
 
+// Close all open positions for an asset (called on signal flip)
+export function closeOpenPosition(asset, exitPrice) {
+  const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`).all(asset);
+  for (const t of open) {
+    const isLong = t.direction === 'LONG';
+    const pnlUsd = isLong
+      ? (exitPrice - t.entry_price) / t.entry_price * t.size_usd
+      : (t.entry_price - exitPrice) / t.entry_price * t.size_usd;
+    db.prepare(`
+      UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?, pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
+    `).run(exitPrice, parseFloat(pnlUsd.toFixed(2)), parseFloat((pnlUsd / t.size_usd * 100).toFixed(2)), t.id);
+    console.log(`[PAPER] Signal flip exit: ${asset} ${t.direction} @ $${exitPrice} PnL: $${pnlUsd.toFixed(2)}`);
+  }
+  if (open.length > 0) snapshotPortfolio();
+  return open.length;
+}
+
 export function openPaperTrade(signalId, decision, signal) {
   const cash    = getCashBalance();
   const sizeUsd = parseFloat((cash * decision.size_pct / 100).toFixed(2));
@@ -22,7 +39,7 @@ export function openPaperTrade(signalId, decision, signal) {
     signal.signal === 'BUY' ? 'LONG' : 'SHORT',
     decision.entry || signal.price,
     decision.stop_loss,
-    decision.take_profit,
+    null,  // No take profit — exit triggered by opposite signal
     sizeUsd,
     decision.size_pct,
   );
@@ -55,19 +72,6 @@ export function updateOpenTrades(prices) {
         pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
       `).run(t.stop_loss, finalPnl, finalPnl / t.size_usd * 100, t.id);
       console.log(`[PAPER] Stop loss hit: ${t.asset} ${t.direction} PnL: $${finalPnl.toFixed(2)}`);
-      continue;
-    }
-
-    // Hit take profit?
-    if ((isLong && price >= t.take_profit) || (!isLong && price <= t.take_profit)) {
-      const finalPnl = isLong
-        ? (t.take_profit - t.entry_price) / t.entry_price * t.size_usd
-        : (t.entry_price - t.take_profit) / t.entry_price * t.size_usd;
-      db.prepare(`
-        UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?,
-        pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
-      `).run(t.take_profit, finalPnl, finalPnl / t.size_usd * 100, t.id);
-      console.log(`[PAPER] Take profit hit: ${t.asset} ${t.direction} PnL: $${finalPnl.toFixed(2)}`);
       continue;
     }
 
