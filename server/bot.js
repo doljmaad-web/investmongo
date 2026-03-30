@@ -83,10 +83,15 @@ export async function handleSignal(rawSignal, source = 'server') {
   const signal = { ...rawSignal, source };
   const tag    = `[BOT][${source.toUpperCase()}][${signal.timeframe || '?'}]`;
 
-  console.log(`${tag} Signal: ${signal.signal} ${signal.asset} @ $${signal.price}`);
+  console.log(`[BOT] handleSignal called: ${signal.signal} ${signal.asset} @ $${signal.price} tf=${signal.timeframe} src=${source}`);
 
   // Deduplicate
-  if (isDuplicate(signal.asset, signal.signal, signal.timeframe || '1h')) {
+  const dedupKey = `${signal.asset}_${signal.signal}_${signal.timeframe || '1h'}`;
+  const cooldown = DEDUP_COOLDOWN[signal.timeframe] || DEDUP_COOLDOWN['1h'];
+  const lastSeen = recentSignals.get(dedupKey);
+  const dedupResult = isDuplicate(signal.asset, signal.signal, signal.timeframe || '1h');
+  console.log(`[BOT] Duplicate check: key=${dedupKey} lastSeen=${lastSeen ? new Date(lastSeen).toISOString() : 'none'} cooldown=${cooldown/1000}s isDuplicate=${dedupResult}`);
+  if (dedupResult) {
     console.log(`${tag} Duplicate — skipping`);
     return null;
   }
@@ -103,15 +108,20 @@ export async function handleSignal(rawSignal, source = 'server') {
     reasoning:  { summary: 'Auto-executed — Gemini advisory pending' },
     validated_news: [],
   };
+  console.log(`[BOT] defaultDecision: entry=${defaultDecision.entry} sl=${defaultDecision.stop_loss} size=${defaultDecision.size_pct}%`);
 
   // Close existing position first (signal flip) so risk check sees 0 open
+  console.log(`[BOT] Calling closeOpenPosition(${signal.asset}, ${signal.price})...`);
   const closed = closeOpenPosition(signal.asset, signal.price);
+  console.log(`[BOT] closeOpenPosition returned: ${closed} position(s) closed`);
   if (closed > 0) {
     console.log(`${tag} Flipped — closed ${closed} position(s) at $${signal.price}`);
   }
 
   // Risk limits (daily loss, max positions, max exposure)
+  console.log(`[BOT] Calling checkRiskLimits...`);
   const riskCheck = checkRiskLimits(defaultDecision, signal);
+  console.log(`[BOT] Risk check result: allowed=${riskCheck.allowed} reason=${riskCheck.reason || 'none'}`);
   if (!riskCheck.allowed) {
     console.log(`${tag} Risk blocked: ${riskCheck.reason}`);
     await sendTelegram(`⛔ RISK LIMIT\n${signal.signal} BTC [${signal.timeframe}]\n${riskCheck.reason}`);
@@ -119,6 +129,7 @@ export async function handleSignal(rawSignal, source = 'server') {
   }
 
   // Save signal to DB
+  console.log(`[BOT] Inserting signal to DB...`);
   const signalRow = db.prepare(`
     INSERT INTO signals
       (timestamp, source, asset, action, signal_type, price, rsi, sma50, sma200,
@@ -133,11 +144,13 @@ export async function handleSignal(rawSignal, source = 'server') {
     'ADVISORY', 75, 'Auto-executed — advisory pending', 'pending', 'low',
     '[]',
   );
-
   const signalId = signalRow.lastInsertRowid;
+  console.log(`[BOT] Signal inserted with id=${signalId}`);
 
   // Open trade immediately
+  console.log(`[BOT] About to call openPaperTrade(signalId=${signalId})...`);
   const tradeId = openPaperTrade(signalId, defaultDecision, signal);
+  console.log(`[BOT] openPaperTrade returned: tradeId=${tradeId}`);
   console.log(`${tag} Trade #${tradeId} opened immediately`);
 
   const dir = signal.signal === 'BUY' ? '📈' : '📉';
@@ -169,9 +182,14 @@ export async function runServerLoop(broadcastFn) {
 
   // --- Step 1: 4h bias ---
   try {
+    console.log(`[BOT] Fetching 4h candles for ${ASSET}...`);
     const candles4h = await fetchCandles(ASSET, '4h', 250);
-    if (candles4h && candles4h.length >= 205) {
+    console.log(`[BOT] 4h candles received: ${candles4h ? candles4h.length : 'null'}`);
+    if (!candles4h || candles4h.length < 205) {
+      console.log(`[BOT] 4h candles insufficient (need 205, got ${candles4h ? candles4h.length : 0}) — skipping 4h scan`);
+    } else {
       const result4h = detectSignals(candles4h);
+      console.log(`[BOT] 4h detectSignals result: signal=${result4h.signal || 'none'} price=${result4h.price || 'n/a'} rsi=${result4h.rsi || 'n/a'}`);
       if (result4h.signal) {
         updateMarketBias({ ...result4h, asset: ASSET, timeframe: '4h' });
         const outcome4h = await handleSignal({ ...result4h, asset: ASSET, timeframe: '4h' }, 'server');
@@ -179,26 +197,31 @@ export async function runServerLoop(broadcastFn) {
       }
     }
   } catch (err) {
-    console.error('[BOT] 4h scan error:', err.message);
+    console.error('[BOT] 4h scan error:', err.message, err.stack);
   }
 
   await new Promise(r => setTimeout(r, 1000));
 
   // --- Step 2: 5m execution ---
   try {
+    console.log(`[BOT] Fetching 5m candles for ${ASSET}...`);
     const candles5m = await fetchCandles(ASSET, '5m', 250);
-    if (candles5m && candles5m.length >= 205) {
+    console.log(`[BOT] 5m candles received: ${candles5m ? candles5m.length : 'null'}`);
+    if (!candles5m || candles5m.length < 205) {
+      console.log(`[BOT] 5m candles insufficient (need 205, got ${candles5m ? candles5m.length : 0}) — skipping 5m scan`);
+    } else {
       const result5m = detectSignals(candles5m);
+      console.log(`[BOT] 5m detectSignals result: signal=${result5m.signal || 'none'} price=${result5m.price || 'n/a'} rsi=${result5m.rsi || 'n/a'} sma50=${result5m.sma50 || 'n/a'} sma200=${result5m.sma200 || 'n/a'}`);
       if (result5m.signal) {
         console.log(`[BOT] 5m signal: ${result5m.signal} BTC @ $${result5m.price}`);
         const outcome = await handleSignal({ ...result5m, asset: ASSET, timeframe: '5m' }, 'server');
         if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
       } else {
-        console.log(`[BOT] 5m: no signal. Bias: ${marketBias.direction || 'none'}`);
+        console.log(`[BOT] 5m: no signal this cycle. Bias: ${marketBias.direction || 'none'}`);
       }
     }
   } catch (err) {
-    console.error('[BOT] 5m scan error:', err.message);
+    console.error('[BOT] 5m scan error:', err.message, err.stack);
   }
 
   // Update P&L
