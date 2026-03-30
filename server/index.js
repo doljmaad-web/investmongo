@@ -160,37 +160,43 @@ function parseItems(xml, handle) {
 }
 
 async function fetchXFeed() {
-  if (xCache && Date.now() - xCachedAt < X_CACHE_TTL) return xCache;
+  const testChannel = 'coinbureau';
+  const sources = [
+    `https://rsshub.app/telegram/channel/${testChannel}`,
+    `https://rsshub.app/telegram/channel/${testChannel}?limit=10`,
+    `https://rss.app/feeds/telegram/${testChannel}.xml`,
+    `https://fetchrss.com/rss/telegram/${testChannel}`,
+    `https://tg.i-c-a.su/rss/${testChannel}`,
+    `https://tt.rss.io/telegram/${testChannel}`,
+  ];
 
-  const results = await Promise.allSettled(
-    X_MIRROR_SOURCES.map(async ({ channel, handle }) => {
-      const url = `https://rsshub.app/telegram/channel/${channel}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`${channel}: HTTP ${res.status}`);
-      const xml = await res.text();
-      return parseItems(xml, handle);
-    })
-  );
+  const results = [];
+  for (const url of sources) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(8000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RSS reader)' },
+      });
+      const text = await res.text();
+      results.push({
+        url,
+        status: res.status,
+        ok: res.ok,
+        length: text.length,
+        preview: text.slice(0, 300),
+      });
+    } catch (err) {
+      results.push({ url, error: err.message });
+    }
+  }
 
-  const all = results
-    .filter(r => r.status === 'fulfilled')
-    .flatMap(r => r.value)
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 30);
-
-  xCache    = all;
-  xCachedAt = Date.now();
-  return all;
+  console.log('[X-FEED DEBUG]', JSON.stringify(results, null, 2));
+  return results;
 }
 
 app.get('/api/x-feed', async (req, res) => {
-  try {
-    const items = await fetchXFeed();
-    res.json({ items, cached_at: Date.now() });
-  } catch (err) {
-    console.error('[X-FEED] Error:', err.message);
-    res.json({ items: [], cached_at: Date.now() });
-  }
+  const results = await fetchXFeed();
+  res.json({ debug: true, results, cached_at: Date.now() });
 });
 
 // Serve dashboard for all other routes
