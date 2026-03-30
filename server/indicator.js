@@ -1,7 +1,6 @@
 // ============================================================
 // PRECISION v9 INDICATOR — JavaScript port
-// Exact translation of Pine Script logic
-// Signals: yellow_dot (BUY) and pink_dot (SELL) only
+// Scans last 10 candles for yellow/pink dot conditions
 // ============================================================
 
 // --- RSI Calculation ---
@@ -59,79 +58,86 @@ function getPatterns(candles) {
 }
 
 // ============================================================
-// MAIN: detectSignals — mirrors Pine Script logic exactly
+// MAIN: detectSignals — scans last 10 candles for missed signals
 // ============================================================
 export function detectSignals(candles, cfg = {}) {
   const {
-    sma50Len   = 50,
-    sma200Len  = 200,
-    rsiLen     = 14,
-    rsiObMin   = 40,
-    rsiObMax   = 85,
-    rsiOsMin   = 18,
-    rsiOsMax   = 60,
-    lookback50 = 10,
+    sma50Len  = 50,
+    sma200Len = 200,
+    rsiLen    = 14,
+    rsiObMin  = 40,
+    rsiObMax  = 85,
+    rsiOsMin  = 18,
+    rsiOsMax  = 60,
+    lookback  = 10,
   } = cfg;
 
   if (candles.length < sma50Len + 10) {
     return { signal: null, reason: 'insufficient_candles' };
   }
 
-  const closes  = candles.map(c => c.close);
-  const rsiHist = calcRSIHistory(closes, rsiLen, lookback50 + 3);
-  const rsiNow  = rsiHist.at(-1);
-  const rsiPrev = rsiHist.at(-2);
-
+  const closes = candles.map(c => c.close);
   const sma50  = calcSMA(closes, sma50Len);
-  const sma200 = closes.length >= sma200Len ? calcSMA(closes, sma200Len) : null;
+  const sma200 = candles.length >= sma200Len ? calcSMA(closes, sma200Len) : null;
+  const cur    = candles.at(-1);
 
-  const { isDoji, isBullishEngulfing, isBearishEngulfing } = getPatterns(candles);
-  const cur = candles.at(-1);
+  // Scan last 10 candles for yellow or pink dot
+  for (let i = 0; i < lookback; i++) {
+    const slice       = candles.slice(0, candles.length - i);
+    const sliceCloses = slice.map(c => c.close);
+    const rsiHist     = calcRSIHistory(sliceCloses, rsiLen, 5);
+    const rsiNow      = rsiHist.at(-1);
+    const rsiPrev     = rsiHist.at(-2);
 
-  // RSI hook directions
-  const rsiHookUp   = rsiNow > rsiPrev;
-  const rsiHookDown = rsiNow < rsiPrev;
+    if (rsiNow === null || rsiPrev === null) continue;
 
-  // Oversold zone: RSI in range (hooks up from bottom)
-  const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax;
+    const rsiHookUp   = rsiNow > rsiPrev;
+    const rsiHookDown = rsiNow < rsiPrev;
+    const osZone      = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax;
+    const obZone      = rsiNow >= rsiObMin && rsiNow <= rsiObMax;
 
-  // Overbought zone: RSI in range (hooks down from top)
-  const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax;
+    const { isDoji, isBullishEngulfing, isBearishEngulfing } = getPatterns(slice);
 
-  // --- YELLOW DOT: BUY ---
-  if (osZone && (isDoji || isBullishEngulfing) && rsiHookUp) {
-    return {
-      signal:   'BUY',
-      type:     'yellow_dot',
-      strength: 'normal',
-      price:    cur.close,
-      low:      cur.low,
-      high:     cur.high,
-      rsi:      rsiNow,
-      sma50,
-      sma200,
-      pattern:  isBullishEngulfing ? 'bullish_engulfing' : 'doji',
-      trend:    sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
-    };
+    // Yellow dot — BUY
+    if (osZone && (isDoji || isBullishEngulfing) && rsiHookUp) {
+      console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} isDoji=${isDoji} bullEng=${isBullishEngulfing}`);
+      return {
+        signal:  'BUY',
+        type:    'yellow_dot',
+        strength: 'normal',
+        price:   cur.close,
+        low:     cur.low,
+        high:    cur.high,
+        rsi:     rsiNow,
+        sma50,
+        sma200,
+        pattern: isBullishEngulfing ? 'bullish_engulfing' : 'doji',
+        trend:   sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
+        barsAgo: i,
+      };
+    }
+
+    // Pink dot — SELL
+    if (obZone && (isDoji || isBearishEngulfing) && rsiHookDown) {
+      console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} isDoji=${isDoji} bearEng=${isBearishEngulfing}`);
+      return {
+        signal:  'SELL',
+        type:    'pink_dot',
+        strength: 'normal',
+        price:   cur.close,
+        low:     cur.low,
+        high:    cur.high,
+        rsi:     rsiNow,
+        sma50,
+        sma200,
+        pattern: isBearishEngulfing ? 'bearish_engulfing' : 'doji',
+        trend:   sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
+        barsAgo: i,
+      };
+    }
   }
 
-  // --- PINK DOT: SELL ---
-  if (obZone && (isDoji || isBearishEngulfing) && rsiHookDown) {
-    return {
-      signal:   'SELL',
-      type:     'pink_dot',
-      strength: 'normal',
-      price:    cur.close,
-      low:      cur.low,
-      high:     cur.high,
-      rsi:      rsiNow,
-      sma50,
-      sma200,
-      pattern:  isBearishEngulfing ? 'bearish_engulfing' : 'doji',
-      trend:    sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
-    };
-  }
-
-  console.log(`[INDICATOR] No signal. RSI=${rsiNow} hookUp=${rsiHookUp} hookDown=${rsiHookDown} osZone=${osZone} obZone=${obZone} isDoji=${isDoji} bullEng=${isBullishEngulfing} bearEng=${isBearishEngulfing}`);
+  const rsiNow = calcRSIHistory(closes, rsiLen, 3).at(-1);
+  console.log(`[INDICATOR] No signal in last ${lookback} candles. Current RSI=${rsiNow} sma50=${sma50?.toFixed(0)}`);
   return { signal: null };
 }

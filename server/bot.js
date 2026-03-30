@@ -97,6 +97,16 @@ export async function handleSignal(rawSignal, source = 'server') {
     return null;
   }
 
+  // Don't re-enter if already in same direction
+  const direction = signal.signal === 'BUY' ? 'LONG' : 'SHORT';
+  const existingOpen = db.prepare(
+    `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`
+  ).get(signal.asset, direction);
+  if (existingOpen) {
+    console.log(`[BOT] Already in ${direction} position (trade #${existingOpen.id}) — skipping re-entry`);
+    return null;
+  }
+
   const stopLoss = signal.signal === 'BUY'
     ? parseFloat((signal.price * 0.94).toFixed(2))
     : parseFloat((signal.price * 1.06).toFixed(2));
