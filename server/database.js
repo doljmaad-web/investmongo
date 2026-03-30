@@ -127,7 +127,7 @@ db.exec(`
     entry_price REAL NOT NULL,
     exit_price REAL,
     stop_loss REAL NOT NULL,
-    take_profit REAL NOT NULL,
+    take_profit REAL,
     size_usd REAL NOT NULL,
     size_pct REAL NOT NULL,
     pnl_usd REAL DEFAULT 0,

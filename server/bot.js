@@ -96,39 +96,22 @@ export async function handleSignal(rawSignal, source = 'server') {
     return null;
   }
 
-  // Default trade parameters — no Gemini blocking execution
+  const stopLoss = signal.signal === 'BUY'
+    ? parseFloat((signal.price * 0.94).toFixed(2))
+    : parseFloat((signal.price * 1.06).toFixed(2));
+
   const defaultDecision = {
     verdict:    'CONFIRMED',
     confidence: 75,
     size_pct:   50,
     entry:      signal.price,
-    stop_loss:  signal.signal === 'BUY'
-      ? parseFloat((signal.price * 0.94).toFixed(2))
-      : parseFloat((signal.price * 1.06).toFixed(2)),
+    stop_loss:  stopLoss,
     reasoning:  { summary: 'Auto-executed — Gemini advisory pending' },
     validated_news: [],
   };
-  console.log(`[BOT] defaultDecision: entry=${defaultDecision.entry} sl=${defaultDecision.stop_loss} size=${defaultDecision.size_pct}%`);
+  console.log(`[BOT] defaultDecision: entry=${defaultDecision.entry} sl=${stopLoss} size=50%`);
 
-  // Close existing position first (signal flip) so risk check sees 0 open
-  console.log(`[BOT] Calling closeOpenPosition(${signal.asset}, ${signal.price})...`);
-  const closed = closeOpenPosition(signal.asset, signal.price);
-  console.log(`[BOT] closeOpenPosition returned: ${closed} position(s) closed`);
-  if (closed > 0) {
-    console.log(`${tag} Flipped — closed ${closed} position(s) at $${signal.price}`);
-  }
-
-  // Risk limits (daily loss, max positions, max exposure)
-  console.log(`[BOT] Calling checkRiskLimits...`);
-  const riskCheck = checkRiskLimits(defaultDecision, signal);
-  console.log(`[BOT] Risk check result: allowed=${riskCheck.allowed} reason=${riskCheck.reason || 'none'}`);
-  if (!riskCheck.allowed) {
-    console.log(`${tag} Risk blocked: ${riskCheck.reason}`);
-    await sendTelegram(`⛔ RISK LIMIT\n${signal.signal} BTC [${signal.timeframe}]\n${riskCheck.reason}`);
-    return { signal, blocked: true, blockReason: riskCheck.reason };
-  }
-
-  // Save signal to DB
+  // Save signal to DB first — record it regardless of trade outcome
   console.log(`[BOT] Inserting signal to DB...`);
   const signalRow = db.prepare(`
     INSERT INTO signals
@@ -147,27 +130,37 @@ export async function handleSignal(rawSignal, source = 'server') {
   const signalId = signalRow.lastInsertRowid;
   console.log(`[BOT] Signal inserted with id=${signalId}`);
 
-  // Open trade immediately
+  // Close any existing position first (signal flip) so risk check sees 0 open
+  console.log(`[BOT] Calling closeOpenPosition(${signal.asset}, ${signal.price})...`);
+  const closed = closeOpenPosition(signal.asset, signal.price);
+  console.log(`[BOT] closeOpenPosition returned: ${closed} position(s) closed`);
+  if (closed > 0) console.log(`${tag} Flipped — closed ${closed} position(s) at $${signal.price}`);
+
+  // Risk limits check
+  const riskCheck = checkRiskLimits(defaultDecision, signal);
+  console.log(`[BOT] Risk check: allowed=${riskCheck.allowed} reason=${riskCheck.reason || 'none'}`);
+  if (!riskCheck.allowed) {
+    console.log(`[BOT] BLOCKED by risk limits — trade not opened`);
+    await sendTelegram(`⛔ RISK LIMIT\n${signal.signal} BTC [${signal.timeframe}]\n${riskCheck.reason}`);
+    return { signal, blocked: true, blockReason: riskCheck.reason };
+  }
+
+  // Open the paper trade
   console.log(`[BOT] About to call openPaperTrade(signalId=${signalId})...`);
   const tradeId = openPaperTrade(signalId, defaultDecision, signal);
-  console.log(`[BOT] openPaperTrade returned: tradeId=${tradeId}`);
-  console.log(`${tag} Trade #${tradeId} opened immediately`);
+  console.log(`[BOT] Trade opened: tradeId=${tradeId}`);
 
   const dir = signal.signal === 'BUY' ? '📈' : '📉';
   const biasNote = marketBias.direction ? ` | 4h: ${marketBias.direction}` : '';
   await sendTelegram(
     `${dir} TRADE OPENED [${signal.timeframe}]\n` +
     `${signal.signal} BTC @ $${signal.price}${biasNote}\n` +
-    `Size: 50% | Emergency SL: $${defaultDecision.stop_loss}\n` +
+    `Stop: $${stopLoss} | Size: 50% | Mode: PAPER\n` +
     `Holds until opposite signal fires`
   );
 
-  // Fire advisory in background — does not block return
-  setImmediate(() => {
-    postTradeAdvisory(tradeId, signal).catch(err =>
-      console.error('[BOT] Advisory fire error:', err.message)
-    );
-  });
+  // Fire advisory in background — non-blocking
+  setImmediate(() => postTradeAdvisory(tradeId, signal));
 
   return { signal, decision: defaultDecision, signalId, tradeId };
 }

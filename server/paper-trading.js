@@ -39,7 +39,7 @@ export function openPaperTrade(signalId, decision, signal) {
     signal.signal === 'BUY' ? 'LONG' : 'SHORT',
     decision.entry || signal.price,
     decision.stop_loss,
-    null,  // No take profit — exit triggered by opposite signal
+    0,     // No take profit — exit triggered by opposite signal
     sizeUsd,
     decision.size_pct,
   );
