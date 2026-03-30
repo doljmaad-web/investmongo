@@ -591,22 +591,35 @@ async function fetchXFeed() {
 function renderXFeed(items) {
   const feed = document.getElementById('x-feed');
   if (!feed) return;
-  if (!items.length) { renderXFeedEmpty(); return; }
+  if (!items.length) {
+    feed.innerHTML = '<div class="x-empty">Waiting for posts...</div>';
+    return;
+  }
 
-  feed.innerHTML = items.map(item => {
-    const d       = item.pubDate ? new Date(item.pubDate) : null;
+  const html = items.map(item => {
+    const d       = item.time ? new Date(item.time) : null;
     const timeStr = d && !isNaN(d)
       ? `[${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]`
       : '';
-    const text = (item.title || '').length > 80
-      ? item.title.slice(0, 80) + '\u2026'
-      : (item.title || '');
-    return `<div class="x-line">
-      <span class="x-handle">${escHtml(item.handle)}</span>
+    const text = (item.text || '').length > 100
+      ? item.text.slice(0, 100) + '\u2026'
+      : (item.text || '');
+    const href = item.link ? ` href="${escHtml(item.link)}" target="_blank" rel="noopener"` : '';
+    return `<a class="x-line"${href}>
+      <span class="x-handle">${escHtml(item.handle || '')}</span>
       <span class="x-text">${escHtml(text)}</span>
       ${timeStr ? `<span class="x-time">${timeStr}</span>` : ''}
-    </div>`;
+    </a>`;
   }).join('');
+
+  // Fade out → replace → fade in
+  feed.style.opacity = '0';
+  feed.style.transition = 'opacity 0.15s';
+  setTimeout(() => {
+    feed.innerHTML = html;
+    feed.style.opacity = '1';
+    feed.style.transition = 'opacity 0.3s';
+  }, 150);
 }
 
 function renderXFeedEmpty() {
@@ -623,5 +636,5 @@ window.addEventListener('load', () => {
   updateClock();
   window.addEventListener('resize', () => drawChart());
   fetchXFeed();
-  setInterval(fetchXFeed, 60000);
+  setInterval(fetchXFeed, 90000);
 });
