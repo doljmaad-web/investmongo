@@ -1,6 +1,7 @@
 // ============================================================
-// GEMINI 2.5 FLASH — Signal Validation Engine
-// Using FREE tier (~10-20 calls/day, well within 500/day limit)
+// GEMINI — BTC Trading Advisory Engine
+// validateWithGemini: legacy full validation (kept for reference)
+// getGeminiAdvisory:  lightweight post-trade advisory (active)
 // ============================================================
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -63,6 +64,41 @@ const model = genAI.getGenerativeModel({
   model: 'gemini-2.0-flash',
   systemInstruction: SYSTEM_INSTRUCTION,
 });
+
+// ============================================================
+// LIGHTWEIGHT ADVISORY — called after trade opens, non-blocking
+// One Gemini call per trade, minimal prompt, max 150 tokens out
+// ============================================================
+const ADVISORY_INSTRUCTION = `You are a trading advisor. A BTC futures position just opened. Based on the news and sentiment, respond with only JSON: {"hold": true/false, "caution": true/false, "reason": "one sentence max"}`;
+
+const advisoryModel = genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash',
+  systemInstruction: ADVISORY_INSTRUCTION,
+});
+
+export async function getGeminiAdvisory(signal, news, fearGreed) {
+  try {
+    const headlines = news.slice(0, 3).map(n => n.title || n).join('\n');
+    const prompt =
+      `Position: ${signal.signal} BTC @ $${signal.price} [${signal.timeframe}]\n` +
+      `Fear & Greed: ${fearGreed?.value ?? 50} (${fearGreed?.classification ?? 'Neutral'})\n` +
+      `Top news:\n${headlines || 'No news available'}\n` +
+      `Should we hold this position? JSON only.`;
+
+    const result = await advisoryModel.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 150 },
+    });
+
+    const text  = result.response.text().trim();
+    const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(clean);
+
+  } catch (err) {
+    console.error('[GEMINI] Advisory error:', err.message);
+    return { hold: true, caution: false, reason: 'Advisory unavailable — position open.' };
+  }
+}
 
 export async function validateWithGemini(signal, marketContext) {
   const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent, fourHourBias, newsSentiment } = marketContext;

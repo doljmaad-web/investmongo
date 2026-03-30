@@ -1,21 +1,22 @@
 import { detectSignals }           from './indicator.js';
-import { validateWithGemini }      from './gemini.js';
-import { fetchAllNews }            from './news-scraper.js';
+import { getGeminiAdvisory }       from './gemini.js';
+import { fetchCoinTelegraphOnly }  from './news-scraper.js';
+import { fearGreed }               from './news-scraper.js';
 import { openPaperTrade, closeOpenPosition, updateOpenTrades, getPortfolioStats } from './paper-trading.js';
 import { checkRiskLimits }         from './risk.js';
 import { sendTelegram }            from './telegram.js';
-import { fetchCandles, getCurrentPrices, getFundingRate } from './hyperliquid.js';
+import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
 import { db }                      from './database.js';
 
 // BTC futures only — 5m execution, 4h bias
 const ASSET = 'BTC';
 
-// Deduplication — timeframe-aware cooldowns
+// Timeframe-aware deduplication cooldowns
 const recentSignals = new Map();
 const DEDUP_COOLDOWN = {
-  '5m': 15 * 60 * 1000,       // 15 min — allows frequent 5m signals
-  '1h':  2 * 60 * 60 * 1000,  // 2 hours
-  '4h':  4 * 60 * 60 * 1000,  // 4 hours
+  '5m': 15 * 60 * 1000,
+  '1h':  2 * 60 * 60 * 1000,
+  '4h':  4 * 60 * 60 * 1000,
 };
 
 function isDuplicate(asset, action, timeframe) {
@@ -29,11 +30,10 @@ function isDuplicate(asset, action, timeframe) {
 
 // ============================================================
 // 4H MARKET BIAS — persists in memory across cron cycles
-// Tells Gemini the overall market direction for BTC
 // ============================================================
 let marketBias = {
-  direction:  null,   // 'BULLISH' | 'BEARISH' | null
-  signalType: null,   // 'yellow_dot' | 'pink_dot' | 'strong_buy' | 'strong_sell'
+  direction:  null,
+  signalType: null,
   price:      null,
   updatedAt:  null,
 };
@@ -49,8 +49,35 @@ function updateMarketBias(signal) {
 }
 
 // ============================================================
-// MAIN SIGNAL HANDLER
-// Called by: webhook (Track A) and server loop (Track B)
+// POST-TRADE ADVISORY — runs in background after trade opens
+// Fetches minimal news, calls lightweight Gemini, sends to Telegram
+// Never blocks trade execution
+// ============================================================
+async function postTradeAdvisory(tradeId, signal) {
+  try {
+    const news     = await fetchCoinTelegraphOnly();        // 3 headlines max, one source
+    const fg       = fearGreed;                             // already cached in memory — no fetch
+    const advisory = await getGeminiAdvisory(signal, news, fg);
+
+    const icon = advisory.caution ? '⚠️' : '✅';
+    const holdText = advisory.hold ? 'HOLD position' : 'REVIEW position';
+
+    await sendTelegram(
+      `${icon} ADVISORY — Trade #${tradeId}\n` +
+      `${signal.signal} BTC @ $${signal.price} [${signal.timeframe}]\n` +
+      `${holdText} | Caution: ${advisory.caution ? 'YES' : 'NO'}\n` +
+      `${advisory.reason}`
+    );
+
+    console.log(`[ADVISORY] Trade #${tradeId}: hold=${advisory.hold} caution=${advisory.caution}`);
+  } catch (err) {
+    console.error(`[ADVISORY] Failed for trade #${tradeId}:`, err.message);
+    // Trade stays open regardless — advisory is informational only
+  }
+}
+
+// ============================================================
+// MAIN SIGNAL HANDLER — executes immediately, no blocking APIs
 // ============================================================
 export async function handleSignal(rawSignal, source = 'server') {
   const signal = { ...rawSignal, source };
@@ -64,25 +91,34 @@ export async function handleSignal(rawSignal, source = 'server') {
     return null;
   }
 
-  // Gather market context for Gemini
-  const { news, fearGreed, whales, macroEvent, newsSentiment } = await fetchAllNews();
-  const fundingRate = await getFundingRate(signal.asset).catch(() => 0);
-
-  const marketContext = {
-    recentNews:     news.slice(0, 10),
-    fearGreed,
-    whaleAlerts:    whales.slice(0, 5),
-    fundingRate:    (fundingRate * 100).toFixed(4),
-    nextMacroEvent: macroEvent,
-    fourHourBias:   marketBias,
-    newsSentiment,  // Pre-computed sentiment summary from last 20 articles
+  // Default trade parameters — no Gemini blocking execution
+  const defaultDecision = {
+    verdict:    'CONFIRMED',
+    confidence: 75,
+    size_pct:   50,
+    entry:      signal.price,
+    stop_loss:  signal.signal === 'BUY'
+      ? parseFloat((signal.price * 0.94).toFixed(2))
+      : parseFloat((signal.price * 1.06).toFixed(2)),
+    reasoning:  { summary: 'Auto-executed — Gemini advisory pending' },
+    validated_news: [],
   };
 
-  // Gemini validates
-  console.log(`${tag} Sending to Gemini for validation...`);
-  const decision = await validateWithGemini(signal, marketContext);
+  // Close existing position first (signal flip) so risk check sees 0 open
+  const closed = closeOpenPosition(signal.asset, signal.price);
+  if (closed > 0) {
+    console.log(`${tag} Flipped — closed ${closed} position(s) at $${signal.price}`);
+  }
 
-  // Save signal to database
+  // Risk limits (daily loss, max positions, max exposure)
+  const riskCheck = checkRiskLimits(defaultDecision, signal);
+  if (!riskCheck.allowed) {
+    console.log(`${tag} Risk blocked: ${riskCheck.reason}`);
+    await sendTelegram(`⛔ RISK LIMIT\n${signal.signal} BTC [${signal.timeframe}]\n${riskCheck.reason}`);
+    return { signal, blocked: true, blockReason: riskCheck.reason };
+  }
+
+  // Save signal to DB
   const signalRow = db.prepare(`
     INSERT INTO signals
       (timestamp, source, asset, action, signal_type, price, rsi, sma50, sma200,
@@ -90,126 +126,73 @@ export async function handleSignal(rawSignal, source = 'server') {
        gemini_reasoning, gemini_news_sentiment, gemini_macro_risk, validated_news)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    new Date().toISOString(),
-    source,
-    signal.asset,
-    signal.signal,
-    signal.type     || 'unknown',
-    signal.price,
-    signal.rsi      || null,
-    signal.sma50    || null,
-    signal.sma200   || null,
-    signal.timeframe || '5m',
-    signal.pattern  || null,
-    signal.strength || 'normal',
-    decision.verdict,
-    decision.confidence,
-    decision.reasoning?.summary || '',
-    decision.reasoning?.news_sentiment || '',
-    decision.reasoning?.macro_risk || '',
-    JSON.stringify(decision.validated_news || []),
+    new Date().toISOString(), source, signal.asset, signal.signal,
+    signal.type || 'unknown', signal.price,
+    signal.rsi || null, signal.sma50 || null, signal.sma200 || null,
+    signal.timeframe || '5m', signal.pattern || null, signal.strength || 'normal',
+    'ADVISORY', 75, 'Auto-executed — advisory pending', 'pending', 'low',
+    '[]',
   );
 
   const signalId = signalRow.lastInsertRowid;
 
-  // Close existing position first (signal flip) so risk check sees 0 open positions
-  if (decision.verdict === 'CONFIRMED' || decision.verdict === 'REDUCED') {
-    const closed = closeOpenPosition(signal.asset, signal.price);
-    if (closed > 0) {
-      console.log(`${tag} Flipped position — closed ${closed} trade(s) at $${signal.price}`);
-    }
-  }
+  // Open trade immediately
+  const tradeId = openPaperTrade(signalId, defaultDecision, signal);
+  console.log(`${tag} Trade #${tradeId} opened immediately`);
 
-  // Check risk limits
-  const riskCheck = checkRiskLimits(decision, signal);
-  if (!riskCheck.allowed) {
-    console.log(`${tag} Risk limit blocked: ${riskCheck.reason}`);
-    await sendTelegram(
-      `⛔ RISK LIMIT\n${signal.signal} ${signal.asset} [${signal.timeframe}]\nBlocked: ${riskCheck.reason}`
-    );
-    return { signal, decision, signalId, blocked: true, blockReason: riskCheck.reason };
-  }
-
-  // Execute paper trade if confirmed
-  if (decision.verdict === 'CONFIRMED' || decision.verdict === 'REDUCED') {
-    const tradeId = openPaperTrade(signalId, decision, signal);
-    console.log(`${tag} Paper trade opened #${tradeId}`);
-
-    const dir        = signal.signal === 'BUY' ? '📈' : '📉';
-    const biasNote   = marketBias.direction
-      ? `4h Bias: ${marketBias.direction}\n`
-      : '';
-    await sendTelegram(
-      `${dir} PAPER TRADE OPENED [${signal.timeframe}]\n` +
-      `${signal.signal} ${signal.asset} @ $${signal.price}\n` +
-      `Confidence: ${decision.confidence}%\n` +
-      `${biasNote}` +
-      `Size: ${decision.size_pct}% | Emergency SL: $${decision.stop_loss}\n` +
-      `Exit: Holds until opposite signal\n\n` +
-      `${decision.reasoning?.summary}`
-    );
-
-    return { signal, decision, signalId, tradeId };
-  }
-
-  // Vetoed
-  console.log(`${tag} VETOED — ${decision.reasoning?.veto_reason || 'low confidence'}`);
+  const dir = signal.signal === 'BUY' ? '📈' : '📉';
+  const biasNote = marketBias.direction ? ` | 4h: ${marketBias.direction}` : '';
   await sendTelegram(
-    `❌ SIGNAL VETOED [${signal.timeframe}]\n` +
-    `${signal.signal} ${signal.asset} @ $${signal.price}\n` +
-    `Confidence: ${decision.confidence}%\n` +
-    `Reason: ${decision.reasoning?.veto_reason || decision.reasoning?.summary}`
+    `${dir} TRADE OPENED [${signal.timeframe}]\n` +
+    `${signal.signal} BTC @ $${signal.price}${biasNote}\n` +
+    `Size: 50% | Emergency SL: $${defaultDecision.stop_loss}\n` +
+    `Holds until opposite signal fires`
   );
 
-  return { signal, decision, signalId, vetoed: true };
+  // Fire advisory in background — does not block return
+  setImmediate(() => {
+    postTradeAdvisory(tradeId, signal).catch(err =>
+      console.error('[BOT] Advisory fire error:', err.message)
+    );
+  });
+
+  return { signal, decision: defaultDecision, signalId, tradeId };
 }
 
 // ============================================================
 // TRACK B: Server-side indicator loop (every 5 minutes)
 // Step 1 — Read 4h chart → update market bias
-// Step 2 — Read 5m chart → execute trades using bias context
+// Step 2 — Read 5m chart → execute trades
 // ============================================================
 export async function runServerLoop(broadcastFn) {
   console.log('[BOT] Running Track B server indicator loop...');
 
-  // --- Step 1: Check 4h chart for market bias ---
+  // --- Step 1: 4h bias ---
   try {
     const candles4h = await fetchCandles(ASSET, '4h', 250);
     if (candles4h && candles4h.length >= 205) {
       const result4h = detectSignals(candles4h);
       if (result4h.signal) {
         updateMarketBias({ ...result4h, asset: ASSET, timeframe: '4h' });
-
-        // Also handle it as a signal — 4h signal is a major direction call
-        const outcome4h = await handleSignal(
-          { ...result4h, asset: ASSET, timeframe: '4h' },
-          'server'
-        );
-        if (outcome4h && broadcastFn) {
-          broadcastFn({ type: 'new_signal', data: outcome4h });
-        }
+        const outcome4h = await handleSignal({ ...result4h, asset: ASSET, timeframe: '4h' }, 'server');
+        if (outcome4h && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome4h });
       }
     }
   } catch (err) {
-    console.error('[BOT] 4h bias scan error:', err.message);
+    console.error('[BOT] 4h scan error:', err.message);
   }
 
   await new Promise(r => setTimeout(r, 1000));
 
-  // --- Step 2: Check 5m chart for execution ---
+  // --- Step 2: 5m execution ---
   try {
     const candles5m = await fetchCandles(ASSET, '5m', 250);
     if (candles5m && candles5m.length >= 205) {
       const result5m = detectSignals(candles5m);
       if (result5m.signal) {
         console.log(`[BOT] 5m signal: ${result5m.signal} BTC @ $${result5m.price}`);
-        const outcome = await handleSignal(
-          { ...result5m, asset: ASSET, timeframe: '5m' },
-          'server'
-        );
-        if (outcome && broadcastFn) {
-          broadcastFn({ type: 'new_signal', data: outcome });
-        }
+        const outcome = await handleSignal({ ...result5m, asset: ASSET, timeframe: '5m' }, 'server');
+        if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
       } else {
         console.log(`[BOT] 5m: no signal. Bias: ${marketBias.direction || 'none'}`);
       }
@@ -218,13 +201,12 @@ export async function runServerLoop(broadcastFn) {
     console.error('[BOT] 5m scan error:', err.message);
   }
 
-  // Update P&L on all open trades
+  // Update P&L
   const prices = await getCurrentPrices([ASSET]);
   updateOpenTrades(prices);
 
-  // Broadcast portfolio update
   const stats = getPortfolioStats();
   if (broadcastFn) broadcastFn({ type: 'portfolio_update', data: stats });
 
-  console.log(`[BOT] Track B complete. Bias: ${marketBias.direction || 'none'} | Open: ${stats.openCount} | P&L: $${stats.totalPnl}`);
+  console.log(`[BOT] Done. Bias: ${marketBias.direction || 'none'} | Open: ${stats.openCount} | P&L: $${stats.totalPnl}`);
 }

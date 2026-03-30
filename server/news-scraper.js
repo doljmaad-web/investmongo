@@ -364,4 +364,16 @@ export async function fetchAllNews(force = false) {
   return { news: newsCache, fearGreed, whales: whaleCache, macroEvent, newsSentiment };
 }
 
+// Lightweight single-source fetch for post-trade advisory
+// Returns top 3 CoinTelegraph titles only — no side effects, no cache updates
+export async function fetchCoinTelegraphOnly() {
+  try {
+    const parsed = await parser.parseURL('https://cointelegraph.com/rss');
+    return parsed.items.slice(0, 3).map(item => ({ title: item.title?.trim() || '' }));
+  } catch (e) {
+    console.warn('[NEWS] CoinTelegraph single fetch failed:', e.message);
+    return [];
+  }
+}
+
 export { newsCache, fearGreed, whaleCache, macroEvent, defiLlamaCache, glassnodeCache, newsSentiment };
