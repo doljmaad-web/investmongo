@@ -149,33 +149,34 @@ function parseNitterRSS(xml, handle) {
 }
 
 async function fetchXFeed() {
-  const now = Date.now();
-  if (now - xFeedCache.cached_at < X_CACHE_TTL && xFeedCache.items.length > 0) {
-    return xFeedCache.items;
+  const testAccount = 'CryptoHayes';
+  const sources = [
+    `https://nitter.privacydev.net/${testAccount}/rss`,
+    `https://nitter.poast.org/${testAccount}/rss`,
+    `https://nitter.1d4.us/${testAccount}/rss`,
+    `https://rsshub.app/twitter/user/${testAccount}`,
+    `https://rsshub.app/x/user/${testAccount}`,
+  ];
+
+  const results = [];
+  for (const url of sources) {
+    try {
+      const res  = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const text = await res.text();
+      results.push({
+        url,
+        status: res.status,
+        ok:     res.ok,
+        length: text.length,
+        preview: text.slice(0, 200),
+      });
+    } catch (err) {
+      results.push({ url, error: err.message });
+    }
   }
 
-  const results = await Promise.allSettled(
-    NITTER_FEEDS.map(async ({ url, handle }) => {
-      try {
-        const r = await fetch(url, {
-          headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return parseNitterRSS(await r.text(), handle);
-      } catch (err) {
-        console.warn(`[X-FEED] ${handle} failed: ${err.message}`);
-        return [];
-      }
-    })
-  );
-
-  const all    = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-  const sorted = all.sort((a, b) => b.ts - a.ts).slice(0, 20)
-                    .map(({ handle, title, pubDate }) => ({ handle, title, pubDate }));
-
-  xFeedCache = { items: sorted, cached_at: now };
-  return sorted;
+  console.log('[X-FEED DEBUG]', JSON.stringify(results, null, 2));
+  return results;
 }
 
 // Test route — confirms endpoint is registered before debugging fetches
@@ -186,10 +187,10 @@ app.get('/api/x-feed/test', (req, res) => {
 app.get('/api/x-feed', async (req, res) => {
   try {
     const items = await fetchXFeed();
-    res.json({ items, cached_at: Date.now() });
+    res.json({ debug: true, results: items, cached_at: Date.now() });
   } catch (err) {
     console.error('[X-FEED] Fatal error:', err.message);
-    res.json({ items: [], error: err.message, cached_at: Date.now() });
+    res.json({ debug: true, results: [], error: err.message, cached_at: Date.now() });
   }
 });
 
