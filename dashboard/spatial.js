@@ -19,8 +19,10 @@
 
   let activeCoin     = 'BTC';
   let activeYear     = new Date().getFullYear();
-  let activeInterval = '1D';
+  let activeInterval = '5m';
   let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
+  let sma50arr       = []; // SMA50 value per candle index (null if insufficient history)
+  let sma200arr      = []; // SMA200 value per candle index
 
   // ── View (zoom / pan) ──────────────────────────────────────
   let viewStart = 0;   // float index into candles[]
@@ -123,14 +125,16 @@
   async function loadCandles() {
     try {
       let url;
-      if (activeInterval === '1D') {
+      if (activeInterval === '5m') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=5m&bars=200`;
+      } else if (activeInterval === '1h') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=1h&bars=200`;
+      } else if (activeInterval === '4h') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=4h&bars=300`;
+      } else if (activeInterval === '1D') {
         url = `/api/spatial/candles?coin=${activeCoin}&interval=1d&year=${activeYear}`;
       } else if (activeInterval === '1W') {
         url = `/api/spatial/candles?coin=${activeCoin}&interval=1w&bars=200`;
-      } else if (activeInterval === '4h') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=4h&bars=300`;
-      } else if (activeInterval === '1h') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=1h&bars=200`;
       }
       const r = await fetch(url);
       if (!r.ok) return;
@@ -139,6 +143,8 @@
         candles   = d.candles;
         viewStart = Math.max(0, candles.length - 80);
         viewEnd   = candles.length;
+        computeSMAs();
+        runIndicatorScan();
       }
     } catch (_) {}
   }
@@ -224,6 +230,144 @@
     c.arcTo(x,y,x+r,y,r); c.closePath();
   }
 
+  // ── Client-side Precision V9 indicator ────────────────────
+  function _calcRSI(closes, period) {
+    if (closes.length < period + 1) return null;
+    let avgGain = 0, avgLoss = 0;
+    for (let i = 1; i <= period; i++) {
+      const d = closes[i] - closes[i-1];
+      if (d > 0) avgGain += d; else avgLoss += Math.abs(d);
+    }
+    avgGain /= period; avgLoss /= period;
+    for (let i = period + 1; i < closes.length; i++) {
+      const d = closes[i] - closes[i-1];
+      avgGain = (avgGain * (period-1) + (d > 0 ? d : 0)) / period;
+      avgLoss = (avgLoss * (period-1) + (d < 0 ? Math.abs(d) : 0)) / period;
+    }
+    if (avgLoss === 0) return 100;
+    return 100 - 100 / (1 + avgGain / avgLoss);
+  }
+
+  function _calcRSIHistory(closes, period, bars) {
+    const arr = [];
+    for (let i = Math.max(period + 1, closes.length - bars); i <= closes.length; i++) {
+      const v = _calcRSI(closes.slice(0, i), period);
+      if (v !== null) arr.push(v);
+    }
+    return arr;
+  }
+
+  function _getPatterns(slice) {
+    if (slice.length < 2) return {};
+    const cur = slice[slice.length - 1];
+    const prv = slice[slice.length - 2];
+    const bodySize = Math.abs(cur.open - cur.close);
+    const range = cur.high - cur.low;
+    return {
+      isDoji: range > 0 && bodySize <= range * 0.1,
+      isBullishEngulfing: cur.close > cur.open && cur.open < prv.close && cur.close > prv.open && bodySize > Math.abs(prv.open - prv.close),
+      isBearishEngulfing: cur.close < cur.open && cur.open > prv.close && cur.close < prv.open && bodySize > Math.abs(prv.open - prv.close),
+    };
+  }
+
+  function runIndicatorScan() {
+    const rsiLen = 14, lookback = 10;
+    const rsiObMin=40, rsiObMax=85, rsiOsMin=18, rsiOsMax=60;
+    const minBars = rsiLen + lookback + 2;
+    const dots = [];
+    for (let i = minBars; i < candles.length; i++) {
+      const slice = candles.slice(0, i + 1);
+      const sliceCloses = slice.map(c => c.close);
+      const rsiHist = _calcRSIHistory(sliceCloses, rsiLen, lookback + 2);
+      if (rsiHist.length < lookback + 1) continue;
+      const rsiNow  = rsiHist[rsiHist.length - 1];
+      const rsiPrev = rsiHist[rsiHist.length - 2];
+      const hookUp   = rsiNow > rsiPrev;
+      const hookDown = rsiNow < rsiPrev;
+      const last10   = rsiHist.slice(-lookback);
+      const rsiHigh10= Math.max(...last10);
+      const rsiLow10 = Math.min(...last10);
+      const osZone   = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHigh10 < 50;
+      const obZone   = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLow10  > 50;
+      const { isDoji, isBullishEngulfing, isBearishEngulfing } = _getPatterns(slice);
+      if (osZone && (isDoji || isBullishEngulfing) && hookUp) {
+        dots.push({ index: i, type: 'yellow', price: candles[i].close });
+      } else if (obZone && (isDoji || isBearishEngulfing) && hookDown) {
+        dots.push({ index: i, type: 'pink', price: candles[i].close });
+      }
+    }
+    precisionDots = dots;
+  }
+
+  function computeSMAs() {
+    const closes = candles.map(c => c.close);
+    sma50arr  = [];
+    sma200arr = [];
+    for (let i = 0; i < closes.length; i++) {
+      sma50arr.push( i >= 49  ? closes.slice(i-49, i+1).reduce((a,b)=>a+b,0)/50   : null);
+      sma200arr.push(i >= 199 ? closes.slice(i-199,i+1).reduce((a,b)=>a+b,0)/200  : null);
+    }
+  }
+
+  // ── Draw: trend ribbon (fill between SMA50/SMA200) ─────────
+  function drawTrendRibbon() {
+    if (!sma50arr.length || !sma200arr.length) return;
+    const s = Math.max(0, Math.floor(viewStart));
+    const e = Math.min(candles.length, Math.ceil(viewEnd));
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    // Find segments where both SMAs are defined
+    let segStart = -1;
+    for (let gi = s; gi <= e; gi++) {
+      const v50  = sma50arr[gi];
+      const v200 = sma200arr[gi];
+      const hasBoth = v50 !== null && v200 !== null;
+      if (hasBoth && segStart < 0) { segStart = gi; }
+      if ((!hasBoth || gi === e) && segStart >= 0) {
+        const segEnd = hasBoth ? gi : gi - 1;
+        // Draw ribbon for this segment
+        ctx.beginPath();
+        for (let j = segStart; j <= segEnd; j++) ctx[j===segStart?'moveTo':'lineTo'](candleX(j), priceY(sma50arr[j]));
+        for (let j = segEnd; j >= segStart; j--) ctx.lineTo(candleX(j), priceY(sma200arr[j]));
+        ctx.closePath();
+        const bull = sma50arr[segEnd] > sma200arr[segEnd];
+        ctx.fillStyle = bull ? C.green : C.red;
+        ctx.fill();
+        segStart = hasBoth ? gi : -1;
+      }
+    }
+    ctx.restore();
+  }
+
+  // ── Draw: SMA lines ────────────────────────────────────────
+  function drawSMALines() {
+    const s = Math.max(0, Math.floor(viewStart));
+    const e = Math.min(candles.length, Math.ceil(viewEnd));
+    // SMA50 — blue
+    ctx.save();
+    ctx.lineWidth = 1.2; ctx.setLineDash([]);
+    ctx.strokeStyle = rgba(C.blue, 0.7);
+    ctx.beginPath();
+    let started50 = false;
+    for (let gi = s; gi < e; gi++) {
+      if (sma50arr[gi] === null) { started50 = false; continue; }
+      started50 ? ctx.lineTo(candleX(gi), priceY(sma50arr[gi])) : ctx.moveTo(candleX(gi), priceY(sma50arr[gi]));
+      started50 = true;
+    }
+    ctx.stroke();
+    // SMA200 — red
+    ctx.strokeStyle = rgba(C.red, 0.7);
+    ctx.beginPath();
+    let started200 = false;
+    for (let gi = s; gi < e; gi++) {
+      if (sma200arr[gi] === null) { started200 = false; continue; }
+      started200 ? ctx.lineTo(candleX(gi), priceY(sma200arr[gi])) : ctx.moveTo(candleX(gi), priceY(sma200arr[gi]));
+      started200 = true;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // ── Draw: grid ─────────────────────────────────────────────
   function drawGrid() {
     const steps = 6;
@@ -238,13 +382,33 @@
     }
     ctx.setLineDash([]);
 
-    // X labels: months or days
+    // X labels: time (HH:MM) for intraday, or date for daily+
     const span = viewEnd - viewStart;
     const s = Math.max(0,Math.floor(viewStart));
     const e = Math.min(candles.length,Math.ceil(viewEnd));
     ctx.fillStyle=rgba(C.muted,.45); ctx.font='8px Courier New'; ctx.textAlign='center';
     const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    if (span > 20) {
+    const isIntraday = activeInterval === '5m' || activeInterval === '1h' || activeInterval === '4h';
+    if (isIntraday) {
+      // Show HH:MM labels, avoid overlap by spacing
+      const step = Math.max(1, Math.floor(span / 8));
+      let lastDay = -1;
+      for (let gi = s; gi < e; gi += step) {
+        const d = new Date(candles[gi].time);
+        const day = d.getDate();
+        const hh  = d.getHours().toString().padStart(2,'0');
+        const mm  = d.getMinutes().toString().padStart(2,'0');
+        const lbl = day !== lastDay ? `${d.getMonth()+1}/${day}` : `${hh}:${mm}`;
+        if (day !== lastDay) {
+          lastDay = day;
+          const x = candleX(gi);
+          ctx.strokeStyle=rgba(C.border,.35); ctx.lineWidth=.3; ctx.setLineDash([2,6]);
+          ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+plotH()); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.fillText(lbl, candleX(gi), H-6);
+      }
+    } else if (span > 20) {
       let lastMo = -1;
       for (let gi = s; gi < e; gi++) {
         const mo = new Date(candles[gi].time).getMonth();
@@ -446,7 +610,7 @@
     ctx.fillText(activeCoin, PAD.left+23, 20);
 
     // Interval selector buttons
-    const btnLabels=['1h','4h','1D','1W'];
+    const btnLabels=['5m','1h','4h','1D','1W'];
     const btnW=28, btnH=16, btnGap=4;
     let bx=PAD.left+54;
     btnLabels.forEach(lbl => {
@@ -525,7 +689,7 @@
     ctx.fillStyle=rgba(C.muted,.22); ctx.font='10px Courier New'; ctx.textAlign='center';
     ctx.fillText('▸ SPATIAL TRADE PLANNER', W/2, H/2-8);
     ctx.fillStyle=rgba(C.muted,.12); ctx.font='8px Courier New';
-    ctx.fillText('Loading '+activeCoin+' '+activeYear+' data...', W/2, H/2+8);
+    ctx.fillText('Loading '+activeCoin+' '+activeInterval+' data...', W/2, H/2+8);
   }
 
   // ── Resize ─────────────────────────────────────────────────
@@ -595,7 +759,7 @@
     // Interval button clicks (header area only)
     canvas.addEventListener('click', e => {
       if (e.offsetY > PAD.top) return;
-      const btnLabels=['1h','4h','1D','1W'];
+      const btnLabels=['5m','1h','4h','1D','1W'];
       const btnW=28, btnH=16, btnGap=4;
       let bx=PAD.left+54;
       for (const lbl of btnLabels) {
@@ -624,6 +788,8 @@
 
     drawVolume();
     drawGrid();
+    drawTrendRibbon();
+    drawSMALines();
     drawPlanZones();
     drawCandles();
     drawPrecisionDots();
