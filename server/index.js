@@ -115,18 +115,17 @@ app.get('/api/health', (req, res) => {
 // X INTELLIGENCE FEED — Telegram mirrors via tg.i-c-a.su proxy
 // ============================================================
 const X_MIRROR_SOURCES = [
-  { channel: 'marionawfal',     handle: '@MarioNawfal'     },
-  { channel: 'arthurhayescio',  handle: '@CryptoHayes'     },
+  { channel: 'MarioNawfal',     handle: '@MarioNawfal'     },
   { channel: 'coinbureau',      handle: '@coinbureau'      },
-  { channel: 'mmcryptota',      handle: '@MMCrypto'        },
+  { channel: 'MMCryptoTA',      handle: '@MMCrypto'        },
   { channel: 'spectatorindex',  handle: '@spectatorindex'  },
-  { channel: 'roundtablespace', handle: '@RoundtableSpace' },
-  { channel: 'mylordbebo',      handle: '@MyLordBebo'      },
-  { channel: 'untaxxable',      handle: '@untaxxable'      },
+  { channel: 'RoundtableSpace', handle: '@RoundtableSpace' },
+  { channel: 'MyLordBebo',      handle: '@MyLordBebo'      },
+  { channel: 'cryptohayes',     handle: '@CryptoHayes'     },
 ];
 
-const X_CACHE_TTL = 90 * 1000;
-const xFeedCache  = { items: [], cached_at: 0 };
+const X_CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+const xFeedCache  = { items: [], cached_at: 0, rateLimited: false };
 
 function cleanText(raw) {
   return raw
@@ -159,8 +158,16 @@ function parseItems(xml, handle) {
 }
 
 async function fetchXFeed() {
+  const now = Date.now();
+
+  // Serve stale cache during active rate-limit window (20 min)
+  if (xFeedCache.items.length > 0 && xFeedCache.rateLimited && now - xFeedCache.cached_at < 20 * 60 * 1000) {
+    console.log('[X-FEED] Serving stale cache during rate limit window');
+    return xFeedCache.items;
+  }
+
   try {
-    const results = await Promise.allSettled(
+    const rawResults = await Promise.allSettled(
       X_MIRROR_SOURCES.map(async ({ channel, handle }) => {
         const url = `https://tg.i-c-a.su/rss/${channel}`;
         const res = await fetch(url, {
@@ -170,14 +177,26 @@ async function fetchXFeed() {
             'Accept': 'application/rss+xml, application/xml, text/xml, */*',
           },
         });
+        if (res.status === 403) return { status: 403 };
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const xml = await res.text();
         return parseItems(xml, handle);
       })
     );
 
-    const all = results
-      .filter(r => r.status === 'fulfilled')
+    // Detect rate limiting
+    const isRateLimited = rawResults.some(r =>
+      r.status === 'fulfilled' && r.value?.status === 403
+    );
+    if (isRateLimited) {
+      xFeedCache.rateLimited = true;
+      console.log('[X-FEED] 403 detected — rate limited for ~15 min');
+      return xFeedCache.items;
+    }
+    xFeedCache.rateLimited = false;
+
+    const all = rawResults
+      .filter(r => r.status === 'fulfilled' && Array.isArray(r.value))
       .flatMap(r => r.value)
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 30);
@@ -187,7 +206,7 @@ async function fetchXFeed() {
     return all;
   } catch (err) {
     console.error('[X-FEED] fetchXFeed error:', err.message);
-    return xFeedCache.items; // serve stale on error
+    return xFeedCache.items;
   }
 }
 
