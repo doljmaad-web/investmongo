@@ -17,8 +17,10 @@
   let priceTimer   = null;
   let candleTimer  = null;
 
-  let activeCoin = 'BTC';
-  let activeYear = new Date().getFullYear();
+  let activeCoin     = 'BTC';
+  let activeYear     = new Date().getFullYear();
+  let activeInterval = '1D';
+  let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
 
   // ── View (zoom / pan) ──────────────────────────────────────
   let viewStart = 0;   // float index into candles[]
@@ -32,21 +34,21 @@
   // ── Layout ─────────────────────────────────────────────────
   const PAD = { top: 34, bot: 24, left: 64, right: 82 };
 
-  // ── Neon palette ───────────────────────────────────────────
+  // ── Palette ────────────────────────────────────────────────
   const C = {
-    bg:      '#080b0f',
-    panel:   '#0a0e14',
-    border:  '#1e2d3d',
-    green:   '#39ff6e',
-    greenDim:'#0d3a1a',
-    red:     '#ff3b5c',
-    redDim:  '#3a0d18',
-    amber:   '#f59e0b',
-    blue:    '#38bdf8',
-    purple:  '#a78bfa',
-    muted:   '#64748b',
-    dim:     '#1e2d3d',
-    white:   '#e2e8f0',
+    bg:      '#0c0f12',
+    panel:   '#111418',
+    border:  '#1f2a35',
+    green:   '#26d987',
+    greenDim:'#0a2018',
+    red:     '#e0455a',
+    redDim:  '#2a0a10',
+    amber:   '#e8a020',
+    blue:    '#5ba8e0',
+    purple:  '#8b7dd4',
+    muted:   '#5a6a7a',
+    dim:     '#1a2530',
+    white:   '#d8dfe8',
   };
 
   function rgba(hex, a) {
@@ -118,14 +120,24 @@
   }
 
   // ── Data ───────────────────────────────────────────────────
-  async function loadYear() {
+  async function loadCandles() {
     try {
-      const r = await fetch(`/api/spatial/candles?coin=${activeCoin}&interval=1d&year=${activeYear}`);
+      let url;
+      if (activeInterval === '1D') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=1d&year=${activeYear}`;
+      } else if (activeInterval === '1W') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=1w&bars=200`;
+      } else if (activeInterval === '4h') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=4h&bars=300`;
+      } else if (activeInterval === '1h') {
+        url = `/api/spatial/candles?coin=${activeCoin}&interval=1h&bars=200`;
+      }
+      const r = await fetch(url);
       if (!r.ok) return;
       const d = await r.json();
       if (d.candles && d.candles.length) {
         candles   = d.candles;
-        viewStart = 0;
+        viewStart = Math.max(0, candles.length - 80);
         viewEnd   = candles.length;
       }
     } catch (_) {}
@@ -221,8 +233,8 @@
       const y = priceY(p);
       ctx.strokeStyle = rgba(C.border,.7);
       ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
-      ctx.fillStyle = rgba(C.muted,.55); ctx.font='8px Courier New'; ctx.textAlign='right';
-      ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), PAD.left-3, y+3);
+      ctx.fillStyle = rgba(C.muted,.7); ctx.font='10px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='right';
+      ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), PAD.left-3, y+3.5);
     }
     ctx.setLineDash([]);
 
@@ -303,21 +315,40 @@
       }
 
       // wick
-      ctx.strokeStyle=rgba(col, isLast?.85:.42); ctx.lineWidth=1;
+      ctx.strokeStyle=rgba(col, isLast?.9:.55); ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x,wTop); ctx.lineTo(x,wBot); ctx.stroke();
 
       // body fill
-      ctx.fillStyle=rgba(dim, isLast?.55:.32); ctx.fillRect(x-bw/2,bTop,bw,bH);
+      ctx.fillStyle=rgba(dim, isLast?.7:.5); ctx.fillRect(x-bw/2,bTop,bw,bH);
 
-      // neon border
-      ctx.strokeStyle=rgba(col, isLast?1:.78); ctx.lineWidth=isLast?1.3:.8;
+      // border stroke — clean, no glow
+      ctx.strokeStyle=rgba(col, isLast?1:.85); ctx.lineWidth=isLast?1.2:.8;
       ctx.strokeRect(x-bw/2,bTop,bw,bH);
-
-      // glow layer 1
-      if (sw>5) { ctx.strokeStyle=rgba(col,isLast?.28:.12); ctx.lineWidth=isLast?6:3; ctx.strokeRect(x-bw/2,bTop,bw,bH); }
-      // glow layer 2 for live candle
-      if (isLast && sw>5) { ctx.strokeStyle=rgba(col,.08); ctx.lineWidth=12; ctx.strokeRect(x-bw/2,bTop,bw,bH); }
     }
+  }
+
+  // ── Draw: Precision V9 dots ────────────────────────────────
+  function drawPrecisionDots() {
+    if (!precisionDots.length) return;
+    const s=Math.max(0,Math.floor(viewStart));
+    const e=Math.min(candles.length,Math.ceil(viewEnd));
+    precisionDots.forEach(dot => {
+      if (dot.index<s || dot.index>=e) return;
+      const x=candleX(dot.index);
+      const c=candles[dot.index];
+      if (!c) return;
+      if (dot.type==='yellow') {
+        const y=priceY(c.low)+8;
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2);
+        ctx.fillStyle='#f5c518'; ctx.fill();
+        ctx.strokeStyle=rgba('#f5c518',.4); ctx.lineWidth=.5; ctx.stroke();
+      } else if (dot.type==='pink') {
+        const y=priceY(c.high)-8;
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2);
+        ctx.fillStyle='#e879a0'; ctx.fill();
+        ctx.strokeStyle=rgba('#e879a0',.4); ctx.lineWidth=.5; ctx.stroke();
+      }
+    });
   }
 
   // ── Draw: plan zones & levels ──────────────────────────────
@@ -371,10 +402,10 @@
     ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+plotW(),y); ctx.stroke();
     ctx.setLineDash([]);
     const lbl='$'+currentPrice.toLocaleString('en-US',{maximumFractionDigits:0});
-    const tw=lbl.length*6.2+10; const ph=14;
+    const tw=lbl.length*7.8+14; const ph=18;
     ctx.fillStyle=col; rr(ctx,PAD.left-tw-2,y-ph/2,tw,ph,2); ctx.fill();
-    ctx.fillStyle='#000'; ctx.font='bold 8.5px Courier New'; ctx.textAlign='right';
-    ctx.fillText(lbl, PAD.left-4, y+3.5);
+    ctx.fillStyle='#000'; ctx.font='bold 11px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='right';
+    ctx.fillText(lbl, PAD.left-4, y+4);
   }
 
   // ── Draw: crosshair + tooltip ──────────────────────────────
@@ -409,17 +440,32 @@
   // ── Draw: header bar ───────────────────────────────────────
   function drawHeader() {
     ctx.fillStyle=rgba(C.bg,.9); ctx.fillRect(0,0,W,PAD.top);
-    // asset·year pill
-    ctx.fillStyle=rgba(C.border,1); rr(ctx,PAD.left,7,86,18,2); ctx.fill();
-    ctx.fillStyle=C.white; ctx.font='bold 9px Courier New'; ctx.textAlign='left';
-    ctx.fillText(`${activeCoin}  ·  ${activeYear}  ·  1D`, PAD.left+6, 20);
-    // hint
-    ctx.fillStyle=rgba(C.muted,.3); ctx.font='8px Courier New'; ctx.textAlign='left';
-    ctx.fillText('⟨ scroll: zoom · drag: pan ⟩', PAD.left+95, 20);
-    // candle count center
+    // asset pill
+    ctx.fillStyle=rgba(C.border,1); rr(ctx,PAD.left,7,46,18,2); ctx.fill();
+    ctx.fillStyle=C.amber; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
+    ctx.fillText(activeCoin, PAD.left+23, 20);
+
+    // Interval selector buttons
+    const btnLabels=['1h','4h','1D','1W'];
+    const btnW=28, btnH=16, btnGap=4;
+    let bx=PAD.left+54;
+    btnLabels.forEach(lbl => {
+      const isActive=lbl===activeInterval;
+      ctx.fillStyle=isActive?C.amber:rgba(C.border,1);
+      rr(ctx,bx,8,btnW,btnH,2); ctx.fill();
+      if (isActive) { ctx.strokeStyle=rgba(C.amber,.6); ctx.lineWidth=.5; rr(ctx,bx,8,btnW,btnH,2); ctx.stroke(); }
+      ctx.fillStyle=isActive?'#000':rgba(C.muted,.8);
+      ctx.font=isActive?'bold 8px Courier New':'8px Courier New';
+      ctx.textAlign='center';
+      ctx.fillText(lbl, bx+btnW/2, 19);
+      bx+=btnW+btnGap;
+    });
+
+    // candle count
     const vc=Math.round(viewEnd-viewStart);
-    ctx.fillStyle=rgba(C.muted,.35); ctx.textAlign='center';
+    ctx.fillStyle=rgba(C.muted,.35); ctx.font='8px Courier New'; ctx.textAlign='center';
     ctx.fillText(`${vc} candles`, W/2, 20);
+
     if (plan) {
       const dir=plan.direction; const dc=dir==='LONG'?C.green:C.red; const db=dir==='LONG'?'#052e16':'#450a0a';
       ctx.fillStyle=db; rr(ctx,W-PAD.right-134,7,46,18,2); ctx.fill();
@@ -428,11 +474,11 @@
       ctx.fillText(dir, W-PAD.right-111, 20);
       const conv=Math.min(1,(plan.conviction||5)/10);
       const cc=conv>.7?C.green:conv>.4?C.amber:C.red;
-      const bx=W-PAD.right-84;
-      ctx.fillStyle=C.border; rr(ctx,bx,11,74,6,2); ctx.fill();
-      ctx.fillStyle=cc;       rr(ctx,bx,11,74*conv,6,2); ctx.fill();
+      const barX=W-PAD.right-84;
+      ctx.fillStyle=C.border; rr(ctx,barX,11,74,6,2); ctx.fill();
+      ctx.fillStyle=cc;       rr(ctx,barX,11,74*conv,6,2); ctx.fill();
       ctx.fillStyle=rgba(C.muted,.6); ctx.font='7.5px Courier New'; ctx.textAlign='left';
-      ctx.fillText('CONV '+Math.round(conv*100)+'%', bx+77, 19);
+      ctx.fillText('CONV '+Math.round(conv*100)+'%', barX+77, 19);
     } else {
       ctx.fillStyle=rgba(C.muted,.28); ctx.font='8px Courier New'; ctx.textAlign='right';
       ctx.fillText('Waiting for signal', W-PAD.right, 20);
@@ -459,6 +505,17 @@
     if(sd){ sd.textContent=plan.direction; sd.className='sp-dir-badge '+(plan.direction==='LONG'?'long':'short'); }
     const sp=document.getElementById('sp-panel');
     if(sp) sp.classList.add('active');
+
+    const sigEl=document.getElementById('sp-signal-details');
+    if (sigEl && plan._signal) {
+      const s=plan._signal;
+      sigEl.innerHTML=`
+        <div class="sp-detail-row"><span>Pattern</span><span>${s.pattern||'--'}</span></div>
+        <div class="sp-detail-row"><span>RSI</span><span>${s.rsi?s.rsi.toFixed(1):'--'}</span></div>
+        <div class="sp-detail-row"><span>Timeframe</span><span>${s.timeframe||'--'}</span></div>
+        <div class="sp-detail-row"><span>Dot Type</span><span class="sp-dot-type ${s.dotType}">${s.dotType==='yellow'?'● Accumulation':s.dotType==='pink'?'● Distribution':'--'}</span></div>
+      `;
+    }
   }
 
   // ── Idle animation ─────────────────────────────────────────
@@ -534,6 +591,23 @@
     },{ passive:false });
     canvas.addEventListener('touchend',()=>{ isDragging=false; });
     window.addEventListener('resize', resize);
+
+    // Interval button clicks (header area only)
+    canvas.addEventListener('click', e => {
+      if (e.offsetY > PAD.top) return;
+      const btnLabels=['1h','4h','1D','1W'];
+      const btnW=28, btnH=16, btnGap=4;
+      let bx=PAD.left+54;
+      for (const lbl of btnLabels) {
+        if (e.offsetX>=bx && e.offsetX<=bx+btnW && e.offsetY>=8 && e.offsetY<=8+btnH) {
+          if (lbl!==activeInterval) {
+            activeInterval=lbl; candles=[]; loadCandles();
+          }
+          return;
+        }
+        bx+=btnW+btnGap;
+      }
+    });
   }
 
   // ── Main loop ───────────────────────────────────────────────
@@ -552,6 +626,7 @@
     drawGrid();
     drawPlanZones();
     drawCandles();
+    drawPrecisionDots();
     drawPlanLevels();
     drawLivePrice();
 
@@ -582,9 +657,9 @@
       attachEvents();
       if (animId) cancelAnimationFrame(animId);
       loop();
-      loadYear().then(() => { viewStart=0; viewEnd=candles.length; });
+      loadCandles();
       priceTimer  = setInterval(fetchPrice, 5000);
-      candleTimer = setInterval(loadYear, 15*60*1000);
+      candleTimer = setInterval(loadCandles, 15*60*1000);
       fetchPrice();
     },
 
@@ -609,12 +684,30 @@
       };
       if (decision.analysis?.rangeHigh) plan.rangeHigh=decision.analysis.rangeHigh;
       if (decision.analysis?.rangeLow)  plan.rangeLow =decision.analysis.rangeLow;
+      plan._signal = {
+        pattern:   signalData.pattern||signalData.indicator||'--',
+        rsi:       signalData.rsi||null,
+        timeframe: signalData.timeframe||activeInterval,
+        dotType:   dir==='LONG'?'yellow':'pink',
+      };
+
+      // Place precision dot at current candle
+      const sigIdx=candles.length-1;
+      if (sigIdx>=0) {
+        precisionDots.push({ index:sigIdx, type:plan._signal.dotType, price:decision.entry||price });
+        if (precisionDots.length>50) precisionDots.shift();
+      }
+
       particles = [];
       burstSignal(dir);
       updateSidebar();
       // zoom to last 45 candles to show context around signal
       viewEnd   = candles.length;
       viewStart = Math.max(0, viewEnd-45);
+    },
+
+    loadDots(dotArray) {
+      precisionDots = dotArray || [];
     },
 
     destroy() {

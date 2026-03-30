@@ -146,7 +146,7 @@ app.get('/api/spatial/price', async (req, res) => {
 // Spatial Trade Planner — candle data for neon candlestick chart
 app.get('/api/spatial/candles', async (req, res) => {
   try {
-    const coin     = req.query.coin     || 'BTC';
+    const coin     = (req.query.coin || 'BTC').toUpperCase();
     const interval = req.query.interval || '1d';
     // Support explicit year range: ?year=2026
     const year = parseInt(req.query.year);
@@ -158,6 +158,7 @@ app.get('/api/spatial/candles', async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'candleSnapshot', req: { coin, interval, startTime, endTime } }),
+        signal: AbortSignal.timeout(8000),
       });
       if (!r.ok) throw new Error(`HL ${r.status}`);
       const raw = await r.json();

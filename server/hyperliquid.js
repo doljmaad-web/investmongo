@@ -1,11 +1,12 @@
 // Hyperliquid public API — no auth needed for market data
 const HL_URL = 'https://api.hyperliquid.xyz/info';
 
-async function hlPost(body) {
+async function hlPost(body, timeout = 10000) {
   const res = await fetch(HL_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeout),
   });
   if (!res.ok) throw new Error(`HL API ${res.status}`);
   return res.json();
@@ -13,14 +14,14 @@ async function hlPost(body) {
 
 const INTERVAL_MS = {
   '1m':60000,'5m':300000,'15m':900000,
-  '1h':3600000,'4h':14400000,'1d':86400000,
+  '1h':3600000,'4h':14400000,'1d':86400000,'1w':604800000,
 };
 
 export async function fetchCandles(coin, interval = '1h', bars = 250) {
   try {
     const endTime   = Date.now();
     const startTime = endTime - bars * (INTERVAL_MS[interval] || 3600000);
-    const data = await hlPost({ type:'candleSnapshot', req:{ coin, interval, startTime, endTime } });
+    const data = await hlPost({ type:'candleSnapshot', req:{ coin, interval, startTime, endTime } }, 8000);
     return data.map(c => ({
       time:   c.t,
       open:   parseFloat(c.o),
