@@ -365,6 +365,88 @@ export async function fetchAllNews(force = false) {
   return { news: newsCache, fearGreed, whales: whaleCache, macroEvent, newsSentiment };
 }
 
+// ============================================================
+// X INTELLIGENCE — Telegram mirror channels labeled as X accounts
+// Uses RSSHub public instance, no API key required
+// ============================================================
+const X_MIRROR_CHANNELS = [
+  { telegram: 'MarioNawfal',     xHandle: '@MarioNawfal'     },
+  { telegram: 'arthurhayes',     xHandle: '@CryptoHayes'     },
+  { telegram: 'coinbureau',      xHandle: '@coinbureau'      },
+  { telegram: 'MMCryptoTA',      xHandle: '@MMCrypto'        },
+  { telegram: 'spectatorindex',  xHandle: '@spectatorindex'  },
+  { telegram: 'RoundtableSpace', xHandle: '@RoundtableSpace' },
+  { telegram: 'MyLordBebo',      xHandle: '@MyLordBebo'      },
+  { telegram: 'untaxxable',      xHandle: '@untaxxable'      },
+];
+
+let xMirrorCache    = [];
+let xMirrorCachedAt = 0;
+const X_MIRROR_TTL  = 90 * 1000; // 90 seconds
+
+function parseTelegramRSS(xml, xHandle) {
+  const items = [];
+  const itemRx = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = itemRx.exec(xml)) !== null) {
+    const block   = m[1];
+    const rawTitle = (/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/.exec(block)?.[1] ||
+                      /<title>([\s\S]*?)<\/title>/.exec(block)?.[1] || '').trim();
+    const pubDate  = (/<pubDate>([\s\S]*?)<\/pubDate>/.exec(block)?.[1] || '').trim();
+    const link     = (/<link>([\s\S]*?)<\/link>/.exec(block)?.[1] ||
+                      /<guid>([\s\S]*?)<\/guid>/.exec(block)?.[1] || '').trim();
+
+    const text = rawTitle
+      .replace(/^Forwarded from [^:]+:\s*/i, '')  // strip Telegram forward prefix
+      .replace(/<[^>]+>/g, '')                     // strip HTML tags
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .trim();
+
+    if (text.length > 5) {
+      items.push({
+        handle:    xHandle,
+        text,
+        time:      pubDate,
+        link,
+        timestamp: pubDate ? Date.parse(pubDate) : 0,
+      });
+    }
+  }
+  return items;
+}
+
+export async function fetchXMirrorFeed() {
+  const now = Date.now();
+  if (now - xMirrorCachedAt < X_MIRROR_TTL && xMirrorCache.length > 0) {
+    return xMirrorCache;
+  }
+
+  const results = await Promise.allSettled(
+    X_MIRROR_CHANNELS.map(async ({ telegram, xHandle }) => {
+      try {
+        const url = `https://rsshub.app/telegram/channel/${telegram}`;
+        const r   = await fetch(url, {
+          headers: { 'User-Agent': 'INVEST-MONGO-BOT/1.0' },
+          signal:  AbortSignal.timeout(6000),
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return parseTelegramRSS(await r.text(), xHandle);
+      } catch (err) {
+        console.warn(`[X-MIRROR] ${xHandle} failed: ${err.message}`);
+        return [];
+      }
+    })
+  );
+
+  const all    = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+  const sorted = all.sort((a, b) => b.timestamp - a.timestamp).slice(0, 30);
+
+  xMirrorCache    = sorted;
+  xMirrorCachedAt = now;
+  console.log(`[X-MIRROR] Fetched ${sorted.length} posts from ${X_MIRROR_CHANNELS.length} channels`);
+  return sorted;
+}
+
 // Lightweight single-source fetch for post-trade advisory
 // Returns top 3 CoinTelegraph titles only — no side effects, no cache updates
 export async function fetchCoinTelegraphOnly() {

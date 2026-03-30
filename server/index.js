@@ -153,7 +153,7 @@ function parseItems(xml, handle) {
     if (!text) continue;
     const pubDate   = dateM ? dateM[1].trim() : '';
     const timestamp = pubDate ? Date.parse(pubDate) : 0;
-    items.push({ handle, text, pubDate, timestamp, link: linkM ? linkM[1].trim() : '' });
+    items.push({ handle, text, time: pubDate, timestamp, link: linkM ? linkM[1].trim() : '' });
   }
   return items;
 }
