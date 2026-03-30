@@ -9,7 +9,20 @@ const WS_URL = location.protocol === 'https:'
 
 const STARTING_BALANCE = 10000;
 const MAX_NEWS_LINES   = 12;
-const NEWS_FADE_AFTER  = 8; // lines before this index start fading
+const NEWS_FADE_AFTER  = 8;
+
+let activePeriod = '1d';
+const PERIOD_MS = {
+  '30m':  30 * 60 * 1000,
+  '1h':   60 * 60 * 1000,
+  '4h':   4 * 60 * 60 * 1000,
+  '1d':   24 * 60 * 60 * 1000,
+  '7d':   7 * 24 * 60 * 60 * 1000,
+  '30d':  30 * 24 * 60 * 60 * 1000,
+  '90d':  90 * 24 * 60 * 60 * 1000,
+  '180d': 180 * 24 * 60 * 60 * 1000,
+  '365d': 365 * 24 * 60 * 60 * 1000,
+};
 
 // ============================================================
 // STATE
@@ -428,120 +441,109 @@ function updateFGBadge() {
 }
 
 // ============================================================
-// AUM CHART (Canvas)
+// AUM CHART (Canvas) — period-aware
 // ============================================================
+async function fetchSnapshotsForPeriod(period) {
+  try {
+    const res  = await fetch(`/api/snapshots?period=${period}`);
+    const data = await res.json();
+    if (data.snapshots?.length) state.snapshots = data.snapshots;
+  } catch(e) {}
+  drawChart();
+}
+
 function drawChart() {
   const canvas = document.getElementById('aum-chart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-
-  // Resize canvas to container
   const container = canvas.parentElement;
-  canvas.width    = container.clientWidth - 24;
-  canvas.height   = container.clientHeight - 24;
-
+  canvas.width  = container.clientWidth - 2;
+  canvas.height = container.clientHeight - 2;
   const W = canvas.width;
   const H = canvas.height;
+  if (W < 10 || H < 10) return;
 
-  // Build data points
-  let points = state.snapshots.map(s => ({
-    value: s.total_value,
-    time:  new Date(s.snapshot_at),
-  }));
+  const now    = Date.now();
+  const cutoff = now - (PERIOD_MS[activePeriod] || PERIOD_MS['1d']);
 
-  // Always include starting point
+  let points = state.snapshots
+    .map(s => ({ value: s.total_value, time: new Date(s.snapshot_at) }))
+    .filter(p => p.time.getTime() >= cutoff)
+    .sort((a, b) => a.time - b.time);
+
   if (points.length === 0) {
     points = [
-      { value: STARTING_BALANCE, time: new Date(Date.now() - 86400000) },
+      { value: STARTING_BALANCE, time: new Date(cutoff) },
       { value: state.portfolio?.totalValue ?? STARTING_BALANCE, time: new Date() },
     ];
   }
+  if (state.portfolio?.totalValue) {
+    points.push({ value: state.portfolio.totalValue, time: new Date() });
+  }
 
-  const values  = points.map(p => p.value);
-  const minVal  = Math.min(...values) * 0.998;
-  const maxVal  = Math.max(...values) * 1.002;
-  const range   = maxVal - minVal || 1;
-
-  const padL = 55, padR = 10, padT = 10, padB = 25;
+  const values = points.map(p => p.value);
+  const minVal = Math.min(...values) * 0.9995;
+  const maxVal = Math.max(...values) * 1.0005;
+  const range  = maxVal - minVal || 1;
+  const padL = 65, padR = 12, padT = 12, padB = 28;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
   ctx.clearRect(0, 0, W, H);
 
-  // Background grid
-  ctx.strokeStyle = '#1e2d3d';
-  ctx.lineWidth   = 0.5;
-  const gridLines = 4;
-  for (let i = 0; i <= gridLines; i++) {
-    const y = padT + (plotH / gridLines) * i;
-    ctx.beginPath();
-    ctx.moveTo(padL, y);
-    ctx.lineTo(W - padR, y);
-    ctx.stroke();
-
-    // Y labels
-    const val = maxVal - (range / gridLines) * i;
-    ctx.fillStyle = '#374151';
-    ctx.font      = '9px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(`$${(val / 1000).toFixed(1)}k`, padL - 4, y + 3);
+  // Grid + Y labels
+  for (let i = 0; i <= 5; i++) {
+    const y   = padT + (plotH / 5) * i;
+    const val = maxVal - (range / 5) * i;
+    ctx.strokeStyle = '#1a2332'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    ctx.fillStyle = '#4b5563'; ctx.font = '9px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(`$${val.toFixed(0)}`, padL - 4, y + 3);
   }
 
   // X labels
-  const labelStep = Math.max(1, Math.floor(points.length / 5));
-  ctx.fillStyle = '#374151';
-  ctx.font      = '9px monospace';
-  ctx.textAlign = 'center';
+  function fmtTime(d) {
+    if (['30m','1h','4h','1d'].includes(activePeriod))
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  const step = Math.max(1, Math.floor(points.length / 6));
+  ctx.fillStyle = '#4b5563'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
   points.forEach((p, i) => {
-    if (i % labelStep !== 0 && i !== points.length - 1) return;
+    if (i % step !== 0 && i !== points.length - 1) return;
     const x = padL + (i / (points.length - 1 || 1)) * plotW;
-    const label = p.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    ctx.fillText(label, x, H - 5);
+    ctx.fillText(fmtTime(p.time), x, H - 6);
   });
 
   if (points.length < 2) return;
 
-  // Line gradient
-  const isProfit = values[values.length - 1] >= values[0];
+  const isProfit  = values[values.length - 1] >= values[0];
+  const lineColor = isProfit ? '#00ff88' : '#ff4444';
+  const toX = i => padL + (i / (points.length - 1)) * plotW;
+  const toY = v => padT + plotH - ((v - minVal) / range) * plotH;
+
+  // Gradient fill
   const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-  grad.addColorStop(0, isProfit ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)');
+  grad.addColorStop(0, isProfit ? 'rgba(0,255,136,0.15)' : 'rgba(255,68,68,0.15)');
   grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-  // Fill area
   ctx.beginPath();
-  points.forEach((p, i) => {
-    const x = padL + (i / (points.length - 1)) * plotW;
-    const y = padT + plotH - ((p.value - minVal) / range) * plotH;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  const lastX = padL + plotW;
-  const lastY = padT + plotH;
-  ctx.lineTo(lastX, lastY);
-  ctx.lineTo(padL, lastY);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(toX(i), toY(p.value)) : ctx.lineTo(toX(i), toY(p.value)));
+  ctx.lineTo(toX(points.length - 1), padT + plotH);
+  ctx.lineTo(toX(0), padT + plotH);
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
 
-  // Main line
+  // Line
   ctx.beginPath();
-  ctx.strokeStyle = isProfit ? '#4ade80' : '#f87171';
-  ctx.lineWidth   = 2;
-  ctx.lineJoin    = 'round';
-  points.forEach((p, i) => {
-    const x = padL + (i / (points.length - 1)) * plotW;
-    const y = padT + plotH - ((p.value - minVal) / range) * plotH;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.stroke();
+  ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5;
+  ctx.shadowColor = lineColor; ctx.shadowBlur = 6;
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(toX(i), toY(p.value)) : ctx.lineTo(toX(i), toY(p.value)));
+  ctx.stroke(); ctx.shadowBlur = 0;
 
-  // Last point dot
-  const lp  = points[points.length - 1];
-  const lpx = padL + plotW;
-  const lpy = padT + plotH - ((lp.value - minVal) / range) * plotH;
+  // End dot
+  const lastI = points.length - 1;
   ctx.beginPath();
-  ctx.arc(lpx, lpy, 4, 0, Math.PI * 2);
-  ctx.fillStyle = isProfit ? '#4ade80' : '#f87171';
-  ctx.fill();
+  ctx.arc(toX(lastI), toY(values[lastI]), 3, 0, Math.PI * 2);
+  ctx.fillStyle = lineColor; ctx.fill();
 }
 
 // ============================================================
@@ -646,4 +648,13 @@ window.addEventListener('load', () => {
   window.addEventListener('resize', () => drawChart());
   fetchXFeed();
   setInterval(fetchXFeed, 90000);
+
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activePeriod = btn.dataset.period;
+      fetchSnapshotsForPeriod(activePeriod);
+    });
+  });
 });

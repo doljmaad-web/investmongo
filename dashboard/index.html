@@ -50,13 +50,25 @@
       </div>
     </div>
 
-    <!-- CENTER: AUM Chart + Gemini -->
+    <!-- CENTER: AUM Chart + Stats -->
     <div class="panel" id="panel-center">
       <div class="panel-header">
         <h3>Portfolio Performance</h3>
         <div class="header-right">
           <span style="font-size:10px;color:var(--text-muted);">AUM Growth</span>
         </div>
+      </div>
+
+      <div id="chart-periods">
+        <button class="period-btn" data-period="30m">30M</button>
+        <button class="period-btn" data-period="1h">1H</button>
+        <button class="period-btn" data-period="4h">4H</button>
+        <button class="period-btn active" data-period="1d">1D</button>
+        <button class="period-btn" data-period="7d">7D</button>
+        <button class="period-btn" data-period="30d">30D</button>
+        <button class="period-btn" data-period="90d">90D</button>
+        <button class="period-btn" data-period="180d">180D</button>
+        <button class="period-btn" data-period="365d">365D</button>
       </div>
 
       <div id="chart-container">
@@ -83,19 +95,6 @@
           <div class="label">Open Positions</div>
           <div class="value" id="metric-open">0</div>
           <div class="sub" id="metric-exposure">$0 exposure</div>
-        </div>
-      </div>
-
-      <div id="gemini-box">
-        <div class="gemini-header">
-          <div class="gemini-icon">G</div>
-          <h4>Gemini Reasoning</h4>
-        </div>
-        <div id="gemini-reasoning">Waiting for next signal validation...</div>
-        <div class="gemini-footer" id="gemini-footer" style="display:none">
-          <span id="gemini-verdict-badge" class="verdict-badge"></span>
-          <span id="gemini-conf" style="font-size:11px;color:var(--purple);"></span>
-          <span class="gemini-sl-tp">SL: <span id="gemini-sl">--</span> &nbsp;TP: <span id="gemini-tp">--</span> &nbsp;R:R <span id="gemini-rr">--</span></span>
         </div>
       </div>
     </div>
@@ -140,43 +139,58 @@
 
   </div><!-- /#main -->
 
-  <!-- ============ BOTTOM BAR ============ -->
-  <div id="bottom">
+  <!-- ============ BOTTOM 3-COLUMN SECTION ============ -->
+  <div id="bottom-section">
 
     <!-- Left: Live Intelligence Feed -->
-    <div id="bottom-left">
+    <div class="bottom-panel" id="news-panel">
       <div class="panel-header">
-        <h3>Live Intelligence Feed</h3>
-        <div class="header-right">
-          <div class="source-pills">
-            <div class="source-pill active" id="pill-ct">COINTELEGRAPH</div>
-            <div class="source-pill active" id="pill-cd">COINDESK</div>
-            <div class="source-pill active" id="pill-rt">REUTERS</div>
-            <div class="source-pill" id="pill-wh">WHALE</div>
-            <div class="source-pill" id="pill-rd">REDDIT</div>
-            <div class="source-pill" id="pill-dl">DEFILLAMA</div>
-            <div class="source-pill" id="pill-gn">GLASSNODE</div>
-            <div class="source-pill" id="pill-mm">MMCRYPTO</div>
-          </div>
-          <span id="news-counter" style="margin-left:8px;">0 items</span>
+        <span>LIVE INTELLIGENCE FEED</span>
+        <div class="source-pills">
+          <div class="source-pill active" id="pill-ct">CT</div>
+          <div class="source-pill active" id="pill-cd">CD</div>
+          <div class="source-pill active" id="pill-rt">RT</div>
+          <div class="source-pill" id="pill-wh">WHALE</div>
+          <div class="source-pill" id="pill-rd">REDDIT</div>
+          <div class="source-pill" id="pill-dl">DEFI</div>
+          <div class="source-pill" id="pill-gn">GLASS</div>
+          <div class="source-pill" id="pill-mm">MM</div>
+          <span id="news-counter" style="margin-left:4px;font-size:9px;color:var(--text-dim);">0</span>
         </div>
       </div>
-      <div id="news-feed"></div>
+      <div id="news-feed" class="feed-scroll"></div>
+    </div>
+
+    <!-- Middle: Gemini Reasoning -->
+    <div class="bottom-panel" id="gemini-panel">
+      <div class="panel-header">
+        <span style="display:flex;align-items:center;gap:6px;">
+          <span class="gemini-icon">G</span>GEMINI REASONING
+        </span>
+      </div>
+      <div class="feed-scroll" style="padding:8px 10px;">
+        <div id="gemini-reasoning" style="font-size:11px;color:#c4b5fd;line-height:1.6;">Waiting for next signal...</div>
+        <div class="gemini-footer" id="gemini-footer" style="display:none;margin-top:8px;">
+          <span id="gemini-verdict-badge" class="verdict-badge"></span>
+          <span id="gemini-conf" style="font-size:11px;color:var(--purple);"></span>
+          <span class="gemini-sl-tp">SL: <span id="gemini-sl">--</span> &nbsp;TP: <span id="gemini-tp">--</span> &nbsp;R:R <span id="gemini-rr">--</span></span>
+        </div>
+      </div>
     </div>
 
     <!-- Right: X Intelligence -->
-    <div id="bottom-right">
+    <div class="bottom-panel" id="x-panel">
       <div class="panel-header">
-        <h3>X Intelligence</h3>
-        <div class="header-right">
+        <span>X INTELLIGENCE</span>
+        <span style="display:flex;align-items:center;gap:4px;">
           <div class="live-dot"></div>
           <span style="font-size:10px;color:var(--blue);">LIVE</span>
-        </div>
+        </span>
       </div>
-      <div id="x-feed"><div class="x-empty">Loading X feed...</div></div>
+      <div id="x-feed" class="feed-scroll"><div class="x-empty">Loading X feed...</div></div>
     </div>
 
-  </div>
+  </div><!-- /#bottom-section -->
 
 </div><!-- /#app -->
 

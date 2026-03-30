@@ -110,10 +110,12 @@ app.get('/api/news', async (req, res) => {
 });
 
 app.get('/api/snapshots', (req, res) => {
-  const snaps = db.prepare(
-    'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
-  ).all().reverse();
-  res.json(snaps);
+  const period = req.query.period || '1d';
+  const limits = { '30m': 40, '1h': 60, '4h': 100, '1d': 288, '7d': 500, '30d': 500, '90d': 500, '180d': 500, '365d': 500 };
+  const rows = db.prepare(
+    'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT ?'
+  ).all(limits[period] || 288).reverse();
+  res.json({ snapshots: rows });
 });
 
 app.get('/api/health', (req, res) => {
