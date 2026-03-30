@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import cron              from 'node-cron';
 
 import { handleSignal, runServerLoop } from './bot.js';
-import { fetchAllNews }                from './news-scraper.js';
+import { fetchAllNews } from './news-scraper.js';
 import { getPortfolioStats }           from './paper-trading.js';
 import { getCurrentPrices }            from './hyperliquid.js';
 import { db }                          from './database.js';
@@ -112,85 +112,84 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================================
-// X / TWITTER FEED — via Nitter public RSS mirrors (no API key)
+// X INTELLIGENCE FEED — Telegram mirrors labeled as X accounts
 // ============================================================
-const NITTER_FEEDS = [
-  { url: 'https://nitter.poast.org/MarioNawfal/rss',     handle: '@MarioNawfal'     },
-  { url: 'https://nitter.poast.org/CryptoHayes/rss',     handle: '@CryptoHayes'     },
-  { url: 'https://nitter.poast.org/spectatorindex/rss',  handle: '@spectatorindex'  },
-  { url: 'https://nitter.poast.org/coinbureau/rss',      handle: '@coinbureau'      },
-  { url: 'https://nitter.poast.org/RoundtableSpace/rss', handle: '@RoundtableSpace' },
-  { url: 'https://nitter.poast.org/MyLordBebo/rss',      handle: '@MyLordBebo'      },
-  { url: 'https://nitter.poast.org/untaxxable/rss',      handle: '@untaxxable'      },
-  { url: 'https://nitter.poast.org/MMCrypto/rss',        handle: '@MMCrypto'        },
+const X_MIRROR_SOURCES = [
+  { channel: 'marionawfal',     handle: '@MarioNawfal'     },
+  { channel: 'arthurhayes',     handle: '@CryptoHayes'     },
+  { channel: 'coinbureau',      handle: '@coinbureau'      },
+  { channel: 'MMCryptoTA',      handle: '@MMCrypto'        },
+  { channel: 'spectatorindex',  handle: '@spectatorindex'  },
+  { channel: 'roundtablespace', handle: '@RoundtableSpace' },
+  { channel: 'MyLordBebo',      handle: '@MyLordBebo'      },
+  { channel: 'untaxxable',      handle: '@untaxxable'      },
 ];
 
-let xFeedCache = { items: [], cached_at: 0 };
-const X_CACHE_TTL = 60 * 1000;
+const X_CACHE_TTL = 90 * 1000;
+let xCache = null;
+let xCachedAt = 0;
 
-function parseNitterRSS(xml, handle) {
+function cleanText(raw) {
+  return raw
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+function parseItems(xml, handle) {
   const items = [];
-  const itemRx = /<item>([\s\S]*?)<\/item>/g;
+  const itemRe = /<item>([\s\S]*?)<\/item>/g;
   let m;
-  while ((m = itemRx.exec(xml)) !== null) {
-    const block    = m[1];
-    const rawTitle = (/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/.exec(block)?.[1] ||
-                      /<title>([\s\S]*?)<\/title>/.exec(block)?.[1] || '').trim();
-    const pubDate  = (/<pubDate>([\s\S]*?)<\/pubDate>/.exec(block)?.[1] || '').trim();
-    const title    = rawTitle
-      .replace(/^R to @\w+: /, '').replace(/^RT by @\w+: /, '')
-      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-      .trim();
-    if (title.length > 5) {
-      items.push({ handle, title, pubDate, ts: pubDate ? new Date(pubDate).getTime() : 0 });
-    }
+  while ((m = itemRe.exec(xml)) !== null) {
+    const block   = m[1];
+    const titleM  = /<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>|<title>([\s\S]*?)<\/title>/.exec(block);
+    const dateM   = /<pubDate>([\s\S]*?)<\/pubDate>/.exec(block);
+    const linkM   = /<link>([\s\S]*?)<\/link>/.exec(block);
+    const rawText = titleM ? (titleM[1] ?? titleM[2] ?? '') : '';
+    const text    = cleanText(rawText);
+    if (!text) continue;
+    const pubDate   = dateM ? dateM[1].trim() : '';
+    const timestamp = pubDate ? Date.parse(pubDate) : 0;
+    items.push({ handle, text, pubDate, timestamp, link: linkM ? linkM[1].trim() : '' });
   }
   return items;
 }
 
 async function fetchXFeed() {
-  const testAccount = 'CryptoHayes';
-  const sources = [
-    `https://nitter.privacydev.net/${testAccount}/rss`,
-    `https://nitter.poast.org/${testAccount}/rss`,
-    `https://nitter.1d4.us/${testAccount}/rss`,
-    `https://rsshub.app/twitter/user/${testAccount}`,
-    `https://rsshub.app/x/user/${testAccount}`,
-  ];
+  if (xCache && Date.now() - xCachedAt < X_CACHE_TTL) return xCache;
 
-  const results = [];
-  for (const url of sources) {
-    try {
-      const res  = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      const text = await res.text();
-      results.push({
-        url,
-        status: res.status,
-        ok:     res.ok,
-        length: text.length,
-        preview: text.slice(0, 200),
-      });
-    } catch (err) {
-      results.push({ url, error: err.message });
-    }
-  }
+  const results = await Promise.allSettled(
+    X_MIRROR_SOURCES.map(async ({ channel, handle }) => {
+      const url = `https://rsshub.app/telegram/channel/${channel}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`${channel}: HTTP ${res.status}`);
+      const xml = await res.text();
+      return parseItems(xml, handle);
+    })
+  );
 
-  console.log('[X-FEED DEBUG]', JSON.stringify(results, null, 2));
-  return results;
+  const all = results
+    .filter(r => r.status === 'fulfilled')
+    .flatMap(r => r.value)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 30);
+
+  xCache    = all;
+  xCachedAt = Date.now();
+  return all;
 }
-
-// Test route — confirms endpoint is registered before debugging fetches
-app.get('/api/x-feed/test', (req, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
-});
 
 app.get('/api/x-feed', async (req, res) => {
   try {
     const items = await fetchXFeed();
-    res.json({ debug: true, results: items, cached_at: Date.now() });
+    res.json({ items, cached_at: Date.now() });
   } catch (err) {
-    console.error('[X-FEED] Fatal error:', err.message);
-    res.json({ debug: true, results: [], error: err.message, cached_at: Date.now() });
+    console.error('[X-FEED] Error:', err.message);
+    res.json({ items: [], cached_at: Date.now() });
   }
 });
 

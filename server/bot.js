@@ -14,13 +14,13 @@ const ASSET = 'BTC';
 // Timeframe-aware deduplication cooldowns
 const recentSignals = new Map();
 const DEDUP_COOLDOWN = {
-  '5m': 15 * 60 * 1000,
-  '1h':  2 * 60 * 60 * 1000,
+  '5m':  5 * 60 * 1000,   // matches cron interval
+  '1h':  60 * 60 * 1000,
   '4h':  4 * 60 * 60 * 1000,
 };
 
-function isDuplicate(asset, action, timeframe) {
-  const key      = `${asset}_${action}_${timeframe}`;
+function isDuplicate(asset, action, timeframe, source) {
+  const key      = `${asset}_${action}_${timeframe}_${source}`;
   const last     = recentSignals.get(key);
   const cooldown = DEDUP_COOLDOWN[timeframe] || DEDUP_COOLDOWN['1h'];
   if (last && Date.now() - last < cooldown) return true;
@@ -85,11 +85,12 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   console.log(`[BOT] handleSignal called: ${signal.signal} ${signal.asset} @ $${signal.price} tf=${signal.timeframe} src=${source}`);
 
-  // Deduplicate
-  const dedupKey = `${signal.asset}_${signal.signal}_${signal.timeframe || '1h'}`;
-  const cooldown = DEDUP_COOLDOWN[signal.timeframe] || DEDUP_COOLDOWN['1h'];
+  // Deduplicate — keyed by asset+signal+timeframe+source so webhook and server-loop don't block each other
+  const tf       = signal.timeframe || '1h';
+  const dedupKey = `${signal.asset}_${signal.signal}_${tf}_${source}`;
+  const cooldown = DEDUP_COOLDOWN[tf] || DEDUP_COOLDOWN['1h'];
   const lastSeen = recentSignals.get(dedupKey);
-  const dedupResult = isDuplicate(signal.asset, signal.signal, signal.timeframe || '1h');
+  const dedupResult = isDuplicate(signal.asset, signal.signal, tf, source);
   console.log(`[BOT] Duplicate check: key=${dedupKey} lastSeen=${lastSeen ? new Date(lastSeen).toISOString() : 'none'} cooldown=${cooldown/1000}s isDuplicate=${dedupResult}`);
   if (dedupResult) {
     console.log(`${tag} Duplicate — skipping`);
