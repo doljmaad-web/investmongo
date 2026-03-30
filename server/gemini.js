@@ -50,7 +50,7 @@ RESPOND ONLY WITH THIS EXACT JSON — no other text, no markdown, no explanation
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
+  model: 'gemini-2.0-flash',
   systemInstruction: SYSTEM_INSTRUCTION,
 });
 
@@ -87,7 +87,7 @@ RECENT NEWS (last 2 hours):
 ${recentNews.slice(0, 8).map(n => `[${n.source}] ${n.title}`).join('\n') || 'No recent news'}
 
 WHALE ALERTS:
-${whaleAlerts.slice(0, 4).map(w => w.title).join('\n') || 'No whale alerts'}
+${whaleAlerts.slice(0, 4).map(w => `[${w.symbol}] ${w.type}: ${w.detail}`).join('\n') || 'No whale alerts'}
 
 Validate this ${signal.signal} signal on ${signal.asset}. Return JSON only.`;
 
