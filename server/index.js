@@ -409,7 +409,7 @@ cron.schedule('*/10 * * * *', async () => {
 cron.schedule('* * * * *', async () => {
   try {
     const { updateOpenTrades } = await import('./paper-trading.js');
-    const prices = await getCurrentPrices(getTradingAssets());
+    const prices = await getCurrentPrices(getTradingAssets().map(r => r.asset));
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     try {

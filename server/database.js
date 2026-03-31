@@ -164,7 +164,7 @@ db.exec(`
     deploy_pct REAL DEFAULT 50
   );
 
-  INSERT OR IGNORE INTO trading_assets (asset, deploy_pct) VALUES ('BTC', 50);
+  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('BTC');
 `);
 
 // Migration: add deploy_pct column if upgrading from the initial schema
