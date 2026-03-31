@@ -66,6 +66,31 @@ const model = genAI.getGenerativeModel({
 });
 
 // ============================================================
+// QUOTA GUARD — daily call budget + advisory debounce
+// ============================================================
+const DAILY_LIMIT = parseInt(process.env.GEMINI_DAILY_LIMIT ?? '15');
+let   callCount   = 0;
+let   resetDate   = new Date().toDateString();
+let   lastAdvisoryAt = 0;
+const ADVISORY_DEBOUNCE_MS = 30 * 60 * 1000; // 30 min between auto advisories
+
+function quotaCheck(label) {
+  const today = new Date().toDateString();
+  if (today !== resetDate) { callCount = 0; resetDate = today; } // new day reset
+  if (callCount >= DAILY_LIMIT) {
+    console.warn(`[GEMINI] Daily budget of ${DAILY_LIMIT} reached — skipping ${label}`);
+    return false;
+  }
+  callCount++;
+  console.log(`[GEMINI] Call #${callCount}/${DAILY_LIMIT} today (${label})`);
+  return true;
+}
+
+export function getGeminiUsage() {
+  return { callCount, dailyLimit: DAILY_LIMIT, resetDate };
+}
+
+// ============================================================
 // LIGHTWEIGHT ADVISORY — called after trade opens, non-blocking
 // One Gemini call per trade, minimal prompt, max 150 tokens out
 // ============================================================
@@ -77,6 +102,17 @@ const advisoryModel = genAI.getGenerativeModel({
 });
 
 export async function getGeminiAdvisory(signal, news, fearGreed) {
+  // Debounce: skip if an advisory ran in the last 30 min
+  const now = Date.now();
+  if (now - lastAdvisoryAt < ADVISORY_DEBOUNCE_MS) {
+    console.log(`[GEMINI] Advisory debounced — last ran ${Math.round((now - lastAdvisoryAt)/60000)}min ago`);
+    return { hold: true, caution: false, reason: 'Advisory skipped (debounce window).' };
+  }
+  if (!quotaCheck('advisory')) {
+    return { hold: true, caution: false, reason: 'Advisory skipped (daily budget reached).' };
+  }
+  lastAdvisoryAt = now;
+
   try {
     const headlines = news.slice(0, 3).map(n => n.title || n).join('\n');
     const prompt =
@@ -117,6 +153,9 @@ const chatModel  = chatGenAI.getGenerativeModel({
 });
 
 export async function chatWithGemini(userMessage, context, history = []) {
+  if (!quotaCheck('chat')) {
+    return { reply: `Daily Gemini budget of ${DAILY_LIMIT} calls reached. Resets tomorrow.`, updatedHistory: history };
+  }
   try {
     const contextBlock =
       `[PORTFOLIO CONTEXT — ${new Date().toISOString()}]\n` +

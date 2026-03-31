@@ -734,6 +734,19 @@ window.addEventListener('load', () => {
 // ============================================================
 // GEMINI CHAT
 // ============================================================
+async function fetchGeminiUsage() {
+  try {
+    const res  = await fetch('/api/gemini-usage');
+    const data = await res.json();
+    const el   = document.getElementById('gemini-usage-counter');
+    if (el) {
+      const left = data.dailyLimit - data.callCount;
+      el.textContent = `${left}/${data.dailyLimit} calls left today`;
+      el.style.color = left <= 3 ? 'var(--red)' : left <= 7 ? 'var(--amber)' : 'var(--text-muted)';
+    }
+  } catch (_) {}
+}
+
 function switchGeminiTab(tab) {
   document.getElementById('gemini-tab-reasoning').style.display = tab === 'reasoning' ? '' : 'none';
   document.getElementById('gemini-tab-chat').style.display      = tab === 'chat'      ? 'flex' : 'none';
@@ -743,6 +756,7 @@ function switchGeminiTab(tab) {
     const msgs = document.getElementById('gemini-chat-messages');
     if (msgs) msgs.scrollTop = msgs.scrollHeight;
     document.getElementById('gemini-chat-input')?.focus();
+    fetchGeminiUsage();
   }
 }
 
@@ -777,7 +791,12 @@ async function sendChatMessage() {
     });
     const data = await res.json();
     if (typingBubble) typingBubble.remove();
-    appendChatBubble(data.reply || data.error || 'No response.', 'gemini');
+    if (res.status === 429) {
+      appendChatBubble('⏳ ' + (data.error || 'Please wait a moment before sending again.'), 'typing');
+    } else {
+      appendChatBubble(data.reply || data.error || 'No response.', 'gemini');
+    }
+    fetchGeminiUsage();
   } catch (err) {
     if (typingBubble) typingBubble.remove();
     appendChatBubble('Connection error. Please try again.', 'gemini');

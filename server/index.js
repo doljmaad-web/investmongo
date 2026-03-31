@@ -26,7 +26,7 @@ process.on('SIGTERM', () => {
   setTimeout(() => process.exit(0), 10000).unref();
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
-import { chatWithGemini } from './gemini.js';
+import { chatWithGemini, getGeminiUsage } from './gemini.js';
 import { getPortfolioStats }           from './paper-trading.js';
 import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
 import { db }                          from './database.js';
@@ -147,12 +147,23 @@ app.get('/api/health', (req, res) => {
 // GEMINI CHAT — conversational assistant with portfolio context
 // ============================================================
 let geminiChatHistory = [];
+let lastChatAt = 0;
+const CHAT_RATE_MS = 5000; // min 5s between chat calls
+
+app.get('/api/gemini-usage', (req, res) => {
+  res.json(getGeminiUsage());
+});
 
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return res.status(400).json({ error: 'message required' });
   }
+  const now = Date.now();
+  if (now - lastChatAt < CHAT_RATE_MS) {
+    return res.status(429).json({ error: `Please wait ${Math.ceil((CHAT_RATE_MS - (now - lastChatAt)) / 1000)}s before sending another message.` });
+  }
+  lastChatAt = now;
   try {
     const stats         = getPortfolioStats();
     const recentSignals = db.prepare('SELECT * FROM signals ORDER BY created_at DESC LIMIT 5').all();
