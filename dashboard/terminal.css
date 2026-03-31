@@ -567,6 +567,7 @@ html, body {
   min-height: 0;
   overflow: hidden;
   background: var(--bg-primary);
+  position: relative;
 }
 
 #spatial-header {
@@ -611,8 +612,12 @@ html, body {
 }
 
 #sp-panel {
-  flex-shrink: 0;
-  background: var(--bg-secondary);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: rgba(17, 20, 24, 0.96);
   border-top: 1px solid var(--border);
   padding: 8px 10px;
   transform: translateY(100%);
