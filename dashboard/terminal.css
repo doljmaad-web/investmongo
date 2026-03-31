@@ -146,14 +146,16 @@ html, body {
 .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ====== SIGNAL CARDS ====== */
+/* ── Minimalistic signal card ── */
 .signal-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-left: 3px solid;
+  border-left: 3px solid var(--text-muted);
   border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 8px;
-  transition: background 0.15s;
+  margin-bottom: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s;
 }
 .signal-card:hover { background: var(--bg-card-hover); }
 .signal-card.confirmed { border-left-color: var(--green); }
@@ -161,41 +163,54 @@ html, body {
 .signal-card.reduced   { border-left-color: var(--amber); }
 .signal-card.pending   { border-left-color: var(--text-muted); }
 
-.signal-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 6px;
+.sc-mini {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
 }
 .signal-asset {
-  font-size: 13px; font-weight: bold; color: #fff;
+  font-size: 12px; font-weight: bold; color: #fff; min-width: 36px;
 }
 .signal-dir {
-  font-size: 11px; font-weight: bold; padding: 2px 8px;
-  border-radius: 3px;
+  font-size: 10px; font-weight: bold; padding: 1px 6px;
+  border-radius: 3px; flex-shrink: 0;
 }
 .signal-dir.buy  { background: var(--green-mid); color: var(--green); }
 .signal-dir.sell { background: var(--red-mid);   color: var(--red);   }
-
-.signal-meta {
-  display: flex; gap: 8px; flex-wrap: wrap;
-  margin-bottom: 6px;
+.sc-type {
+  font-size: 10px; color: var(--text-muted); flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.signal-meta span {
+.sc-time { font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+
+/* ── Signal popup ── */
+.signal-popup {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 200;
+  width: 260px;
+  background: #141920; border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+.signal-popup.flip-up { top: auto; bottom: calc(100% + 4px); }
+.sp-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.sp-asset { font-size: 13px; font-weight: bold; color: #fff; flex: 1; }
+.sp-pills {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.sp-pills span {
   font-size: 10px; color: var(--text-muted);
-  background: var(--bg-secondary);
-  padding: 1px 5px; border-radius: 2px;
+  background: var(--bg-secondary); padding: 1px 5px; border-radius: 2px;
 }
-
-.conf-bar-wrap {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+.sp-conf-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
 }
-.conf-bar-wrap label { font-size: 10px; color: var(--text-muted); width: 24px; }
+.sp-conf-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
 .conf-bar {
   flex: 1; height: 5px; background: var(--border);
   border-radius: 3px; overflow: hidden;
 }
 .conf-bar-fill {
-  height: 100%; border-radius: 3px;
-  transition: width 0.4s;
+  height: 100%; border-radius: 3px; transition: width 0.4s;
 }
 .conf-bar-fill.high   { background: var(--green); }
 .conf-bar-fill.medium { background: var(--amber); }
@@ -209,11 +224,15 @@ html, body {
 .verdict-badge.confirmed { background: var(--green-dark); color: var(--green); border: 1px solid var(--green-mid); }
 .verdict-badge.vetoed    { background: var(--red-dark);   color: var(--red);   border: 1px solid var(--red-mid);   }
 .verdict-badge.reduced   { background: var(--amber-dark); color: var(--amber); border: 1px solid #78350f; }
+.verdict-badge.pending   { background: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border); }
 
-.signal-news {
-  margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+.sp-reasoning {
+  font-size: 10px; color: var(--text-muted); font-style: italic;
+  line-height: 1.4; margin-bottom: 8px;
+  border-top: 1px solid var(--border); padding-top: 6px;
 }
-.signal-news p {
+.sp-news { border-top: 1px solid var(--border); padding-top: 6px; }
+.sp-news p {
   font-size: 10px; color: var(--text-muted); font-style: italic;
   line-height: 1.4; margin-bottom: 2px;
 }

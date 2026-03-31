@@ -225,47 +225,103 @@ function renderSignals() {
   }
 
   feed.innerHTML = signals.map(s => buildSignalCard(s)).join('');
+  attachSignalPopups();
 }
 
-function buildSignalCard(s) {
-  const verdict     = (s.gemini_verdict || 'PENDING').toLowerCase();
-  const confidence  = s.gemini_confidence || 0;
-  const confClass   = confidence >= 70 ? 'high' : confidence >= 50 ? 'medium' : 'low';
-  const dirClass    = s.action === 'BUY' ? 'buy' : 'sell';
-  const time        = formatTime(s.created_at);
+// ── Signal popup ─────────────────────────────────────────────
+let activeSignalPopup = null;
+
+function attachSignalPopups() {
+  document.querySelectorAll('.signal-card[data-signal]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (activeSignalPopup && activeSignalPopup._card === card) {
+        closeSignalPopup(); return;
+      }
+      closeSignalPopup();
+      openSignalPopup(card);
+    });
+  });
+  document.addEventListener('click', closeSignalPopup, { once: false, capture: false });
+}
+
+function openSignalPopup(card) {
+  let d;
+  try { d = JSON.parse(card.getAttribute('data-signal')); } catch { return; }
 
   let newsHtml = '';
   try {
-    const newsArr = JSON.parse(s.validated_news || '[]');
-    if (newsArr.length > 0) {
-      newsHtml = `<div class="signal-news">${newsArr.slice(0,2).map(n =>
-        `<p>• ${escHtml(n)}</p>`
-      ).join('')}</div>`;
-    }
+    const arr = JSON.parse(d.validated_news || '[]');
+    if (arr.length) newsHtml = `<div class="sp-news">${arr.slice(0,3).map(n => `<p>• ${escHtml(n)}</p>`).join('')}</div>`;
   } catch {}
 
+  const reasonHtml = d.gemini_reasoning
+    ? `<div class="sp-reasoning">${escHtml(d.gemini_reasoning)}</div>` : '';
+
+  const pop = document.createElement('div');
+  pop.className = 'signal-popup';
+  pop.innerHTML = `
+    <div class="sp-header">
+      <span class="sp-asset">${escHtml(d.asset)}</span>
+      <span class="signal-dir ${d.action === 'BUY' ? 'buy' : 'sell'}">${d.action}</span>
+      <span class="verdict-badge ${d.verdict}">${(d.gemini_verdict || 'PENDING')}</span>
+    </div>
+    <div class="sp-pills">
+      ${d.signal_type ? `<span>${escHtml(d.signal_type)}</span>` : ''}
+      ${d.rsi        ? `<span>RSI ${d.rsi}</span>` : ''}
+      ${d.timeframe  ? `<span>${d.timeframe}</span>` : ''}
+      ${d.pattern    ? `<span>${escHtml(d.pattern)}</span>` : ''}
+      <span>${d.time}</span>
+    </div>
+    <div class="sp-conf-row">
+      <span class="sp-conf-label">AI Confidence</span>
+      <div class="conf-bar"><div class="conf-bar-fill ${d.confClass}" style="width:${d.confidence}%"></div></div>
+      <span class="conf-pct">${d.confidence}%</span>
+    </div>
+    ${reasonHtml}
+    ${newsHtml}`;
+
+  pop.addEventListener('click', e => e.stopPropagation());
+  pop._card = card;
+  card.appendChild(pop);
+  activeSignalPopup = pop;
+
+  // flip up if near bottom
+  const rect = card.getBoundingClientRect();
+  if (window.innerHeight - rect.bottom < 160) pop.classList.add('flip-up');
+}
+
+function closeSignalPopup() {
+  if (activeSignalPopup) {
+    activeSignalPopup.remove();
+    activeSignalPopup = null;
+  }
+}
+
+function buildSignalCard(s) {
+  const verdict    = (s.gemini_verdict || 'PENDING').toLowerCase();
+  const confidence = s.gemini_confidence || 0;
+  const confClass  = confidence >= 70 ? 'high' : confidence >= 50 ? 'medium' : 'low';
+  const dirClass   = s.action === 'BUY' ? 'buy' : 'sell';
+  const time       = formatTime(s.created_at);
+
+  // encode popup data as JSON in data attribute
+  const popupData = escHtml(JSON.stringify({
+    asset: s.asset, action: s.action, signal_type: s.signal_type,
+    rsi: s.rsi, timeframe: s.timeframe, pattern: s.pattern,
+    confidence, confClass, verdict, gemini_verdict: s.gemini_verdict,
+    gemini_reasoning: s.gemini_reasoning || '',
+    validated_news: s.validated_news || '[]', time
+  }));
+
   return `
-    <div class="signal-card ${verdict}">
-      <div class="signal-header">
+    <div class="signal-card ${verdict}" data-signal='${popupData}'>
+      <div class="sc-mini">
         <span class="signal-asset">${escHtml(s.asset || '--')}</span>
         <span class="signal-dir ${dirClass}">${s.action || '--'}</span>
+        <span class="sc-type">${escHtml(s.signal_type || '--')}</span>
+        <span class="sc-time">${time}</span>
       </div>
-      <div class="signal-meta">
-        <span>${escHtml(s.signal_type || '--')}</span>
-        ${s.rsi ? `<span>RSI ${s.rsi}</span>` : ''}
-        ${s.timeframe ? `<span>${s.timeframe}</span>` : ''}
-        ${s.pattern ? `<span>${escHtml(s.pattern)}</span>` : ''}
-        <span>${time}</span>
-      </div>
-      <div class="conf-bar-wrap">
-        <label>AI</label>
-        <div class="conf-bar">
-          <div class="conf-bar-fill ${confClass}" style="width:${confidence}%"></div>
-        </div>
-        <span class="conf-pct">${confidence}%</span>
-      </div>
-      <span class="verdict-badge ${verdict}">${(s.gemini_verdict || 'PENDING')}</span>
-      ${newsHtml}
     </div>`;
 }
 
