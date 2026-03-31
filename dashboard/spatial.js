@@ -28,6 +28,8 @@
   let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
   let sma50arr       = []; // SMA50 value per candle index (null if insufficient history)
   let sma200arr      = []; // SMA200 value per candle index
+  let assetDropdownOpen = false;
+  let dropdownEl     = null;
 
   // ── View (zoom / pan) ──────────────────────────────────────
   let viewStart = 0;   // float index into candles[]
@@ -39,7 +41,7 @@
   let mouseX = -1, mouseY = -1;
 
   // ── Layout ─────────────────────────────────────────────────
-  const PAD = { top: 58, bot: 24, left: 10, right: 88 };
+  const PAD = { top: 34, bot: 24, left: 10, right: 88 };
 
   // ── Palette ────────────────────────────────────────────────
   const C = {
@@ -387,7 +389,7 @@
       const y = priceY(p);
       ctx.strokeStyle = rgba(C.border,.7);
       ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
-      ctx.fillStyle = rgba(C.white,.88); ctx.font='10px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+      ctx.fillStyle = rgba(C.white,.95); ctx.font='bold 11px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
       ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, y+3.5);
     }
     ctx.setLineDash([]);
@@ -396,7 +398,7 @@
     const span = viewEnd - viewStart;
     const s = Math.max(0,Math.floor(viewStart));
     const e = Math.min(candles.length,Math.ceil(viewEnd));
-    ctx.fillStyle=rgba(C.muted,.45); ctx.font='8px Courier New'; ctx.textAlign='center';
+    ctx.fillStyle=rgba(C.white,.72); ctx.font='bold 10px "Courier New",monospace'; ctx.textAlign='center';
     const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const isIntraday = activeInterval === '5m' || activeInterval === '1h' || activeInterval === '4h';
     if (isIntraday) {
@@ -455,7 +457,7 @@
       const bull= c.close>=c.open;
       const x   = candleX(gi);
       const h   = (c.volume/maxV)*maxH;
-      ctx.fillStyle=rgba(bull?C.green:C.red,.06);
+      ctx.fillStyle=rgba(bull?C.green:C.red,.18);
       ctx.fillRect(x-bw/2, base-h, bw, h);
     }
   }
@@ -612,85 +614,123 @@
     }
   }
 
+  // ── Asset dropdown (HTML overlay) ──────────────────────────
+  function createDropdown() {
+    const el = document.createElement('div');
+    el.id = 'asset-dropdown';
+    el.style.cssText = [
+      'position:absolute','z-index:200','background:#111418',
+      'border:1px solid #1f2a35','border-radius:6px','padding:6px',
+      'display:none','grid-template-columns:repeat(5,1fr)','gap:4px',
+      'box-shadow:0 8px 30px rgba(0,0,0,.85)','min-width:280px'
+    ].join(';');
+    ASSETS.forEach(coin => {
+      const btn = document.createElement('button');
+      btn.textContent = coin;
+      btn.style.cssText = [
+        'border:none','padding:6px 4px','border-radius:3px','cursor:pointer',
+        'font:bold 11px "Courier New",monospace','width:100%','text-align:center',
+        'transition:background .15s'
+      ].join(';');
+      const updateStyle = () => {
+        const active = coin === activeCoin;
+        btn.style.background = active ? '#e8a020' : '#1a2530';
+        btn.style.color      = active ? '#000' : '#d8dfe8';
+      };
+      updateStyle();
+      btn.addEventListener('mouseover', () => { if (coin !== activeCoin) btn.style.background = '#2a3a4a'; });
+      btn.addEventListener('mouseout',  updateStyle);
+      btn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        if (coin !== activeCoin) {
+          activeCoin = coin; candles = []; precisionDots = [];
+          sma50arr = []; sma200arr = [];
+          loadCandles();
+        }
+        closeDropdown();
+      });
+      el.appendChild(btn);
+    });
+    canvas.parentElement.style.position = 'relative';
+    canvas.parentElement.appendChild(el);
+    dropdownEl = el;
+    document.addEventListener('click', ev => {
+      if (assetDropdownOpen && !el.contains(ev.target)) closeDropdown();
+    });
+  }
+
+  function openDropdown() {
+    if (!dropdownEl) return;
+    // refresh active state on all buttons
+    Array.from(dropdownEl.children).forEach((btn, i) => {
+      const active = ASSETS[i] === activeCoin;
+      btn.style.background = active ? '#e8a020' : '#1a2530';
+      btn.style.color      = active ? '#000' : '#d8dfe8';
+    });
+    // position below the trigger
+    const trigW = 88;
+    const trigX = W / 2 - trigW / 2;
+    dropdownEl.style.left = trigX + 'px';
+    dropdownEl.style.top  = (PAD.top + 4) + 'px';
+    dropdownEl.style.display = 'grid';
+    assetDropdownOpen = true;
+  }
+
+  function closeDropdown() {
+    if (dropdownEl) dropdownEl.style.display = 'none';
+    assetDropdownOpen = false;
+  }
+
   // ── Draw: header bar ───────────────────────────────────────
   function drawHeader() {
-    // background
+    // background + bottom border
     ctx.fillStyle = rgba(C.bg, .96); ctx.fillRect(0, 0, W, PAD.top);
-    // separator between row1 and row2
-    ctx.strokeStyle = rgba(C.border, .6); ctx.lineWidth = .5; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(W, 30); ctx.stroke();
-    // bottom border
-    ctx.strokeStyle = rgba(C.border, .8);
+    ctx.strokeStyle = rgba(C.border, .8); ctx.lineWidth = .5; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(0, PAD.top); ctx.lineTo(W, PAD.top); ctx.stroke();
 
-    // ── ROW 1: interval buttons + candle count + plan info ──
+    // ── Interval buttons (left) ──
     const btnLabels = ['5m','1h','4h','1D','1W'];
-    const btnW=28, btnH=16, btnGap=4;
+    const btnW=32, btnH=20, btnGap=4;
     let bx = PAD.left + 4;
     btnLabels.forEach(lbl => {
       const isActive = lbl === activeInterval;
       ctx.fillStyle = isActive ? C.amber : rgba(C.border, 1);
-      rr(ctx, bx, 7, btnW, btnH, 2); ctx.fill();
-      if (isActive) { ctx.strokeStyle=rgba(C.amber,.5); ctx.lineWidth=.5; rr(ctx,bx,7,btnW,btnH,2); ctx.stroke(); }
-      ctx.fillStyle = isActive ? '#000' : rgba(C.muted, .8);
-      ctx.font = isActive ? 'bold 8px Courier New' : '8px Courier New';
+      rr(ctx, bx, 6, btnW, btnH, 3); ctx.fill();
+      if (isActive) { ctx.strokeStyle=rgba(C.amber,.6); ctx.lineWidth=.6; rr(ctx,bx,6,btnW,btnH,3); ctx.stroke(); }
+      ctx.fillStyle = isActive ? '#000' : rgba(C.white, .88);
+      ctx.font = isActive ? 'bold 10px Courier New' : '10px Courier New';
       ctx.textAlign = 'center';
-      ctx.fillText(lbl, bx + btnW/2, 18);
+      ctx.fillText(lbl, bx + btnW/2, 20);
       bx += btnW + btnGap;
     });
 
-    // candle count (center row 1)
-    const vc = Math.round(viewEnd - viewStart);
-    ctx.fillStyle = rgba(C.muted, .3); ctx.font = '8px Courier New'; ctx.textAlign = 'center';
-    ctx.fillText(`${vc} bars · ${activeCoin}`, W/2, 19);
+    // ── Asset dropdown trigger (center) ──
+    const trigW = 88, trigH = 20;
+    const trigX = W / 2 - trigW / 2;
+    ctx.fillStyle = rgba(C.border, 1);
+    rr(ctx, trigX, 6, trigW, trigH, 3); ctx.fill();
+    ctx.strokeStyle = rgba(C.amber, .5); ctx.lineWidth = .6;
+    rr(ctx, trigX, 6, trigW, trigH, 3); ctx.stroke();
+    ctx.fillStyle = rgba(C.white, .98);
+    ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(activeCoin + '  ▾', W / 2, 21);
 
-    // plan badge / waiting (right row 1)
+    // ── Plan badge / waiting (right) ──
     if (plan) {
       const dir=plan.direction; const dc=dir==='LONG'?C.green:C.red; const db=dir==='LONG'?'#052e16':'#450a0a';
-      ctx.fillStyle=db; rr(ctx,W-PAD.right-88,7,36,16,2); ctx.fill();
-      ctx.strokeStyle=dc; ctx.lineWidth=.5; rr(ctx,W-PAD.right-88,7,36,16,2); ctx.stroke();
-      ctx.fillStyle=dc; ctx.font='bold 8px Courier New'; ctx.textAlign='center';
-      ctx.fillText(dir, W-PAD.right-70, 18);
+      ctx.fillStyle=db; rr(ctx,W-PAD.right-88,6,36,20,3); ctx.fill();
+      ctx.strokeStyle=dc; ctx.lineWidth=.6; rr(ctx,W-PAD.right-88,6,36,20,3); ctx.stroke();
+      ctx.fillStyle=dc; ctx.font='bold 10px Courier New'; ctx.textAlign='center';
+      ctx.fillText(dir, W-PAD.right-70, 20);
       const conv=Math.min(1,(plan.conviction||5)/10);
       const cc=conv>.7?C.green:conv>.4?C.amber:C.red;
       const barX=W-PAD.right-48;
-      ctx.fillStyle=C.border; rr(ctx,barX,11,44,5,2); ctx.fill();
-      ctx.fillStyle=cc;       rr(ctx,barX,11,44*conv,5,2); ctx.fill();
+      ctx.fillStyle=C.border; rr(ctx,barX,13,44,6,2); ctx.fill();
+      ctx.fillStyle=cc;       rr(ctx,barX,13,44*conv,6,2); ctx.fill();
     } else {
-      ctx.fillStyle=rgba(C.muted,.22); ctx.font='8px Courier New'; ctx.textAlign='right';
-      ctx.fillText('no signal', W-PAD.right-4, 19);
+      ctx.fillStyle=rgba(C.muted,.35); ctx.font='10px Courier New'; ctx.textAlign='right';
+      ctx.fillText('no signal', W-PAD.right-4, 20);
     }
-
-    // ── ROW 2: asset selector buttons ───────────────────────
-    const n      = ASSETS.length;
-    const aGap   = 3;
-    const totalW = W - PAD.left - PAD.right - 4;
-    const aW     = Math.floor((totalW - aGap*(n-1)) / n);
-    const aH     = 16;
-    const aY     = 33;
-    let ax = PAD.left + 4;
-
-    ASSETS.forEach(coin => {
-      const isActive = coin === activeCoin;
-      if (isActive) {
-        ctx.fillStyle = C.amber;
-      } else {
-        ctx.fillStyle = rgba(C.border, 1);
-      }
-      rr(ctx, ax, aY, aW, aH, 2); ctx.fill();
-
-      // dot indicator if this asset has a recent signal
-      const lastDot = precisionDots.length
-        ? precisionDots[precisionDots.length - 1]
-        : null;
-      if (!isActive && coin === activeCoin) { /* skip */ }
-
-      ctx.fillStyle = isActive ? '#000' : rgba(C.muted, .75);
-      ctx.font = isActive ? 'bold 7.5px Courier New' : '7.5px Courier New';
-      ctx.textAlign = 'center';
-      ctx.fillText(coin, ax + aW/2, aY + aH - 4);
-      ax += aW + aGap;
-    });
   }
 
   // ── Sidebar panel ──────────────────────────────────────────
@@ -803,42 +843,28 @@
     canvas.addEventListener('touchend',()=>{ isDragging=false; });
     window.addEventListener('resize', resize);
 
-    // Header clicks — interval buttons (row 1) + asset buttons (row 2)
+    // Header clicks — interval buttons + asset dropdown trigger
     canvas.addEventListener('click', e => {
       if (e.offsetY > PAD.top) return;
 
-      // Row 1 — interval buttons
-      if (e.offsetY <= 30) {
-        const btnLabels=['5m','1h','4h','1D','1W'];
-        const btnW=28, btnH=16, btnGap=4;
-        let bx=PAD.left+4;
-        for (const lbl of btnLabels) {
-          if (e.offsetX>=bx && e.offsetX<=bx+btnW && e.offsetY>=7 && e.offsetY<=7+btnH) {
-            if (lbl !== activeInterval) { activeInterval=lbl; candles=[]; loadCandles(); }
-            return;
-          }
-          bx += btnW + btnGap;
+      // Interval buttons (left)
+      const btnLabels=['5m','1h','4h','1D','1W'];
+      const btnW=32, btnH=20, btnGap=4;
+      let bx=PAD.left+4;
+      for (const lbl of btnLabels) {
+        if (e.offsetX>=bx && e.offsetX<=bx+btnW && e.offsetY>=6 && e.offsetY<=6+btnH) {
+          if (lbl !== activeInterval) { activeInterval=lbl; candles=[]; loadCandles(); }
+          return;
         }
+        bx += btnW + btnGap;
       }
 
-      // Row 2 — asset buttons
-      if (e.offsetY >= 33 && e.offsetY <= 33+16) {
-        const n      = ASSETS.length;
-        const aGap   = 3;
-        const totalW = W - PAD.left - PAD.right - 4;
-        const aW     = Math.floor((totalW - aGap*(n-1)) / n);
-        let ax = PAD.left + 4;
-        for (const coin of ASSETS) {
-          if (e.offsetX >= ax && e.offsetX <= ax + aW) {
-            if (coin !== activeCoin) {
-              activeCoin = coin; candles = []; precisionDots = [];
-              sma50arr = []; sma200arr = [];
-              loadCandles();
-            }
-            return;
-          }
-          ax += aW + aGap;
-        }
+      // Asset dropdown trigger (center)
+      const trigW=88, trigH=20;
+      const trigX=W/2-trigW/2;
+      if (e.offsetX>=trigX && e.offsetX<=trigX+trigW && e.offsetY>=6 && e.offsetY<=6+trigH) {
+        if (assetDropdownOpen) closeDropdown(); else openDropdown();
+        return;
       }
     });
   }
@@ -890,6 +916,7 @@
       resize();
       canvas.style.cursor = 'crosshair';
       attachEvents();
+      createDropdown();
       if (animId) cancelAnimationFrame(animId);
       loop();
       loadCandles();
