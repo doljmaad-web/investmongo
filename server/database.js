@@ -160,11 +160,15 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS trading_assets (
-    asset TEXT PRIMARY KEY
+    asset      TEXT PRIMARY KEY,
+    deploy_pct REAL DEFAULT 50
   );
 
-  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('BTC');
+  INSERT OR IGNORE INTO trading_assets (asset, deploy_pct) VALUES ('BTC', 50);
 `);
+
+// Migration: add deploy_pct column if upgrading from the initial schema
+try { db.exec(`ALTER TABLE trading_assets ADD COLUMN deploy_pct REAL DEFAULT 50`); } catch (_) {}
 
 export { db };
 export default db;

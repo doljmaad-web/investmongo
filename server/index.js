@@ -6,7 +6,7 @@ import path              from 'path';
 import { fileURLToPath } from 'url';
 import cron              from 'node-cron';
 
-import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, removeTradingAsset } from './bot.js';
+import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, setTradingAssetPct, removeTradingAsset } from './bot.js';
 
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
@@ -27,7 +27,7 @@ process.on('SIGTERM', () => {
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
-import { getPortfolioStats }           from './paper-trading.js';
+import { getPortfolioStats, getAvailableCapital } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
 import { db }                          from './database.js';
 
@@ -143,15 +143,30 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
 });
 
+app.get('/api/capital', (req, res) => {
+  const stats     = getPortfolioStats();
+  const available = getAvailableCapital();
+  const deployed  = parseFloat((stats.totalValue - available).toFixed(2));
+  res.json({ totalValue: stats.totalValue, available, deployed });
+});
+
 // ── Trading asset management ────────────────────────────────
+// GET  /api/trading/assets            → { assets: [{ asset, deploy_pct }] }
+// POST /api/trading/assets            → activate/deactivate + set deploy_pct
+//   body: { asset, active, deploy_pct }
 app.get('/api/trading/assets', (req, res) => {
   res.json({ assets: getTradingAssets() });
 });
 
 app.post('/api/trading/assets', (req, res) => {
-  const { asset, active } = req.body;
+  const { asset, active, deploy_pct } = req.body;
   if (!asset || typeof asset !== 'string') return res.status(400).json({ error: 'asset required' });
-  if (active) addTradingAsset(asset); else removeTradingAsset(asset);
+  if (active) {
+    addTradingAsset(asset, deploy_pct ?? 50);
+    if (deploy_pct != null) setTradingAssetPct(asset, deploy_pct);
+  } else {
+    removeTradingAsset(asset);
+  }
   res.json({ assets: getTradingAssets() });
 });
 

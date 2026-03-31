@@ -26,7 +26,9 @@
   let activeCoin     = 'BTC';
   let activeYear     = new Date().getFullYear();
   let activeInterval = '5m';
-  let tradingAssets  = new Set(); // assets currently being scanned by the bot
+  let tradingMap     = new Map(); // asset → deploy_pct  (only active assets)
+  let capitalInfo    = { totalValue: 10000, available: 10000, deployed: 0 };
+  let tradePopup     = null;     // null | { coin, selectedPct }
   let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
   let sma50arr       = []; // SMA50 value per candle index (null if insufficient history)
   let sma200arr      = []; // SMA200 value per candle index
@@ -696,27 +698,38 @@
     assetDropdownOpen = false;
   }
 
-  // ── Trading asset toggle ────────────────────────────────────
+  // ── Trading asset management ────────────────────────────────
   async function fetchTradingAssets() {
     try {
-      const r = await fetch('/api/trading/assets');
-      const d = await r.json();
-      tradingAssets = new Set(d.assets || []);
+      const [ta, cap] = await Promise.all([
+        fetch('/api/trading/assets').then(r => r.json()),
+        fetch('/api/capital').then(r => r.json()),
+      ]);
+      tradingMap  = new Map((ta.assets || []).map(a => [a.asset, a.deploy_pct]));
+      capitalInfo = { totalValue: cap.totalValue || 10000, available: cap.available || 10000, deployed: cap.deployed || 0 };
     } catch (e) {}
   }
 
-  async function toggleTradeAsset(coin) {
-    const isActive = tradingAssets.has(coin);
+  async function applyTradeAsset(coin, active, deployPct) {
     try {
       const r = await fetch('/api/trading/assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ asset: coin, active: !isActive }),
+        body: JSON.stringify({ asset: coin, active, deploy_pct: deployPct }),
       });
       const d = await r.json();
-      tradingAssets = new Set(d.assets || []);
+      tradingMap = new Map((d.assets || []).map(a => [a.asset, a.deploy_pct]));
     } catch (e) {}
+    await fetchTradingAssets(); // refresh capital too
   }
+
+  function openTradePopup(coin) {
+    fetchTradingAssets(); // refresh capital before showing popup
+    const currentPct = tradingMap.has(coin) ? tradingMap.get(coin) : 25;
+    tradePopup = { coin, selectedPct: currentPct };
+  }
+
+  function closeTradePopup() { tradePopup = null; }
 
   // ── Draw: header bar ───────────────────────────────────────
   function drawHeader() {
@@ -755,7 +768,7 @@
     // ── TRADE toggle button (right of asset dropdown) ──
     const tradeBtnX = W/2 + trigW/2 + 6;
     const tradeBtnW = 54, tradeBtnH = 20;
-    const isTrading = tradingAssets.has(activeCoin);
+    const isTrading = tradingMap.has(activeCoin);
     ctx.fillStyle = isTrading ? rgba(C.green, .18) : rgba(C.border, 1);
     rr(ctx, tradeBtnX, 6, tradeBtnW, tradeBtnH, 3); ctx.fill();
     ctx.strokeStyle = isTrading ? rgba(C.green, .75) : rgba(C.muted, .35);
@@ -814,6 +827,114 @@
         <div class="sp-detail-row"><span>Timeframe</span><span>${s.timeframe||'--'}</span></div>
         <div class="sp-detail-row"><span>Dot Type</span><span class="sp-dot-type ${s.dotType}">${s.dotType==='yellow'?'● Accumulation':s.dotType==='pink'?'● Distribution':'--'}</span></div>
       `;
+    }
+  }
+
+  // ── Trade popup ─────────────────────────────────────────────
+  function drawTradePopup() {
+    if (!tradePopup) return;
+    const { coin, selectedPct } = tradePopup;
+    const isActive = tradingMap.has(coin);
+
+    const pw = 300, ph = 168;
+    const px = W/2 - pw/2;
+    const py = PAD.top + 10;
+
+    // dim backdrop
+    ctx.fillStyle = rgba(C.bg, .72);
+    ctx.fillRect(0, 0, W, H);
+
+    // popup box
+    ctx.fillStyle = C.panel; rr(ctx, px, py, pw, ph, 6); ctx.fill();
+    ctx.strokeStyle = rgba(C.amber, .55); ctx.lineWidth = 1;
+    rr(ctx, px, py, pw, ph, 6); ctx.stroke();
+
+    // ── Title ──
+    ctx.fillStyle = C.amber;
+    ctx.font = 'bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'left';
+    ctx.fillText('▶ TRADE  ' + coin, px+12, py+18);
+    // ✕ close
+    ctx.fillStyle = rgba(C.white, .45); ctx.font = '11px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText('✕', px+pw-10, py+18);
+    tradePopup._closeBtn = { x: px+pw-24, y: py+6, w: 20, h: 16 };
+
+    // divider
+    ctx.strokeStyle = rgba(C.border, .6); ctx.lineWidth = .5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(px+10, py+26); ctx.lineTo(px+pw-10, py+26); ctx.stroke();
+
+    // ── Capital info ──
+    const avail = capitalInfo.available;
+    const total = capitalInfo.totalValue;
+    const availPct = total > 0 ? Math.round(avail / total * 100) : 100;
+    ctx.fillStyle = rgba(C.white, .55); ctx.font = '9px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'left';
+    ctx.fillText('AVAILABLE', px+12, py+42);
+    ctx.fillStyle = rgba(C.white, .9); ctx.font = 'bold 11px Inter,"JetBrains Mono",monospace';
+    ctx.fillText('$' + avail.toLocaleString('en-US', {maximumFractionDigits:0}) + '  (' + availPct + '%)', px+82, py+42);
+
+    // computed trade size preview
+    const tradeSize = (avail * selectedPct / 100);
+    ctx.fillStyle = rgba(C.white, .55); ctx.font = '9px Inter,"JetBrains Mono",monospace';
+    ctx.fillText('PER TRADE', px+12, py+56);
+    ctx.fillStyle = C.green; ctx.font = 'bold 11px Inter,"JetBrains Mono",monospace';
+    ctx.fillText(selectedPct + '% → $' + tradeSize.toLocaleString('en-US', {maximumFractionDigits:0}), px+82, py+56);
+
+    // ── % preset buttons ──
+    ctx.fillStyle = rgba(C.white, .55); ctx.font = '9px Inter,"JetBrains Mono",monospace';
+    ctx.fillText('DEPLOY %', px+12, py+76);
+    tradePopup._pctBtns = [];
+    const presets = [10, 25, 50, 75];
+    const bw = 46, bh = 20, gap = 6;
+    const rowX = px + pw - (presets.length*(bw+gap)-gap) - 10;
+    presets.forEach((pct, i) => {
+      const bx = rowX + i*(bw+gap), by = py+63;
+      const active = selectedPct === pct;
+      ctx.fillStyle = active ? rgba(C.amber, .9) : rgba(C.border, .9);
+      rr(ctx, bx, by, bw, bh, 3); ctx.fill();
+      if (active) { ctx.strokeStyle = rgba(C.amber, .5); ctx.lineWidth = .6; rr(ctx, bx, by, bw, bh, 3); ctx.stroke(); }
+      ctx.fillStyle = active ? '#000' : rgba(C.white, .75);
+      ctx.font = active ? 'bold 10px Inter,"JetBrains Mono",monospace' : '10px Inter,"JetBrains Mono",monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(pct + '%', bx+bw/2, by+14);
+      tradePopup._pctBtns.push({ x: bx, y: by, w: bw, h: bh, pct });
+    });
+
+    // ── Action buttons ──
+    const actY = py+ph-38;
+    // Cancel
+    const cancelW=80, cancelH=22;
+    ctx.fillStyle=rgba(C.border,.8); rr(ctx, px+10, actY, cancelW, cancelH, 3); ctx.fill();
+    ctx.fillStyle=rgba(C.white,.6); ctx.font='10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
+    ctx.fillText('CANCEL', px+10+cancelW/2, actY+15);
+    tradePopup._cancelBtn = { x: px+10, y: actY, w: cancelW, h: cancelH };
+
+    if (isActive) {
+      // Stop button
+      const stopW=80, stopH=22;
+      const stopX = px+10+cancelW+8;
+      ctx.fillStyle=rgba(C.red,.25); rr(ctx, stopX, actY, stopW, stopH, 3); ctx.fill();
+      ctx.strokeStyle=rgba(C.red,.5); ctx.lineWidth=.6; rr(ctx, stopX, actY, stopW, stopH, 3); ctx.stroke();
+      ctx.fillStyle=C.red; ctx.font='bold 10px Inter,"JetBrains Mono",monospace';
+      ctx.fillText('STOP', stopX+stopW/2, actY+15);
+      tradePopup._stopBtn = { x: stopX, y: actY, w: stopW, h: stopH };
+
+      // Update button
+      const updW=70, updH=22;
+      const updX = px+pw-10-updW;
+      ctx.fillStyle=rgba(C.green,.25); rr(ctx, updX, actY, updW, updH, 3); ctx.fill();
+      ctx.strokeStyle=rgba(C.green,.6); ctx.lineWidth=.6; rr(ctx, updX, actY, updW, updH, 3); ctx.stroke();
+      ctx.fillStyle=C.green; ctx.font='bold 10px Inter,"JetBrains Mono",monospace';
+      ctx.fillText('UPDATE', updX+updW/2, actY+15);
+      tradePopup._updateBtn = { x: updX, y: actY, w: updW, h: updH };
+      tradePopup._stopBtn   = { x: stopX, y: actY, w: stopW, h: stopH };
+    } else {
+      // Activate button
+      const actW=pw-10-cancelW-8-10, actH=22;
+      const actX=px+10+cancelW+8;
+      ctx.fillStyle=rgba(C.green,.25); rr(ctx, actX, actY, actW, actH, 3); ctx.fill();
+      ctx.strokeStyle=rgba(C.green,.7); ctx.lineWidth=.7; rr(ctx, actX, actY, actW, actH, 3); ctx.stroke();
+      ctx.fillStyle=C.green; ctx.font='bold 10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
+      ctx.fillText('ACTIVATE  ' + coin, actX+actW/2, actY+15);
+      tradePopup._activateBtn = { x: actX, y: actY, w: actW, h: actH };
     }
   }
 
@@ -900,6 +1021,30 @@
 
     // Header clicks — interval buttons + asset dropdown trigger
     canvas.addEventListener('click', e => {
+      // ── Popup intercepts all clicks while open ──
+      if (tradePopup) {
+        const p = tradePopup;
+        const hit = (r, ex, ey) => r && ex>=r.x && ex<=r.x+r.w && ey>=r.y && ey<=r.y+r.h;
+        if (hit(p._closeBtn,  e.offsetX, e.offsetY)) { closeTradePopup(); return; }
+        if (hit(p._cancelBtn, e.offsetX, e.offsetY)) { closeTradePopup(); return; }
+        if (hit(p._activateBtn, e.offsetX, e.offsetY)) {
+          applyTradeAsset(p.coin, true, p.selectedPct);
+          closeTradePopup(); return;
+        }
+        if (hit(p._updateBtn, e.offsetX, e.offsetY)) {
+          applyTradeAsset(p.coin, true, p.selectedPct);
+          closeTradePopup(); return;
+        }
+        if (hit(p._stopBtn, e.offsetX, e.offsetY)) {
+          applyTradeAsset(p.coin, false, p.selectedPct);
+          closeTradePopup(); return;
+        }
+        for (const btn of (p._pctBtns || [])) {
+          if (hit(btn, e.offsetX, e.offsetY)) { tradePopup.selectedPct = btn.pct; return; }
+        }
+        return; // swallow clicks outside popup buttons while open
+      }
+
       if (e.offsetY > PAD.top) return;
 
       // Interval buttons (left)
@@ -923,12 +1068,12 @@
         return;
       }
 
-      // TRADE toggle button (right of asset dropdown)
+      // TRADE button — opens popup
       const tradeBtnX=W/2+trigW/2+6;
       const tradeBtnW=54, tradeBtnH=20;
       if (e.offsetX>=tradeBtnX && e.offsetX<=tradeBtnX+tradeBtnW && e.offsetY>=6 && e.offsetY<=6+tradeBtnH) {
         e.stopPropagation();
-        toggleTradeAsset(activeCoin);
+        openTradePopup(activeCoin);
         return;
       }
     });
@@ -970,6 +1115,8 @@
       ctx.fillText('PLAN @ '+new Date(plan.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
         W-PAD.right, H-6);
     }
+
+    drawTradePopup();
   }
 
   // ── Public API ─────────────────────────────────────────────

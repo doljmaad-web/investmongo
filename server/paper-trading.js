@@ -7,6 +7,13 @@ export function getCashBalance() {
   return snap?.cash_balance ?? parseFloat(process.env.PAPER_BALANCE ?? 10000);
 }
 
+// Capital currently free to deploy: AUM minus what's locked in open trades
+export function getAvailableCapital() {
+  const stats      = getPortfolioStats();
+  const deployed   = stats.openTrades.reduce((s, t) => s + (t.size_usd || 0), 0);
+  return Math.max(0, parseFloat((stats.totalValue - deployed).toFixed(2)));
+}
+
 // Close all open positions for an asset (called on signal flip)
 export function closeOpenPosition(asset, exitPrice) {
   const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`).all(asset);
@@ -25,8 +32,12 @@ export function closeOpenPosition(asset, exitPrice) {
 }
 
 export function openPaperTrade(signalId, decision, signal) {
+  // size_usd wins if explicitly provided (deploy_pct × available capital path)
+  // falls back to size_pct × cash_balance for backward compatibility
   const cash    = getCashBalance();
-  const sizeUsd = parseFloat((cash * decision.size_pct / 100).toFixed(2));
+  const sizeUsd = decision.size_usd != null
+    ? parseFloat(decision.size_usd.toFixed(2))
+    : parseFloat((cash * (decision.size_pct ?? 50) / 100).toFixed(2));
 
   const result = db.prepare(`
     INSERT INTO trades

@@ -3,7 +3,7 @@ import { getGeminiAdvisory } from './gemini.js';
 import { fetchCoinTelegraphOnly, fearGreed } from './news-scraper.js';
 import {
   openPaperTrade, closeOpenPosition,
-  updateOpenTrades, getPortfolioStats,
+  updateOpenTrades, getPortfolioStats, getAvailableCapital,
 } from './paper-trading.js';
 import { checkRiskLimits }               from './risk.js';
 import { sendTelegram }                  from './telegram.js';
@@ -26,10 +26,14 @@ const SIGNAL_WINDOW = 5;          // act only if dot fired within last 5 candles
 
 // ── Trading asset management (persisted in SQLite) ─────────
 export function getTradingAssets() {
-  return db.prepare('SELECT asset FROM trading_assets ORDER BY asset').all().map(r => r.asset);
+  // Returns [{ asset, deploy_pct }]
+  return db.prepare('SELECT asset, deploy_pct FROM trading_assets ORDER BY asset').all();
 }
-export function addTradingAsset(asset) {
-  db.prepare('INSERT OR IGNORE INTO trading_assets (asset) VALUES (?)').run(asset.toUpperCase());
+export function addTradingAsset(asset, deployPct = 50) {
+  db.prepare('INSERT OR IGNORE INTO trading_assets (asset, deploy_pct) VALUES (?, ?)').run(asset.toUpperCase(), deployPct);
+}
+export function setTradingAssetPct(asset, deployPct) {
+  db.prepare('UPDATE trading_assets SET deploy_pct=? WHERE asset=?').run(deployPct, asset.toUpperCase());
 }
 export function removeTradingAsset(asset) {
   const assets = getTradingAssets();
@@ -147,12 +151,20 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   const tradeType = isCounterTrend ? 'COUNTER-TREND' : 'WITH-TREND';
   const biasNote  = bias1h.direction ? ` | 1h: ${bias1h.direction}` : ' | 1h: no bias';
-  console.log(`[BOT] ${tradeType}${biasNote} → SL=$${stopLoss} (${slPct*100}%) TP=${takeProfit || 'next signal'}`);
+
+  // Deploy_pct: how much of available capital to use for this trade
+  const assetRow   = db.prepare('SELECT deploy_pct FROM trading_assets WHERE asset=?').get(signal.asset);
+  const deployPct  = assetRow?.deploy_pct ?? 50;
+  const available  = getAvailableCapital();
+  const sizeUsd    = parseFloat((available * deployPct / 100).toFixed(2));
+
+  console.log(`[BOT] ${tradeType}${biasNote} → SL=$${stopLoss} (${slPct*100}%) TP=${takeProfit || 'next signal'} | Deploy: ${deployPct}% of $${available} = $${sizeUsd}`);
 
   const defaultDecision = {
     verdict:    'CONFIRMED',
     confidence: 75,
-    size_pct:   50,
+    size_pct:   deployPct,
+    size_usd:   sizeUsd,
     entry:      signal.price,
     stop_loss:  stopLoss,
     take_profit: takeProfit,
@@ -220,11 +232,12 @@ export async function handleSignal(rawSignal, source = 'server') {
 // 2. Scan 5m — act if dot within last 5 candles
 // ============================================================
 export async function runServerLoop(broadcastFn) {
-  const assets = getTradingAssets();
-  console.log(`[BOT] Running Precision v9 5m scan — assets: ${assets.join(', ')}`);
+  const assetRows = getTradingAssets(); // [{ asset, deploy_pct }]
+  const assetNames = assetRows.map(r => r.asset);
+  console.log(`[BOT] Running Precision v9 5m scan — assets: ${assetNames.join(', ')}`);
 
   // Step 1 — refresh 1h bias + scan 5m for each active asset
-  for (const asset of assets) {
+  for (const { asset } of assetRows) {
     await update1hBias(asset);
 
     try {
@@ -247,7 +260,7 @@ export async function runServerLoop(broadcastFn) {
 
   // Step 2 — update P&L for all active assets and broadcast
   try {
-    const prices = await getCurrentPrices(assets);
+    const prices = await getCurrentPrices(assetNames);
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     if (broadcastFn) broadcastFn({ type: 'portfolio_update', data: stats });
