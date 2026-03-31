@@ -179,11 +179,12 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Spatial Trade Planner — live BTC price for particle feed
+// Spatial Trade Planner — live price for any coin
 app.get('/api/spatial/price', async (req, res) => {
   try {
-    const prices = await getCurrentPrices(['BTC']);
-    res.json({ price: prices['BTC'] || null, ts: Date.now() });
+    const coin   = (req.query.coin || 'BTC').toUpperCase();
+    const prices = await getCurrentPrices([coin]);
+    res.json({ price: prices[coin] || null, ts: Date.now() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -17,6 +17,11 @@
   let priceTimer   = null;
   let candleTimer  = null;
 
+  // ── Asset list ─────────────────────────────────────────────
+  const ASSETS = ['BTC','ETH','SOL','XRP','DOGE','BNB','AVAX','LINK','ARB','SUI','ZEC','HYPE','TAO','PENDLE','PEPE'];
+  const TICKER_MAP = { 'PEPE': 'kPEPE' }; // display name → Hyperliquid ticker
+  function getTicker(coin) { return TICKER_MAP[coin] || coin; }
+
   let activeCoin     = 'BTC';
   let activeYear     = new Date().getFullYear();
   let activeInterval = '5m';
@@ -34,7 +39,7 @@
   let mouseX = -1, mouseY = -1;
 
   // ── Layout ─────────────────────────────────────────────────
-  const PAD = { top: 34, bot: 24, left: 10, right: 88 };
+  const PAD = { top: 58, bot: 24, left: 10, right: 88 };
 
   // ── Palette ────────────────────────────────────────────────
   const C = {
@@ -128,17 +133,18 @@
   // ── Data ───────────────────────────────────────────────────
   async function loadCandles() {
     try {
+      const ticker = getTicker(activeCoin);
       let url;
       if (activeInterval === '5m') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=5m&bars=200`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=5m&bars=200`;
       } else if (activeInterval === '1h') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=1h&bars=200`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=1h&bars=200`;
       } else if (activeInterval === '4h') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=4h&bars=300`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=4h&bars=300`;
       } else if (activeInterval === '1D') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=1d&year=${activeYear}`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=1d&year=${activeYear}`;
       } else if (activeInterval === '1W') {
-        url = `/api/spatial/candles?coin=${activeCoin}&interval=1w&bars=200`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=1w&bars=200`;
       }
       const r = await fetch(url);
       if (!r.ok) return;
@@ -155,7 +161,7 @@
 
   async function fetchPrice() {
     try {
-      const r = await fetch('/api/spatial/price');
+      const r = await fetch(`/api/spatial/price?coin=${getTicker(activeCoin)}`);
       if (!r.ok) return;
       const d = await r.json();
       if (!d.price) return;
@@ -608,50 +614,83 @@
 
   // ── Draw: header bar ───────────────────────────────────────
   function drawHeader() {
-    ctx.fillStyle=rgba(C.bg,.9); ctx.fillRect(0,0,W,PAD.top);
-    // asset pill
-    ctx.fillStyle=rgba(C.border,1); rr(ctx,PAD.left,7,46,18,2); ctx.fill();
-    ctx.fillStyle=C.amber; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText(activeCoin, PAD.left+23, 20);
+    // background
+    ctx.fillStyle = rgba(C.bg, .96); ctx.fillRect(0, 0, W, PAD.top);
+    // separator between row1 and row2
+    ctx.strokeStyle = rgba(C.border, .6); ctx.lineWidth = .5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(W, 30); ctx.stroke();
+    // bottom border
+    ctx.strokeStyle = rgba(C.border, .8);
+    ctx.beginPath(); ctx.moveTo(0, PAD.top); ctx.lineTo(W, PAD.top); ctx.stroke();
 
-    // Interval selector buttons
-    const btnLabels=['5m','1h','4h','1D','1W'];
+    // ── ROW 1: interval buttons + candle count + plan info ──
+    const btnLabels = ['5m','1h','4h','1D','1W'];
     const btnW=28, btnH=16, btnGap=4;
-    let bx=PAD.left+54;
+    let bx = PAD.left + 4;
     btnLabels.forEach(lbl => {
-      const isActive=lbl===activeInterval;
-      ctx.fillStyle=isActive?C.amber:rgba(C.border,1);
-      rr(ctx,bx,8,btnW,btnH,2); ctx.fill();
-      if (isActive) { ctx.strokeStyle=rgba(C.amber,.6); ctx.lineWidth=.5; rr(ctx,bx,8,btnW,btnH,2); ctx.stroke(); }
-      ctx.fillStyle=isActive?'#000':rgba(C.muted,.8);
-      ctx.font=isActive?'bold 8px Courier New':'8px Courier New';
-      ctx.textAlign='center';
-      ctx.fillText(lbl, bx+btnW/2, 19);
-      bx+=btnW+btnGap;
+      const isActive = lbl === activeInterval;
+      ctx.fillStyle = isActive ? C.amber : rgba(C.border, 1);
+      rr(ctx, bx, 7, btnW, btnH, 2); ctx.fill();
+      if (isActive) { ctx.strokeStyle=rgba(C.amber,.5); ctx.lineWidth=.5; rr(ctx,bx,7,btnW,btnH,2); ctx.stroke(); }
+      ctx.fillStyle = isActive ? '#000' : rgba(C.muted, .8);
+      ctx.font = isActive ? 'bold 8px Courier New' : '8px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText(lbl, bx + btnW/2, 18);
+      bx += btnW + btnGap;
     });
 
-    // candle count
-    const vc=Math.round(viewEnd-viewStart);
-    ctx.fillStyle=rgba(C.muted,.35); ctx.font='8px Courier New'; ctx.textAlign='center';
-    ctx.fillText(`${vc} candles`, W/2, 20);
+    // candle count (center row 1)
+    const vc = Math.round(viewEnd - viewStart);
+    ctx.fillStyle = rgba(C.muted, .3); ctx.font = '8px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(`${vc} bars · ${activeCoin}`, W/2, 19);
 
+    // plan badge / waiting (right row 1)
     if (plan) {
       const dir=plan.direction; const dc=dir==='LONG'?C.green:C.red; const db=dir==='LONG'?'#052e16':'#450a0a';
-      ctx.fillStyle=db; rr(ctx,W-PAD.right-134,7,46,18,2); ctx.fill();
-      ctx.strokeStyle=dc; ctx.lineWidth=.6; rr(ctx,W-PAD.right-134,7,46,18,2); ctx.stroke();
-      ctx.fillStyle=dc; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-      ctx.fillText(dir, W-PAD.right-111, 20);
+      ctx.fillStyle=db; rr(ctx,W-PAD.right-88,7,36,16,2); ctx.fill();
+      ctx.strokeStyle=dc; ctx.lineWidth=.5; rr(ctx,W-PAD.right-88,7,36,16,2); ctx.stroke();
+      ctx.fillStyle=dc; ctx.font='bold 8px Courier New'; ctx.textAlign='center';
+      ctx.fillText(dir, W-PAD.right-70, 18);
       const conv=Math.min(1,(plan.conviction||5)/10);
       const cc=conv>.7?C.green:conv>.4?C.amber:C.red;
-      const barX=W-PAD.right-84;
-      ctx.fillStyle=C.border; rr(ctx,barX,11,74,6,2); ctx.fill();
-      ctx.fillStyle=cc;       rr(ctx,barX,11,74*conv,6,2); ctx.fill();
-      ctx.fillStyle=rgba(C.muted,.6); ctx.font='7.5px Courier New'; ctx.textAlign='left';
-      ctx.fillText('CONV '+Math.round(conv*100)+'%', barX+77, 19);
+      const barX=W-PAD.right-48;
+      ctx.fillStyle=C.border; rr(ctx,barX,11,44,5,2); ctx.fill();
+      ctx.fillStyle=cc;       rr(ctx,barX,11,44*conv,5,2); ctx.fill();
     } else {
-      ctx.fillStyle=rgba(C.muted,.28); ctx.font='8px Courier New'; ctx.textAlign='right';
-      ctx.fillText('Waiting for signal', W-PAD.right, 20);
+      ctx.fillStyle=rgba(C.muted,.22); ctx.font='8px Courier New'; ctx.textAlign='right';
+      ctx.fillText('no signal', W-PAD.right-4, 19);
     }
+
+    // ── ROW 2: asset selector buttons ───────────────────────
+    const n      = ASSETS.length;
+    const aGap   = 3;
+    const totalW = W - PAD.left - PAD.right - 4;
+    const aW     = Math.floor((totalW - aGap*(n-1)) / n);
+    const aH     = 16;
+    const aY     = 33;
+    let ax = PAD.left + 4;
+
+    ASSETS.forEach(coin => {
+      const isActive = coin === activeCoin;
+      if (isActive) {
+        ctx.fillStyle = C.amber;
+      } else {
+        ctx.fillStyle = rgba(C.border, 1);
+      }
+      rr(ctx, ax, aY, aW, aH, 2); ctx.fill();
+
+      // dot indicator if this asset has a recent signal
+      const lastDot = precisionDots.length
+        ? precisionDots[precisionDots.length - 1]
+        : null;
+      if (!isActive && coin === activeCoin) { /* skip */ }
+
+      ctx.fillStyle = isActive ? '#000' : rgba(C.muted, .75);
+      ctx.font = isActive ? 'bold 7.5px Courier New' : '7.5px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText(coin, ax + aW/2, aY + aH - 4);
+      ax += aW + aGap;
+    });
   }
 
   // ── Sidebar panel ──────────────────────────────────────────
@@ -764,20 +803,42 @@
     canvas.addEventListener('touchend',()=>{ isDragging=false; });
     window.addEventListener('resize', resize);
 
-    // Interval button clicks (header area only)
+    // Header clicks — interval buttons (row 1) + asset buttons (row 2)
     canvas.addEventListener('click', e => {
       if (e.offsetY > PAD.top) return;
-      const btnLabels=['5m','1h','4h','1D','1W'];
-      const btnW=28, btnH=16, btnGap=4;
-      let bx=PAD.left+54;
-      for (const lbl of btnLabels) {
-        if (e.offsetX>=bx && e.offsetX<=bx+btnW && e.offsetY>=8 && e.offsetY<=8+btnH) {
-          if (lbl!==activeInterval) {
-            activeInterval=lbl; candles=[]; loadCandles();
+
+      // Row 1 — interval buttons
+      if (e.offsetY <= 30) {
+        const btnLabels=['5m','1h','4h','1D','1W'];
+        const btnW=28, btnH=16, btnGap=4;
+        let bx=PAD.left+4;
+        for (const lbl of btnLabels) {
+          if (e.offsetX>=bx && e.offsetX<=bx+btnW && e.offsetY>=7 && e.offsetY<=7+btnH) {
+            if (lbl !== activeInterval) { activeInterval=lbl; candles=[]; loadCandles(); }
+            return;
           }
-          return;
+          bx += btnW + btnGap;
         }
-        bx+=btnW+btnGap;
+      }
+
+      // Row 2 — asset buttons
+      if (e.offsetY >= 33 && e.offsetY <= 33+16) {
+        const n      = ASSETS.length;
+        const aGap   = 3;
+        const totalW = W - PAD.left - PAD.right - 4;
+        const aW     = Math.floor((totalW - aGap*(n-1)) / n);
+        let ax = PAD.left + 4;
+        for (const coin of ASSETS) {
+          if (e.offsetX >= ax && e.offsetX <= ax + aW) {
+            if (coin !== activeCoin) {
+              activeCoin = coin; candles = []; precisionDots = [];
+              sma50arr = []; sma200arr = [];
+              loadCandles();
+            }
+            return;
+          }
+          ax += aW + aGap;
+        }
       }
     });
   }
