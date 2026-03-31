@@ -100,21 +100,25 @@
     return { hi: hi + m, lo: lo - m };
   }
 
+  // empty candle slots to the right of the last candle (breathing room)
+  const RIGHT_PAD = 12;
+
   // ── Zoom / pan ─────────────────────────────────────────────
   function clampView() {
-    const n    = candles.length || 1;
-    const span = viewEnd - viewStart;
-    const s    = Math.max(5, Math.min(n, span));
-    if (viewStart < 0)  { viewStart = 0; viewEnd = s; }
-    if (viewEnd   > n)  { viewEnd = n; viewStart = n - s; }
+    const n      = candles.length || 1;
+    const maxEnd = n + RIGHT_PAD;
+    const span   = viewEnd - viewStart;
+    const s      = Math.max(5, Math.min(maxEnd, span));
+    if (viewStart < 0)       { viewStart = 0; viewEnd = s; }
+    if (viewEnd   > maxEnd)  { viewEnd = maxEnd; viewStart = maxEnd - s; }
     viewStart = Math.max(0, viewStart);
-    viewEnd   = Math.min(n, viewEnd);
+    viewEnd   = Math.min(maxEnd, viewEnd);
   }
 
   function zoomAt(focalX, factor) {
     const fi   = xToIdx(focalX);
     const span = viewEnd - viewStart;
-    const ns   = Math.max(5, Math.min(candles.length, span / factor));
+    const ns   = Math.max(5, Math.min(candles.length + RIGHT_PAD, span / factor));
     const ratio= (fi - viewStart) / span;
     viewStart  = fi - ratio * ns;
     viewEnd    = viewStart + ns;
@@ -141,8 +145,8 @@
       const d = await r.json();
       if (d.candles && d.candles.length) {
         candles   = d.candles;
-        viewStart = Math.max(0, candles.length - 80);
-        viewEnd   = candles.length;
+        viewEnd   = candles.length + RIGHT_PAD;
+        viewStart = Math.max(0, viewEnd - 80);
         computeSMAs();
         runIndicatorScan();
       }
@@ -871,9 +875,9 @@
       particles = [];
       burstSignal(dir);
       updateSidebar();
-      // zoom to last 45 candles to show context around signal
-      viewEnd   = candles.length;
-      viewStart = Math.max(0, viewEnd-45);
+      // zoom to last 45 candles + right padding
+      viewEnd   = candles.length + RIGHT_PAD;
+      viewStart = Math.max(0, viewEnd - 45);
     },
 
     loadDots(dotArray) {
