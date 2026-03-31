@@ -26,6 +26,7 @@
   let activeCoin     = 'BTC';
   let activeYear     = new Date().getFullYear();
   let activeInterval = '5m';
+  let tradingAssets  = new Set(); // assets currently being scanned by the bot
   let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
   let sma50arr       = []; // SMA50 value per candle index (null if insufficient history)
   let sma200arr      = []; // SMA200 value per candle index
@@ -695,6 +696,28 @@
     assetDropdownOpen = false;
   }
 
+  // ── Trading asset toggle ────────────────────────────────────
+  async function fetchTradingAssets() {
+    try {
+      const r = await fetch('/api/trading/assets');
+      const d = await r.json();
+      tradingAssets = new Set(d.assets || []);
+    } catch (e) {}
+  }
+
+  async function toggleTradeAsset(coin) {
+    const isActive = tradingAssets.has(coin);
+    try {
+      const r = await fetch('/api/trading/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset: coin, active: !isActive }),
+      });
+      const d = await r.json();
+      tradingAssets = new Set(d.assets || []);
+    } catch (e) {}
+  }
+
   // ── Draw: header bar ───────────────────────────────────────
   function drawHeader() {
     // background + bottom border
@@ -728,6 +751,20 @@
     ctx.fillStyle = rgba(C.white, .98);
     ctx.font = 'bold 12px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'center';
     ctx.fillText(activeCoin + '  ▾', W / 2, 21);
+
+    // ── TRADE toggle button (right of asset dropdown) ──
+    const tradeBtnX = W/2 + trigW/2 + 6;
+    const tradeBtnW = 54, tradeBtnH = 20;
+    const isTrading = tradingAssets.has(activeCoin);
+    ctx.fillStyle = isTrading ? rgba(C.green, .18) : rgba(C.border, 1);
+    rr(ctx, tradeBtnX, 6, tradeBtnW, tradeBtnH, 3); ctx.fill();
+    ctx.strokeStyle = isTrading ? rgba(C.green, .75) : rgba(C.muted, .35);
+    ctx.lineWidth = isTrading ? 1 : 0.5;
+    rr(ctx, tradeBtnX, 6, tradeBtnW, tradeBtnH, 3); ctx.stroke();
+    ctx.fillStyle = isTrading ? C.green : rgba(C.white, .4);
+    ctx.font = isTrading ? 'bold 9px Inter,"JetBrains Mono",monospace' : '9px Inter,"JetBrains Mono",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(isTrading ? '● TRADE' : '○ TRADE', tradeBtnX + tradeBtnW/2, 20);
 
     // ── Plan badge / waiting (right) ──
     if (plan) {
@@ -885,6 +922,15 @@
         if (assetDropdownOpen) closeDropdown(); else openDropdown();
         return;
       }
+
+      // TRADE toggle button (right of asset dropdown)
+      const tradeBtnX=W/2+trigW/2+6;
+      const tradeBtnW=54, tradeBtnH=20;
+      if (e.offsetX>=tradeBtnX && e.offsetX<=tradeBtnX+tradeBtnW && e.offsetY>=6 && e.offsetY<=6+tradeBtnH) {
+        e.stopPropagation();
+        toggleTradeAsset(activeCoin);
+        return;
+      }
     });
   }
 
@@ -943,6 +989,7 @@
       priceTimer  = setInterval(fetchPrice, 5000);
       candleTimer = setInterval(loadCandles, 15*60*1000);
       fetchPrice();
+      fetchTradingAssets();
     },
 
     onSignal(signalData, decision) {

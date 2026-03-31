@@ -22,8 +22,20 @@ import { db }                            from './database.js';
 //     SL = 2% from entry
 //     TP = none — hold until opposite 5m dot fires
 // ============================================================
-const ASSET         = 'BTC';
 const SIGNAL_WINDOW = 5;          // act only if dot fired within last 5 candles
+
+// ── Trading asset management (persisted in SQLite) ─────────
+export function getTradingAssets() {
+  return db.prepare('SELECT asset FROM trading_assets ORDER BY asset').all().map(r => r.asset);
+}
+export function addTradingAsset(asset) {
+  db.prepare('INSERT OR IGNORE INTO trading_assets (asset) VALUES (?)').run(asset.toUpperCase());
+}
+export function removeTradingAsset(asset) {
+  const assets = getTradingAssets();
+  if (assets.length <= 1) return; // always keep at least one asset
+  db.prepare('DELETE FROM trading_assets WHERE asset=?').run(asset.toUpperCase());
+}
 
 const SL_COUNTER    = 0.001;      // 0.1% stop loss for counter-trend
 const TP_COUNTER    = 0.10;       // 10% take profit for counter-trend
@@ -42,27 +54,26 @@ function isDuplicate(asset, action) {
 }
 
 // ============================================================
-// 1H BIAS — tracks last 1h dot signal, never trades on its own
+// 1H BIAS — per-asset map, tracks last 1h dot signal
 // ============================================================
-let bias1h = {
-  direction: null,   // 'BULLISH' | 'BEARISH' | null
-  updatedAt: null,
-};
+const bias1hMap = new Map(); // asset → { direction, updatedAt }
 
-async function update1hBias() {
+function getBias(asset) {
+  return bias1hMap.get(asset) || { direction: null, updatedAt: null };
+}
+
+async function update1hBias(asset) {
   try {
-    const candles1h = await fetchCandles(ASSET, '1h', 250);
+    const candles1h = await fetchCandles(asset, '1h', 250);
     if (!candles1h || candles1h.length < 60) return;
     const result = detectSignals(candles1h);
     if (result.signal) {
-      bias1h = {
-        direction: result.signal === 'BUY' ? 'BULLISH' : 'BEARISH',
-        updatedAt: new Date().toISOString(),
-      };
-      console.log(`[BOT] 1h bias updated → ${bias1h.direction} (RSI=${result.rsi})`);
+      const direction = result.signal === 'BUY' ? 'BULLISH' : 'BEARISH';
+      bias1hMap.set(asset, { direction, updatedAt: new Date().toISOString() });
+      console.log(`[BOT] 1h bias ${asset} → ${direction} (RSI=${result.rsi})`);
     }
   } catch (err) {
-    console.error('[BOT] 1h bias scan error:', err.message);
+    console.error(`[BOT] 1h bias scan error (${asset}):`, err.message);
   }
 }
 
@@ -110,6 +121,7 @@ export async function handleSignal(rawSignal, source = 'server') {
   }
 
   // ── Determine counter-trend vs with-trend ───────────────────
+  const bias1h = getBias(signal.asset);
   const isCounterTrend =
     bias1h.direction !== null && (
       (signal.signal === 'BUY'  && bias1h.direction === 'BEARISH') ||
@@ -176,7 +188,7 @@ export async function handleSignal(rawSignal, source = 'server') {
   const riskCheck = checkRiskLimits(defaultDecision, signal);
   if (!riskCheck.allowed) {
     console.log(`[BOT] Blocked by risk: ${riskCheck.reason}`);
-    await sendTelegram(`⛔ RISK LIMIT\n${signal.signal} BTC\n${riskCheck.reason}`);
+    await sendTelegram(`⛔ RISK LIMIT\n${signal.signal} ${signal.asset}\n${riskCheck.reason}`);
     return { signal, blocked: true, blockReason: riskCheck.reason };
   }
 
@@ -192,7 +204,7 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   await sendTelegram(
     `${icon} TRADE OPENED [${tradeType}]\n` +
-    `${dotLabel} — ${signal.signal} BTC @ $${signal.price}\n` +
+    `${dotLabel} — ${signal.signal} ${signal.asset} @ $${signal.price}\n` +
     `RSI: ${signal.rsi?.toFixed(1) || '--'} | Pattern: ${signal.pattern || '--'}${biasNote}\n` +
     `${exitNote}\nSize: 50% | Mode: PAPER`
   );
@@ -208,36 +220,38 @@ export async function handleSignal(rawSignal, source = 'server') {
 // 2. Scan 5m — act if dot within last 5 candles
 // ============================================================
 export async function runServerLoop(broadcastFn) {
-  console.log('[BOT] Running Precision v9 5m scan...');
+  const assets = getTradingAssets();
+  console.log(`[BOT] Running Precision v9 5m scan — assets: ${assets.join(', ')}`);
 
-  // Step 1 — refresh 1h bias
-  await update1hBias();
+  // Step 1 — refresh 1h bias + scan 5m for each active asset
+  for (const asset of assets) {
+    await update1hBias(asset);
 
-  // Step 2 — 5m signal scan
-  try {
-    const candles5m = await fetchCandles(ASSET, '5m', 250);
-    if (!candles5m || candles5m.length < 60) {
-      console.log('[BOT] Insufficient 5m candles — skipping');
-    } else {
-      const result = detectSignals(candles5m);
-      console.log(`[BOT] 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
+    try {
+      const candles5m = await fetchCandles(asset, '5m', 250);
+      if (!candles5m || candles5m.length < 60) {
+        console.log(`[BOT] ${asset}: insufficient 5m candles — skipping`);
+      } else {
+        const result = detectSignals(candles5m);
+        console.log(`[BOT] ${asset} 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
 
-      if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
-        const outcome = await handleSignal({ ...result, asset: ASSET, timeframe: '5m' }, 'server');
-        if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
+        if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
+          const outcome = await handleSignal({ ...result, asset, timeframe: '5m' }, 'server');
+          if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
+        }
       }
+    } catch (err) {
+      console.error(`[BOT] ${asset} 5m scan error:`, err.message, err.stack);
     }
-  } catch (err) {
-    console.error('[BOT] 5m scan error:', err.message, err.stack);
   }
 
-  // Step 3 — update P&L and broadcast
+  // Step 2 — update P&L for all active assets and broadcast
   try {
-    const prices = await getCurrentPrices([ASSET]);
+    const prices = await getCurrentPrices(assets);
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     if (broadcastFn) broadcastFn({ type: 'portfolio_update', data: stats });
-    console.log(`[BOT] Done. 1h bias: ${bias1h.direction || 'none'} | Open: ${stats.openCount} | P&L: $${stats.totalPnl}`);
+    console.log(`[BOT] Done. Open: ${stats.openCount} | P&L: $${stats.totalPnl}`);
   } catch (err) {
     console.error('[BOT] P&L update error:', err.message);
   }

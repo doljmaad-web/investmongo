@@ -6,7 +6,7 @@ import path              from 'path';
 import { fileURLToPath } from 'url';
 import cron              from 'node-cron';
 
-import { handleSignal, runServerLoop } from './bot.js';
+import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, removeTradingAsset } from './bot.js';
 
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
@@ -141,6 +141,18 @@ app.get('/api/snapshots', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
+});
+
+// ── Trading asset management ────────────────────────────────
+app.get('/api/trading/assets', (req, res) => {
+  res.json({ assets: getTradingAssets() });
+});
+
+app.post('/api/trading/assets', (req, res) => {
+  const { asset, active } = req.body;
+  if (!asset || typeof asset !== 'string') return res.status(400).json({ error: 'asset required' });
+  if (active) addTradingAsset(asset); else removeTradingAsset(asset);
+  res.json({ assets: getTradingAssets() });
 });
 
 // ============================================================
@@ -382,7 +394,7 @@ cron.schedule('*/10 * * * *', async () => {
 cron.schedule('* * * * *', async () => {
   try {
     const { updateOpenTrades } = await import('./paper-trading.js');
-    const prices = await getCurrentPrices(['BTC','ETH','DOGE','XAU','HYPE']);
+    const prices = await getCurrentPrices(getTradingAssets());
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     try {

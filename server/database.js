@@ -158,6 +158,12 @@ db.exec(`
     total_trades INTEGER DEFAULT 0,
     snapshot_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS trading_assets (
+    asset TEXT PRIMARY KEY
+  );
+
+  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('BTC');
 `);
 
 export { db };
