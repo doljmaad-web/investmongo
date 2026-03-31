@@ -29,7 +29,8 @@
   let tradingMap     = new Map(); // asset → deploy_pct  (only active assets)
   let capitalInfo    = { totalValue: 10000, available: 10000, deployed: 0 };
   let tradePopup     = null;     // null | { coin, selectedPct }
-  let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
+  let precisionDots  = []; // { index, type: 'yellow'|'pink', price, rsi } — from chart scan
+  let botSignalDots  = []; // { index, type, price, rsi, fromBot:true } — from live bot signals, persist across refreshes
   let sma50arr       = []; // SMA50 value per candle index (null if insufficient history)
   let sma200arr      = []; // SMA200 value per candle index
 
@@ -281,31 +282,24 @@
     c.arcTo(x,y,x+r,y,r); c.closePath();
   }
 
-  // ── Client-side Precision V9 indicator ────────────────────
-  function _calcRSI(closes, period) {
-    if (closes.length < period + 1) return null;
+  // ── Client-side Precision V9 indicator (O(n) single-pass Wilder RSI) ─
+  function _buildRSIArr(closes, period) {
+    const rsi = new Array(closes.length).fill(null);
+    if (closes.length < period + 1) return rsi;
     let avgGain = 0, avgLoss = 0;
     for (let i = 1; i <= period; i++) {
       const d = closes[i] - closes[i-1];
-      if (d > 0) avgGain += d; else avgLoss += Math.abs(d);
+      if (d > 0) avgGain += d; else avgLoss -= d;
     }
     avgGain /= period; avgLoss /= period;
+    rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
     for (let i = period + 1; i < closes.length; i++) {
       const d = closes[i] - closes[i-1];
       avgGain = (avgGain * (period-1) + (d > 0 ? d : 0)) / period;
-      avgLoss = (avgLoss * (period-1) + (d < 0 ? Math.abs(d) : 0)) / period;
+      avgLoss = (avgLoss * (period-1) + (d < 0 ? -d  : 0)) / period;
+      rsi[i]  = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
     }
-    if (avgLoss === 0) return 100;
-    return 100 - 100 / (1 + avgGain / avgLoss);
-  }
-
-  function _calcRSIHistory(closes, period, bars) {
-    const arr = [];
-    for (let i = Math.max(period + 1, closes.length - bars); i <= closes.length; i++) {
-      const v = _calcRSI(closes.slice(0, i), period);
-      if (v !== null) arr.push(v);
-    }
-    return arr;
+    return rsi;
   }
 
   function _getPatterns(slice) {
@@ -324,27 +318,38 @@
   function runIndicatorScan() {
     const rsiLen = 14, lookback = 10;
     const rsiObMin=40, rsiObMax=85, rsiOsMin=18, rsiOsMax=60;
-    const minBars = rsiLen + lookback + 2;
+    const minBars = rsiLen + lookback + 1;
+    if (candles.length < minBars + 1) { precisionDots = []; return; }
+
+    const closes = candles.map(c => c.close);
+    const rsiArr = _buildRSIArr(closes, rsiLen); // O(n) — computed once for all bars
+
     const dots = [];
     for (let i = minBars; i < candles.length; i++) {
-      const slice = candles.slice(0, i + 1);
-      const sliceCloses = slice.map(c => c.close);
-      const rsiHist = _calcRSIHistory(sliceCloses, rsiLen, lookback + 2);
-      if (rsiHist.length < lookback + 1) continue;
-      const rsiNow  = rsiHist[rsiHist.length - 1];
-      const rsiPrev = rsiHist[rsiHist.length - 2];
-      const hookUp   = rsiNow > rsiPrev;
-      const hookDown = rsiNow < rsiPrev;
-      const last10   = rsiHist.slice(-lookback);
-      const rsiHigh10= Math.max(...last10);
-      const rsiLow10 = Math.min(...last10);
-      const osZone   = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHigh10 < 50;
-      const obZone   = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLow10  > 50;
-      const { isDoji, isBullishEngulfing, isBearishEngulfing } = _getPatterns(slice);
+      const rsiNow  = rsiArr[i];
+      const rsiPrev = rsiArr[i - 1];
+      if (rsiNow === null || rsiPrev === null) continue;
+
+      // 50-level memory window: max/min RSI over last 10 bars including current
+      let rsiHigh10 = -Infinity, rsiLow10 = Infinity;
+      for (let k = i - lookback + 1; k <= i; k++) {
+        if (rsiArr[k] !== null) {
+          if (rsiArr[k] > rsiHigh10) rsiHigh10 = rsiArr[k];
+          if (rsiArr[k] < rsiLow10 ) rsiLow10  = rsiArr[k];
+        }
+      }
+
+      const hookUp  = rsiNow > rsiPrev;
+      const hookDown= rsiNow < rsiPrev;
+      const osZone  = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHigh10 < 50;
+      const obZone  = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLow10  > 50;
+
+      const { isDoji, isBullishEngulfing, isBearishEngulfing } = _getPatterns(candles.slice(i - 1, i + 1));
+
       if (osZone && (isDoji || isBullishEngulfing) && hookUp) {
-        dots.push({ index: i, type: 'yellow', price: candles[i].close });
+        dots.push({ index: i, type: 'yellow', price: candles[i].close, rsi: rsiNow });
       } else if (obZone && (isDoji || isBearishEngulfing) && hookDown) {
-        dots.push({ index: i, type: 'pink', price: candles[i].close });
+        dots.push({ index: i, type: 'pink',   price: candles[i].close, rsi: rsiNow });
       }
     }
     precisionDots = dots;
@@ -775,25 +780,72 @@
 
   // ── Draw: Precision V9 dots ────────────────────────────────
   function drawPrecisionDots() {
-    if (!precisionDots.length) return;
-    const s=Math.max(0,Math.floor(viewStart));
-    const e=Math.min(candles.length,Math.ceil(viewEnd));
-    precisionDots.forEach(dot => {
-      if (dot.index<s || dot.index>=e) return;
-      const x=candleX(dot.index);
-      const c=candles[dot.index];
+    // Merge scan dots + live bot dots (bot dots fill any gaps due to timing)
+    const allDots = [...precisionDots];
+    for (const bd of botSignalDots) {
+      if (!allDots.some(d => Math.abs(d.index - bd.index) <= 1 && d.type === bd.type))
+        allDots.push(bd);
+    }
+    if (!allDots.length) return;
+
+    const s  = Math.max(0, Math.floor(viewStart));
+    const e  = Math.min(candles.length, Math.ceil(viewEnd));
+    const sw = slotW();
+    const r  = Math.max(5, Math.min(9, sw * 0.55)); // scales with zoom
+
+    allDots.forEach(dot => {
+      if (dot.index < s || dot.index >= e) return;
+      const c = candles[dot.index];
       if (!c) return;
-      if (dot.type==='yellow') {
-        const y=priceY(c.low)+8;
-        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2);
-        ctx.fillStyle='#f5c518'; ctx.fill();
-        ctx.strokeStyle=rgba('#f5c518',.4); ctx.lineWidth=.5; ctx.stroke();
-      } else if (dot.type==='pink') {
-        const y=priceY(c.high)-8;
-        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2);
-        ctx.fillStyle='#e879a0'; ctx.fill();
-        ctx.strokeStyle=rgba('#e879a0',.4); ctx.lineWidth=.5; ctx.stroke();
+      const x   = candleX(dot.index);
+      const isY = dot.type === 'yellow';
+      const col = isY ? '#f5c518' : '#e879a0';
+      const yDot= isY ? priceY(c.low) + r + 4 : priceY(c.high) - r - 4;
+
+      ctx.save();
+
+      // Outer glow
+      ctx.shadowColor = col;
+      ctx.shadowBlur  = 14;
+      ctx.beginPath(); ctx.arc(x, yDot, r, 0, Math.PI * 2);
+      ctx.fillStyle = col; ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Inner bright core
+      ctx.beginPath(); ctx.arc(x, yDot, r * 0.45, 0, Math.PI * 2);
+      ctx.fillStyle = rgba('#ffffff', 0.55); ctx.fill();
+
+      // Arrow + label (only when candle is wide enough to read)
+      if (sw > 4) {
+        ctx.fillStyle = col;
+        ctx.font = `bold ${Math.min(11, Math.max(8, sw * 0.9))}px Inter,"JetBrains Mono",monospace`;
+        ctx.textAlign = 'center';
+        if (isY) {
+          ctx.fillText('▲', x, yDot + r + 11);
+          if (dot.rsi != null && sw > 8) {
+            ctx.font = `8px Inter,"JetBrains Mono",monospace`;
+            ctx.fillStyle = rgba(col, 0.75);
+            ctx.fillText('RSI ' + dot.rsi.toFixed(0), x, yDot + r + 21);
+          }
+        } else {
+          ctx.fillText('▼', x, yDot - r - 3);
+          if (dot.rsi != null && sw > 8) {
+            ctx.font = `8px Inter,"JetBrains Mono",monospace`;
+            ctx.fillStyle = rgba(col, 0.75);
+            ctx.fillText('RSI ' + dot.rsi.toFixed(0), x, yDot - r - 13);
+          }
+        }
       }
+
+      // Bot-fired badge (small B marker)
+      if (dot.fromBot) {
+        ctx.fillStyle = rgba(col, 0.9);
+        ctx.font = 'bold 7px Inter,"JetBrains Mono",monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('●BOT', x, isY ? yDot + r + (sw > 8 ? 32 : 21) : yDot - r - (sw > 8 ? 23 : 13));
+      }
+
+      ctx.restore();
     });
   }
 
@@ -1537,19 +1589,30 @@
         dotType:   dir==='LONG'?'yellow':'pink',
       };
 
-      // Place precision dot at current candle
-      const sigIdx=candles.length-1;
-      if (sigIdx>=0) {
-        precisionDots.push({ index:sigIdx, type:plan._signal.dotType, price:decision.entry||price });
-        if (precisionDots.length>50) precisionDots.shift();
-      }
+      // Place precision dot at the correct historical candle (using barsAgo from indicator)
+      const barsAgo = signalData.barsAgo || 0;
+      const sigIdx  = Math.max(0, candles.length - 1 - barsAgo);
+      const dot = {
+        index:   sigIdx,
+        type:    plan._signal.dotType,
+        price:   decision.entry || price,
+        rsi:     signalData.rsi || null,
+        fromBot: true,
+      };
+      // Store in persistent bot array (survives loadCandles refreshes)
+      botSignalDots = botSignalDots.filter(d => d.index !== sigIdx || d.type !== dot.type);
+      botSignalDots.push(dot);
+      if (botSignalDots.length > 50) botSignalDots.shift();
+
+      // Refresh candles so the latest bar is visible, then re-scan
+      loadCandles();
 
       particles = [];
       burstSignal(dir);
       updateSidebar();
-      // zoom to last 45 candles + right padding
+      // zoom to show the signal candle + context
       viewEnd   = candles.length + RIGHT_PAD;
-      viewStart = Math.max(0, viewEnd - 45);
+      viewStart = Math.max(0, viewEnd - 60);
     },
 
     loadDots(dotArray) {
