@@ -758,3 +758,176 @@ html, body {
 }
 #gemini-chat-send:hover    { opacity: .85; }
 #gemini-chat-send:disabled { opacity: .4; cursor: default; }
+
+/* ================================================================
+   MOBILE RESPONSIVE  (≤ 900px tablet/phone, ≤ 480px small phone)
+   Pure CSS — no JS changes. Panels stack vertically and scroll.
+   ================================================================ */
+
+@media (max-width: 900px) {
+
+  /* ── Allow the whole page to scroll ── */
+  html, body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  #app {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  /* ── Topbar: compact 2-row on mobile ── */
+  #topbar {
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 6px 12px;
+  }
+  #topbar > div:first-child {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .badge.blue   { display: none; }   /* hide Gemini badge — saves space */
+  #clock        { display: none; }   /* hide clock on mobile */
+  #aum-display  { font-size: 14px; }
+  #aum-display .change { font-size: 11px; }
+  .logo         { font-size: 13px; letter-spacing: 1px; }
+
+  /* ── Main: single column, auto height ── */
+  #main {
+    flex-direction: column;
+    flex: none;
+    height: auto;
+    background: var(--border);
+    gap: 1px;
+  }
+
+  /* Reorder: chart first, positions second, signals third */
+  #panel-center { order: 0; }
+  #panel-right  { order: 1; }
+  #panel-left   { order: 2; }
+
+  /* ── Left panel (signals) ── */
+  #panel-left {
+    width: 100%;
+    height: 300px;
+    flex-shrink: 0;
+  }
+
+  /* ── Right panel (positions) ── */
+  #panel-right {
+    width: 100%;
+    height: auto;
+    flex-shrink: 0;
+  }
+  #positions-panel {
+    max-height: 320px;
+  }
+
+  /* ── Center panel: stack chart + AUM column vertically ── */
+  #panel-center {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #spatial-panel {
+    height: 380px;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #chart-column {
+    height: auto;
+    flex-shrink: 0;
+    border-top: none;
+  }
+
+  #chart-periods {
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 6px 10px;
+  }
+  .period-btn {
+    font-size: 9px;
+    padding: 3px 7px;
+  }
+
+  #chart-container {
+    height: 160px;
+    flex-shrink: 0;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, auto);
+  }
+  .metric-card {
+    padding: 8px 12px;
+  }
+  .metric-card .value { font-size: 14px; }
+
+  /* ── Bottom section: stack news + gemini ── */
+  #bottom-section {
+    height: auto;
+    grid-template-columns: 1fr;
+    flex-shrink: 0;
+  }
+
+  .bottom-panel {
+    height: 240px;
+  }
+
+  /* Gemini chat tab needs explicit height to scroll properly */
+  #gemini-tab-chat {
+    height: calc(240px - 36px);
+  }
+
+  /* ── Risk bars: wider on mobile ── */
+  .risk-mini-bar { width: 100px; }
+
+  /* ── Asset dropdown: wider grid on mobile ── */
+  #asset-dropdown {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    min-width: unset !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+
+  /* ── Touch: larger tap targets ── */
+  .ti-pill, .ti-item { min-height: 32px; }
+  #gemini-chat-input { font-size: 13px; padding: 8px 10px; }
+  #gemini-chat-send  { padding: 8px 14px; font-size: 11px; }
+}
+
+/* ── Extra small phones (≤ 480px) ── */
+@media (max-width: 480px) {
+  .logo span    { display: none; }
+  .badge.purple { display: none; }
+  .badge        { padding: 2px 7px; font-size: 10px; }
+
+  #aum-display  { font-size: 13px; }
+  #aum-display .change { font-size: 10px; }
+
+  #spatial-panel { height: 320px; }
+  #chart-container { height: 130px; }
+
+  .metric-card .value { font-size: 13px; }
+  .metric-card .label { font-size: 8px; }
+
+  #asset-dropdown {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .sp-row { grid-template-columns: repeat(2, 1fr); }
+
+  /* Positions: tighter */
+  .pos-pnl { font-size: 14px; }
+}
