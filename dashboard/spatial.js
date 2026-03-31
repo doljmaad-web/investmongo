@@ -68,6 +68,19 @@
     return `rgba(${r},${g},${b},${+Math.max(0,Math.min(1,a)).toFixed(3)})`;
   }
 
+  // ── Price formatter (works for BTC ~$90k down to PEPE ~$0.000013) ─
+  function fmtPrice(p) {
+    if (!p && p !== 0) return '$--';
+    if (p >= 1000) return '$' + Math.round(p).toLocaleString('en-US');
+    if (p >= 100)  return '$' + p.toFixed(1);
+    if (p >= 10)   return '$' + p.toFixed(2);
+    if (p >= 1)    return '$' + p.toFixed(3);
+    if (p >= 0.1)  return '$' + p.toFixed(4);
+    if (p >= 0.01) return '$' + p.toFixed(5);
+    if (p >= 0.001)return '$' + p.toFixed(6);
+    return '$' + p.toFixed(8);
+  }
+
   // ── Geometry ───────────────────────────────────────────────
   function plotW() { return W - PAD.left - PAD.right; }
   function plotH() { return H - PAD.top  - PAD.bot;   }
@@ -390,8 +403,8 @@
       const y = priceY(p);
       ctx.strokeStyle = rgba(C.border,.7);
       ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
-      ctx.fillStyle = rgba(C.white,.95); ctx.font='bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
-      ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, y+3.5);
+      ctx.fillStyle = rgba(C.white,.95); ctx.font='bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign='right';
+      ctx.fillText(fmtPrice(p), W-2, y+3.5);
     }
     ctx.setLineDash([]);
 
@@ -560,9 +573,8 @@
       ctx.setLineDash(dash?[5,4]:[]); ctx.lineWidth=dash?.8:1.2; ctx.strokeStyle=col;
       ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right+2,y); ctx.stroke();
       ctx.setLineDash([]);
-      const str='$'+Math.round(p).toLocaleString('en-US');
-      const txt=lbl+' '+str;
-      const pw=txt.length*5.6+8; const ph=13; const px=W-PAD.right+3;
+      const txt=lbl+' '+fmtPrice(p);
+      const pw=txt.length*5.6+8; const ph=13; const px=W-pw-2;
       ctx.fillStyle=rgba(col,.15); rr(ctx,px,y-ph/2,pw,ph,2); ctx.fill();
       ctx.strokeStyle=rgba(col,.55); ctx.lineWidth=.5; rr(ctx,px,y-ph/2,pw,ph,2); ctx.stroke();
       ctx.fillStyle=col; ctx.font='bold 7.5px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
@@ -579,11 +591,11 @@
     ctx.setLineDash([2,3]); ctx.lineWidth=.6; ctx.strokeStyle=rgba(col,.35);
     ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+plotW(),y); ctx.stroke();
     ctx.setLineDash([]);
-    const lbl='$'+currentPrice.toLocaleString('en-US',{maximumFractionDigits:0});
+    const lbl=fmtPrice(currentPrice);
     const tw=lbl.length*7.8+14; const ph=18;
-    ctx.fillStyle=col; rr(ctx,W-PAD.right+2,y-ph/2,tw,ph,2); ctx.fill();
-    ctx.fillStyle='#000'; ctx.font='bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
-    ctx.fillText(lbl, W-PAD.right+8, y+4);
+    ctx.fillStyle=col; rr(ctx,W-tw-2,y-ph/2,tw,ph,2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.font='bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign='right';
+    ctx.fillText(lbl, W-6, y+4);
   }
 
   // ── Draw: crosshair + tooltip ──────────────────────────────
@@ -595,8 +607,8 @@
     ctx.beginPath(); ctx.moveTo(PAD.left,mouseY); ctx.lineTo(PAD.left+plotW(),mouseY); ctx.stroke();
     ctx.setLineDash([]);
     const price=cachedLo+(cachedHi-cachedLo)*(1-(mouseY-PAD.top)/plotH());
-    ctx.fillStyle=rgba(C.white,.75); ctx.font='9px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
-    ctx.fillText('$'+price.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, mouseY+3);
+    ctx.fillStyle=rgba(C.white,.75); ctx.font='9px Inter,"JetBrains Mono",monospace'; ctx.textAlign='right';
+    ctx.fillText(fmtPrice(price), W-2, mouseY+3);
     const idx=Math.round(xToIdx(mouseX));
     if (idx>=0 && idx<candles.length) {
       const c=candles[idx]; const bull=c.close>=c.open;
@@ -604,7 +616,8 @@
       const d=new Date(c.time);
       const dStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
       const pct=((c.close-c.open)/c.open*100).toFixed(2);
-      const info=`${dStr}   O:${c.open.toFixed(0)}  H:${c.high.toFixed(0)}  L:${c.low.toFixed(0)}  C:${c.close.toFixed(0)}  (${pct>0?'+':''}${pct}%)`;
+      const fp=p=>fmtPrice(p).slice(1); // strip $ for compact OHLC display
+      const info=`${dStr}   O:${fp(c.open)}  H:${fp(c.high)}  L:${fp(c.low)}  C:${fp(c.close)}  (${pct>0?'+':''}${pct}%)`;
       const tw=info.length*5.3+16;
       let tx=mouseX-tw/2;
       tx=Math.max(PAD.left, Math.min(W-PAD.right-tw,tx));
@@ -738,7 +751,7 @@
   function updateSidebar() {
     if (!plan) return;
     const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v!=null) el.textContent=v; };
-    const fmt=p=>p?'$'+Math.round(p).toLocaleString('en-US'):'--';
+    const fmt=p=>p?fmtPrice(p):'--';
     set('sp-asset', plan.asset);
     set('sp-entry', fmt(plan.entry));
     set('sp-tp1',   fmt(plan.tp1));
