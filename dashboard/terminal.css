@@ -677,3 +677,73 @@ html, body {
   line-height: 1.4; font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ── Gemini tabs ─────────────────────────────────────── */
+.gemini-tabs {
+  display: flex; gap: 4px;
+}
+.g-tab {
+  background: none; border: none; cursor: pointer;
+  font-family: 'Courier New', monospace; font-size: 9px;
+  font-weight: bold; letter-spacing: 0.5px;
+  color: var(--text-muted); padding: 3px 8px;
+  border-bottom: 1px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.g-tab:hover  { color: var(--purple); }
+.g-tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+/* ── Gemini chat messages ────────────────────────────── */
+#gemini-tab-chat {
+  height: calc(100% - 36px);
+}
+.chat-bubble {
+  max-width: 85%; padding: 6px 10px;
+  border-radius: 8px; font-size: 11px; line-height: 1.55;
+  word-wrap: break-word; white-space: pre-wrap;
+}
+.chat-bubble.user {
+  align-self: flex-end;
+  background: var(--purple);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+.chat-bubble.gemini {
+  align-self: flex-start;
+  background: var(--bg-panel);
+  color: #c4b5fd;
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 2px;
+}
+.chat-bubble.typing {
+  align-self: flex-start;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-style: italic; font-size: 10px;
+}
+
+/* ── Chat input bar ───────────────────────────────────── */
+#gemini-chat-input-bar {
+  display: flex; gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+#gemini-chat-input {
+  flex: 1; background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: 'Courier New', monospace;
+  font-size: 11px; padding: 5px 8px; outline: none;
+}
+#gemini-chat-input:focus { border-color: var(--purple); }
+#gemini-chat-send {
+  background: var(--purple); border: none; border-radius: 4px;
+  color: #fff; cursor: pointer;
+  font-family: 'Courier New', monospace; font-size: 10px;
+  font-weight: bold; padding: 5px 12px; letter-spacing: 0.5px;
+  transition: opacity .15s;
+}
+#gemini-chat-send:hover    { opacity: .85; }
+#gemini-chat-send:disabled { opacity: .4; cursor: default; }

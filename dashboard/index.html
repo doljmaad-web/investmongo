@@ -179,19 +179,34 @@
       <div id="ti-feed" class="feed-scroll"></div>
     </div>
 
-    <!-- Right: Gemini Reasoning -->
+    <!-- Right: Gemini Panel (Reasoning + Chat) -->
     <div class="bottom-panel" id="gemini-panel">
-      <div class="panel-header">
+      <div class="panel-header" style="padding-bottom:0;">
         <span style="display:flex;align-items:center;gap:6px;">
-          <span class="gemini-icon">G</span>GEMINI REASONING
+          <span class="gemini-icon">G</span>GEMINI AI
         </span>
+        <div class="gemini-tabs">
+          <button class="g-tab active" id="tab-reasoning" onclick="switchGeminiTab('reasoning')">REASONING</button>
+          <button class="g-tab" id="tab-chat" onclick="switchGeminiTab('chat')">CHAT</button>
+        </div>
       </div>
-      <div class="feed-scroll" style="padding:8px 10px;">
+
+      <!-- REASONING tab -->
+      <div id="gemini-tab-reasoning" class="feed-scroll" style="padding:8px 10px;">
         <div id="gemini-reasoning" style="font-size:11px;color:#c4b5fd;line-height:1.6;">Waiting for next signal...</div>
         <div class="gemini-footer" id="gemini-footer" style="display:none;margin-top:8px;">
           <span id="gemini-verdict-badge" class="verdict-badge"></span>
           <span id="gemini-conf" style="font-size:11px;color:var(--purple);"></span>
           <span class="gemini-sl-tp">SL: <span id="gemini-sl">--</span> &nbsp;TP: <span id="gemini-tp">--</span> &nbsp;R:R <span id="gemini-rr">--</span></span>
+        </div>
+      </div>
+
+      <!-- CHAT tab -->
+      <div id="gemini-tab-chat" style="display:none;flex-direction:column;height:100%;">
+        <div id="gemini-chat-messages" class="feed-scroll" style="flex:1;padding:8px 10px;gap:6px;display:flex;flex-direction:column;"></div>
+        <div id="gemini-chat-input-bar">
+          <input id="gemini-chat-input" type="text" placeholder="Ask about your trades, market, strategy..." autocomplete="off" />
+          <button id="gemini-chat-send" onclick="sendChatMessage()">SEND</button>
         </div>
       </div>
     </div>

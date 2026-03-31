@@ -100,6 +100,61 @@ export async function getGeminiAdvisory(signal, news, fearGreed) {
   }
 }
 
+// ============================================================
+// CHAT — free-form conversation with portfolio context
+// ============================================================
+const CHAT_INSTRUCTION = `You are Gemini, the AI trading assistant for INVEST MONGO — a BTC paper trading bot using the Precision V9 indicator.
+
+You have access to the user's live portfolio data that will be provided at the start of each message.
+Answer questions about trades, market conditions, strategy, signals, and portfolio performance.
+Be concise, direct, and use trading terminology naturally.
+Format numbers with $ signs and commas. Keep replies under 200 words unless the user asks for detail.`;
+
+const chatGenAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const chatModel  = chatGenAI.getGenerativeModel({
+  model: 'gemini-2.0-flash',
+  systemInstruction: CHAT_INSTRUCTION,
+});
+
+export async function chatWithGemini(userMessage, context, history = []) {
+  try {
+    const contextBlock =
+      `[PORTFOLIO CONTEXT — ${new Date().toISOString()}]\n` +
+      `Total Value: $${context.totalValue}\n` +
+      `Cash Balance: $${context.cashBalance}\n` +
+      `Open P&L: $${context.openPnl}\n` +
+      `Total P&L (all closed): $${context.totalPnl}\n` +
+      `Win Rate: ${context.winRate}%  |  Total Trades: ${context.totalTrades}\n` +
+      `Open Positions (${context.openCount}): ${context.openTrades?.map(t =>
+        `${t.direction} ${t.asset} @ $${t.entry_price} → P&L $${t.pnl_usd ?? 0}`
+      ).join(' | ') || 'none'}\n` +
+      `Fear & Greed: ${context.fearGreed?.value ?? 50} (${context.fearGreed?.classification ?? 'Neutral'})\n` +
+      `Recent signals: ${context.recentSignals?.map(s => `${s.action} ${s.asset} @ $${s.price}`).join(', ') || 'none'}\n` +
+      `Top news: ${context.topNews?.map(n => n.title || n).join(' | ') || 'none'}\n`;
+
+    const fullMessage = contextBlock + '\n[USER QUESTION]\n' + userMessage;
+
+    const chat   = chatModel.startChat({
+      history,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
+    });
+    const result = await chat.sendMessage(fullMessage);
+    const reply  = result.response.text().trim();
+
+    // Return updated history (append this exchange, keep last 20 turns)
+    const updatedHistory = [
+      ...history,
+      { role: 'user',  parts: [{ text: fullMessage }] },
+      { role: 'model', parts: [{ text: reply        }] },
+    ].slice(-20);
+
+    return { reply, updatedHistory };
+  } catch (err) {
+    console.error('[GEMINI CHAT] Error:', err.message);
+    return { reply: 'Sorry, I had trouble connecting to Gemini. Please try again.', updatedHistory: history };
+  }
+}
+
 export async function validateWithGemini(signal, marketContext) {
   const { recentNews, fearGreed, fundingRate, whaleAlerts, nextMacroEvent, fourHourBias, newsSentiment } = marketContext;
 

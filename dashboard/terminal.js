@@ -730,3 +730,66 @@ window.addEventListener('load', () => {
     });
   });
 });
+
+// ============================================================
+// GEMINI CHAT
+// ============================================================
+function switchGeminiTab(tab) {
+  document.getElementById('gemini-tab-reasoning').style.display = tab === 'reasoning' ? '' : 'none';
+  document.getElementById('gemini-tab-chat').style.display      = tab === 'chat'      ? 'flex' : 'none';
+  document.getElementById('tab-reasoning').classList.toggle('active', tab === 'reasoning');
+  document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
+  if (tab === 'chat') {
+    const msgs = document.getElementById('gemini-chat-messages');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    document.getElementById('gemini-chat-input')?.focus();
+  }
+}
+
+function appendChatBubble(text, role) {
+  const msgs = document.getElementById('gemini-chat-messages');
+  if (!msgs) return null;
+  const div = document.createElement('div');
+  div.className = `chat-bubble ${role}`;
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function sendChatMessage() {
+  const input  = document.getElementById('gemini-chat-input');
+  const btn    = document.getElementById('gemini-chat-send');
+  const msg    = input?.value?.trim();
+  if (!msg) return;
+
+  input.value = '';
+  btn.disabled = true;
+
+  appendChatBubble(msg, 'user');
+  const typingBubble = appendChatBubble('Gemini is thinking...', 'typing');
+
+  try {
+    const res  = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    const data = await res.json();
+    if (typingBubble) typingBubble.remove();
+    appendChatBubble(data.reply || data.error || 'No response.', 'gemini');
+  } catch (err) {
+    if (typingBubble) typingBubble.remove();
+    appendChatBubble('Connection error. Please try again.', 'gemini');
+  } finally {
+    btn.disabled = false;
+    input?.focus();
+  }
+}
+
+// Allow Enter key to send
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('gemini-chat-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+  });
+});

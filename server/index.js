@@ -26,6 +26,7 @@ process.on('SIGTERM', () => {
   setTimeout(() => process.exit(0), 10000).unref();
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
+import { chatWithGemini } from './gemini.js';
 import { getPortfolioStats }           from './paper-trading.js';
 import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
 import { db }                          from './database.js';
@@ -140,6 +141,31 @@ app.get('/api/snapshots', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
+});
+
+// ============================================================
+// GEMINI CHAT — conversational assistant with portfolio context
+// ============================================================
+let geminiChatHistory = [];
+
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+  if (!message || typeof message !== 'string' || message.trim().length === 0) {
+    return res.status(400).json({ error: 'message required' });
+  }
+  try {
+    const stats         = getPortfolioStats();
+    const recentSignals = db.prepare('SELECT * FROM signals ORDER BY created_at DESC LIMIT 5').all();
+    const topNews       = newsCache.slice(0, 5);
+    const context       = { ...stats, fearGreed, recentSignals, topNews };
+
+    const { reply, updatedHistory } = await chatWithGemini(message.trim(), context, geminiChatHistory);
+    geminiChatHistory = updatedHistory;
+    res.json({ reply });
+  } catch (err) {
+    console.error('[CHAT] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Spatial Trade Planner — live BTC price for particle feed
