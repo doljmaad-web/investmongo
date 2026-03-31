@@ -32,6 +32,16 @@
   let precisionDots  = []; // { index, type: 'yellow'|'pink', price }
   let sma50arr       = []; // SMA50 value per candle index (null if insufficient history)
   let sma200arr      = []; // SMA200 value per candle index
+
+  // ── Drawing tool state ──────────────────────────────────────
+  let drawTool     = 'pan';    // 'pan'|'line'|'hline'|'rect'|'channel'
+  let drawColor    = '#f5c518';
+  let drawings     = [];       // completed drawings
+  let drawInProg   = null;     // { type, p1, p2, phase, offset }
+  let drawHoverIdx = -1;
+  const DRAW_COLORS = ['#f5c518','#e879a0','#26d987','#5ba8e0','#e8a020','#d8dfe8'];
+  let _toolBtns = [], _colorBtns = [], _savBtn = null, _clrBtn = null;
+
   let assetDropdownOpen = false;
   let dropdownEl     = null;
 
@@ -45,7 +55,7 @@
   let mouseX = -1, mouseY = -1;
 
   // ── Layout ─────────────────────────────────────────────────
-  const PAD = { top: 34, bot: 24, left: 10, right: 88 };
+  const PAD = { top: 60, bot: 24, left: 10, right: 88 };
 
   // ── Palette ────────────────────────────────────────────────
   const C = {
@@ -106,6 +116,17 @@
 
   function xToIdx(px) {
     return viewStart + (px - PAD.left) / slotW();
+  }
+
+  function yToPrice(py) {
+    if (cachedHi === cachedLo) return (cachedHi + cachedLo) / 2;
+    return cachedHi - (py - PAD.top) / plotH() * (cachedHi - cachedLo);
+  }
+
+  function lineAtIdx(p1, p2, idx) {
+    if (!p1 || !p2 || p1.idx === p2.idx) return null;
+    const m = (p2.price - p1.price) / (p2.idx - p1.idx);
+    return p1.price + m * (idx - p1.idx);
   }
 
   function visRange() {
@@ -174,6 +195,7 @@
         viewStart = Math.max(0, viewEnd - 80);
         computeSMAs();
         runIndicatorScan();
+        loadDrawings();
       }
     } catch (_) {}
   }
@@ -338,6 +360,146 @@
     }
   }
 
+  // ── Drawing: find nearest drawing to mouse ─────────────────
+  function findNearestDrawing(mx, my) {
+    const THRESH = 8;
+    for (let i = drawings.length - 1; i >= 0; i--) {
+      const d = drawings[i];
+      if (d.type === 'hline') {
+        if (Math.abs(priceY(d.price) - my) < THRESH) return i;
+      } else if (d.type === 'line' || d.type === 'channel') {
+        if (!d.p1 || !d.p2) continue;
+        const idx = xToIdx(mx);
+        const ep  = lineAtIdx(d.p1, d.p2, idx);
+        if (ep !== null && Math.abs(priceY(ep) - my) < THRESH) return i;
+        if (d.type === 'channel' && d.offset != null && ep !== null) {
+          if (Math.abs(priceY(ep + d.offset) - my) < THRESH) return i;
+        }
+      } else if (d.type === 'rect') {
+        if (!d.p1 || !d.p2) continue;
+        const x1 = candleX(d.p1.idx), y1 = priceY(d.p1.price);
+        const x2 = candleX(d.p2.idx), y2 = priceY(d.p2.price);
+        const rx = Math.min(x1,x2), ry = Math.min(y1,y2);
+        const rw = Math.abs(x2-x1), rh = Math.abs(y2-y1);
+        const inside = mx>=rx-THRESH && mx<=rx+rw+THRESH && my>=ry-THRESH && my<=ry+rh+THRESH;
+        const edge   = mx<rx+THRESH || mx>rx+rw-THRESH || my<ry+THRESH || my>ry+rh-THRESH;
+        if (inside && edge) return i;
+      }
+    }
+    return -1;
+  }
+
+  // ── Drawing: render all drawings + preview ──────────────────
+  function drawDrawings() {
+    const s = viewStart, e = viewEnd;
+
+    drawings.forEach((d, i) => {
+      const hover = i === drawHoverIdx;
+      ctx.save();
+      ctx.lineWidth   = hover ? 2.2 : 1.6;
+      ctx.setLineDash([]);
+
+      if (d.type === 'hline') {
+        const y = priceY(d.price);
+        if (y < PAD.top || y > PAD.top + plotH()) { ctx.restore(); return; }
+        ctx.strokeStyle = rgba(d.color, hover ? 1 : 0.8);
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = rgba(d.color, hover ? 1 : 0.75);
+        ctx.font = '9px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'right';
+        ctx.fillText(fmtPrice(d.price), W - PAD.right - 3, y - 3);
+
+      } else if (d.type === 'line' || d.type === 'channel') {
+        if (!d.p1 || !d.p2) { ctx.restore(); return; }
+        const lp = lineAtIdx(d.p1, d.p2, s);
+        const rp = lineAtIdx(d.p1, d.p2, e);
+        if (lp === null) { ctx.restore(); return; }
+        ctx.strokeStyle = rgba(d.color, hover ? 1 : 0.85);
+        ctx.beginPath();
+        ctx.moveTo(PAD.left,      priceY(lp));
+        ctx.lineTo(W - PAD.right, priceY(rp));
+        ctx.stroke();
+        if (d.type === 'channel' && d.offset != null) {
+          ctx.strokeStyle = rgba(d.color, hover ? 0.7 : 0.5);
+          ctx.setLineDash([5, 3]);
+          ctx.beginPath();
+          ctx.moveTo(PAD.left,      priceY(lp + d.offset));
+          ctx.lineTo(W - PAD.right, priceY(rp + d.offset));
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 0.06;
+          ctx.fillStyle = d.color;
+          ctx.beginPath();
+          ctx.moveTo(PAD.left,      priceY(lp));
+          ctx.lineTo(W - PAD.right, priceY(rp));
+          ctx.lineTo(W - PAD.right, priceY(rp + d.offset));
+          ctx.lineTo(PAD.left,      priceY(lp + d.offset));
+          ctx.closePath(); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+
+      } else if (d.type === 'rect') {
+        if (!d.p1 || !d.p2) { ctx.restore(); return; }
+        const x1 = candleX(d.p1.idx), y1 = priceY(d.p1.price);
+        const x2 = candleX(d.p2.idx), y2 = priceY(d.p2.price);
+        const rx = Math.min(x1,x2), ry = Math.min(y1,y2);
+        const rw = Math.abs(x2-x1), rh = Math.abs(y2-y1);
+        ctx.strokeStyle = rgba(d.color, hover ? 1 : 0.8);
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.fillStyle = rgba(d.color, 0.07);
+        ctx.fillRect(rx, ry, rw, rh);
+      }
+      ctx.restore();
+    });
+
+    // In-progress preview
+    if (!drawInProg) return;
+    const { type, p1, p2, phase, offset } = drawInProg;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = rgba(drawColor, 0.7);
+    ctx.setLineDash([5, 3]);
+
+    if (type === 'hline' && p1) {
+      const y = priceY(p1.price);
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+
+    } else if (type === 'line' && p1 && p2) {
+      const lp = lineAtIdx(p1, p2, s), rp = lineAtIdx(p1, p2, e);
+      if (lp !== null) {
+        ctx.beginPath();
+        ctx.moveTo(PAD.left,      priceY(lp));
+        ctx.lineTo(W - PAD.right, priceY(rp));
+        ctx.stroke();
+      }
+
+    } else if (type === 'channel' && p1 && p2) {
+      const lp = lineAtIdx(p1, p2, s), rp = lineAtIdx(p1, p2, e);
+      if (lp !== null) {
+        ctx.beginPath();
+        ctx.moveTo(PAD.left,      priceY(lp));
+        ctx.lineTo(W - PAD.right, priceY(rp));
+        ctx.stroke();
+        if (phase === 2 && offset != null) {
+          ctx.strokeStyle = rgba(drawColor, 0.45);
+          ctx.beginPath();
+          ctx.moveTo(PAD.left,      priceY(lp + offset));
+          ctx.lineTo(W - PAD.right, priceY(rp + offset));
+          ctx.stroke();
+        }
+      }
+
+    } else if (type === 'rect' && p1 && p2) {
+      const x1 = candleX(p1.idx), y1 = priceY(p1.price);
+      const x2 = candleX(p2.idx), y2 = priceY(p2.price);
+      ctx.strokeRect(Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1));
+      ctx.fillStyle = rgba(drawColor, 0.05);
+      ctx.fillRect(Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1));
+    }
+    ctx.restore();
+  }
+
   // ── Draw: trend ribbon (fill between SMA50/SMA200) ─────────
   function drawTrendRibbon() {
     if (!sma50arr.length || !sma200arr.length) return;
@@ -411,6 +573,80 @@
       ctx.fillText('SMA200', W - PAD.right + 2, priceY(last200) + 3);
     }
     ctx.restore();
+  }
+
+  // ── Draw: drawing toolbar (second header row y:34–60) ───────
+  function drawToolbar() {
+    const ROW_Y = 36, BTN_H = 18;
+    // Divider
+    ctx.strokeStyle = rgba(C.border, 0.5); ctx.lineWidth = 0.5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(0, 34); ctx.lineTo(W, 34); ctx.stroke();
+
+    _toolBtns = [];
+    const tools = [
+      { key:'pan',     label:'↖ PAN'   },
+      { key:'line',    label:'/ LINE'  },
+      { key:'hline',   label:'─ H-LVL' },
+      { key:'rect',    label:'▭ ZONE'  },
+      { key:'channel', label:'═ CHAN'  },
+    ];
+    let bx = PAD.left + 2;
+    tools.forEach(t => {
+      const bw = 44;
+      const isActive = drawTool === t.key;
+      ctx.fillStyle = isActive ? rgba(C.amber, 0.9) : rgba(C.border, 0.85);
+      rr(ctx, bx, ROW_Y, bw, BTN_H, 3); ctx.fill();
+      if (isActive) {
+        ctx.strokeStyle = rgba(C.amber, 0.7); ctx.lineWidth = 0.7;
+        rr(ctx, bx, ROW_Y, bw, BTN_H, 3); ctx.stroke();
+      }
+      ctx.fillStyle = isActive ? '#000' : rgba(C.white, 0.8);
+      ctx.font = (isActive ? 'bold ' : '') + '9px Inter,"JetBrains Mono",monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.label, bx + bw/2, ROW_Y + 12);
+      _toolBtns.push({ x: bx, y: ROW_Y, w: bw, h: BTN_H, key: t.key });
+      bx += bw + 3;
+    });
+
+    // Color swatches
+    _colorBtns = [];
+    const swatchCY = ROW_Y + BTN_H/2;
+    let cx = bx + 12;
+    DRAW_COLORS.forEach(col => {
+      const active = col === drawColor;
+      ctx.beginPath(); ctx.arc(cx, swatchCY, active ? 7 : 5, 0, Math.PI*2);
+      ctx.fillStyle = col; ctx.fill();
+      if (active) {
+        ctx.strokeStyle = rgba(C.white, 0.9); ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      _colorBtns.push({ x: cx-9, y: swatchCY-9, w: 18, h: 18, col });
+      cx += 19;
+    });
+
+    // SAVE button
+    const savW = 38, savH = BTN_H, savX = W - PAD.right - savW - 34;
+    ctx.fillStyle = rgba(C.green, 0.15); rr(ctx, savX, ROW_Y, savW, savH, 3); ctx.fill();
+    ctx.strokeStyle = rgba(C.green, 0.55); ctx.lineWidth = 0.6;
+    rr(ctx, savX, ROW_Y, savW, savH, 3); ctx.stroke();
+    ctx.fillStyle = C.green; ctx.font = '9px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'center';
+    ctx.fillText('SAVE', savX + savW/2, ROW_Y + 12);
+    _savBtn = { x: savX, y: ROW_Y, w: savW, h: savH };
+
+    // CLR button
+    const clrW = 28, clrX = savX + savW + 4;
+    ctx.fillStyle = rgba(C.red, 0.12); rr(ctx, clrX, ROW_Y, clrW, savH, 3); ctx.fill();
+    ctx.strokeStyle = rgba(C.red, 0.5); ctx.lineWidth = 0.6;
+    rr(ctx, clrX, ROW_Y, clrW, savH, 3); ctx.stroke();
+    ctx.fillStyle = C.red; ctx.font = '9px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'center';
+    ctx.fillText('CLR', clrX + clrW/2, ROW_Y + 12);
+    _clrBtn = { x: clrX, y: ROW_Y, w: clrW, h: savH };
+
+    // Hint: right-click to delete
+    if (drawHoverIdx >= 0) {
+      ctx.fillStyle = rgba(C.muted, 0.7);
+      ctx.font = '8px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'right';
+      ctx.fillText('right-click to delete', W - PAD.right - 70, ROW_Y + 12);
+    }
   }
 
   // ── Draw: grid ─────────────────────────────────────────────
@@ -752,6 +988,7 @@
   function drawHeader() {
     // background + bottom border
     ctx.fillStyle = rgba(C.bg, .96); ctx.fillRect(0, 0, W, PAD.top);
+    drawToolbar();
     ctx.strokeStyle = rgba(C.border, .8); ctx.lineWidth = .5; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(0, PAD.top); ctx.lineTo(W, PAD.top); ctx.stroke();
 
@@ -988,26 +1225,93 @@
 
     canvas.addEventListener('mousedown', e => {
       const rect = canvas.getBoundingClientRect();
-      isDragging = true;
-      dragStartX = e.clientX - rect.left;  // canvas-relative, consistent with mousemove
-      dragStartViewStart = viewStart;
-      canvas.style.cursor = 'grabbing';
+      const ox = e.clientX - rect.left;
+      const oy = e.clientY - rect.top;
+
+      // Drawing tools intercept chart-area clicks
+      if (drawTool !== 'pan' && oy > PAD.top) {
+        const idx   = xToIdx(ox);
+        const price = yToPrice(oy);
+
+        if (drawTool === 'hline') {
+          drawings.push({ id: null, type:'hline', color:drawColor, price });
+          return;
+        }
+        if (drawTool === 'channel' && drawInProg && drawInProg.phase === 2) {
+          drawings.push({ id: null, type:'channel', color:drawColor,
+            p1: drawInProg.p1, p2: drawInProg.p2, offset: drawInProg.offset || 0 });
+          drawInProg = null;
+          return;
+        }
+        drawInProg = { type: drawTool, p1: { idx, price }, p2: { idx, price }, phase: 1 };
+        return;
+      }
+
+      // Pan mode
+      isDragging        = true;
+      dragStartX        = ox;
+      dragStartViewStart= viewStart;
+      if (drawTool === 'pan') canvas.style.cursor = 'grabbing';
     });
+
     window.addEventListener('mousemove', e => {
       const rect = canvas.getBoundingClientRect();
       mouseX = e.clientX - rect.left;
       mouseY = e.clientY - rect.top;
+
+      if (drawInProg && mouseY > PAD.top) {
+        const idx   = xToIdx(mouseX);
+        const price = yToPrice(mouseY);
+        if (drawInProg.phase === 1) {
+          drawInProg.p2 = { idx, price };
+        } else if (drawInProg.phase === 2) {
+          // Channel offset: vertical distance from main line at current x
+          const mainP = lineAtIdx(drawInProg.p1, drawInProg.p2, idx);
+          drawInProg.offset = mainP !== null ? price - mainP : 0;
+        }
+        return;
+      }
+
+      if (mouseY > PAD.top) {
+        drawHoverIdx = findNearestDrawing(mouseX, mouseY);
+      } else {
+        drawHoverIdx = -1;
+      }
+
       if (!isDragging) return;
-      const dx = mouseX - dragStartX;       // both canvas-relative now
+      const dx   = mouseX - dragStartX;
       const span = viewEnd - viewStart;
-      viewStart = dragStartViewStart - dx / slotW();
-      viewEnd   = viewStart + span;
+      viewStart  = dragStartViewStart - dx / slotW();
+      viewEnd    = viewStart + span;
       clampView();
     });
+
     window.addEventListener('mouseup', () => {
+      if (drawInProg) {
+        const { type, p1, p2, phase } = drawInProg;
+        if (type === 'channel' && phase === 1 && p2 && p1.idx !== p2.idx) {
+          // Transition to phase 2 — wait for next click to set offset
+          drawInProg = { type:'channel', p1, p2, phase:2, offset:0 };
+        } else if (p2 && p1.idx !== p2.idx) {
+          drawings.push({ id:null, type, color:drawColor, p1, p2 });
+          drawInProg = null;
+        } else if (type !== 'channel') {
+          drawInProg = null;
+        }
+        return;
+      }
       isDragging = false;
       if (canvas) canvas.style.cursor = 'crosshair';
     });
+
+    canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      if (drawHoverIdx < 0) return;
+      const removed = drawings.splice(drawHoverIdx, 1)[0];
+      if (removed && removed.id) deleteDrawing(removed.id);
+      drawHoverIdx = -1;
+    });
+
     canvas.addEventListener('mouseleave', () => { mouseX = -1; mouseY = -1; });
 
     canvas.addEventListener('touchstart', e => {
@@ -1064,6 +1368,20 @@
 
       if (e.offsetY > PAD.top) return;
 
+      // Drawing toolbar (second row y:34–60)
+      if (e.offsetY >= 34 && e.offsetY < 60) {
+        const hit = (r, ex, ey) => r && ex>=r.x && ex<=r.x+r.w && ey>=r.y && ey<=r.y+r.h;
+        for (const btn of _toolBtns) {
+          if (hit(btn, e.offsetX, e.offsetY)) { drawTool = btn.key; drawInProg = null; return; }
+        }
+        for (const btn of _colorBtns) {
+          if (hit(btn, e.offsetX, e.offsetY)) { drawColor = btn.col; return; }
+        }
+        if (_savBtn && hit(_savBtn, e.offsetX, e.offsetY)) { saveDrawings(); return; }
+        if (_clrBtn && hit(_clrBtn, e.offsetX, e.offsetY)) { clearDrawings(); return; }
+        return;
+      }
+
       // Interval buttons (left)
       const btnLabels=['5m','1h','4h','1D','1W'];
       const btnW=32, btnH=20, btnGap=4;
@@ -1096,6 +1414,38 @@
     });
   }
 
+  // ── Drawing persistence ─────────────────────────────────────
+  async function loadDrawings() {
+    try {
+      const r = await fetch(`/api/drawings?coin=${activeCoin}&interval=${activeInterval}`);
+      if (!r.ok) return;
+      drawings = await r.json();
+    } catch (_) {}
+  }
+
+  async function saveDrawings() {
+    for (const d of drawings) {
+      if (d.id) continue; // already saved
+      try {
+        const r = await fetch('/api/drawings', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ coin:activeCoin, interval:activeInterval, type:d.type, data:d }),
+        });
+        if (r.ok) { const j = await r.json(); d.id = j.id; }
+      } catch (_) {}
+    }
+  }
+
+  async function deleteDrawing(id) {
+    try { await fetch(`/api/drawings/${id}`, { method:'DELETE' }); } catch (_) {}
+  }
+
+  function clearDrawings() {
+    drawings.forEach(d => { if (d.id) deleteDrawing(d.id); });
+    drawings = [];
+    drawInProg = null;
+  }
+
   // ── Main loop ───────────────────────────────────────────────
   function loop() {
     animId = requestAnimationFrame(loop);
@@ -1113,6 +1463,7 @@
     drawGrid();
     drawTrendRibbon();
     drawSMALines();
+    drawDrawings();
     drawPlanZones();
     drawCandles();
     drawPrecisionDots();

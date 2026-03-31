@@ -170,5 +170,17 @@ db.exec(`
 // Migration: add deploy_pct column if upgrading from the initial schema
 try { db.exec(`ALTER TABLE trading_assets ADD COLUMN deploy_pct REAL DEFAULT 50`); } catch (_) {}
 
+// Drawings table for Spatial Trade Planner manual annotations
+db.exec(`
+  CREATE TABLE IF NOT EXISTS drawings (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    coin     TEXT NOT NULL,
+    interval TEXT NOT NULL,
+    type     TEXT NOT NULL,
+    data     TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+
 export { db };
 export default db;

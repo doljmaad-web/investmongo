@@ -251,6 +251,34 @@ app.get('/api/spatial/candles', async (req, res) => {
   }
 });
 
+// ── Drawing annotations (Spatial Trade Planner) ───────────
+app.get('/api/drawings', (req, res) => {
+  const coin     = (req.query.coin || 'BTC').toUpperCase();
+  const interval = req.query.interval || '5m';
+  try {
+    const rows = db.prepare('SELECT id, type, data FROM drawings WHERE coin=? AND interval=? ORDER BY id ASC').all(coin, interval);
+    res.json(rows.map(r => ({ id: r.id, type: r.type, ...JSON.parse(r.data) })));
+  } catch (e) { res.json([]); }
+});
+
+app.post('/api/drawings', (req, res) => {
+  const { coin, interval, type, data } = req.body || {};
+  if (!coin || !type) return res.status(400).json({ error: 'missing fields' });
+  try {
+    const info = db.prepare('INSERT INTO drawings (coin, interval, type, data) VALUES (?,?,?,?)').run(
+      coin.toUpperCase(), interval || '5m', type, JSON.stringify(data || {})
+    );
+    res.json({ id: info.lastInsertRowid });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/drawings/:id', (req, res) => {
+  try {
+    db.prepare('DELETE FROM drawings WHERE id=?').run(parseInt(req.params.id));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ============================================================
 // X INTELLIGENCE FEED — Telegram mirrors via tg.i-c-a.su proxy
 // ============================================================
