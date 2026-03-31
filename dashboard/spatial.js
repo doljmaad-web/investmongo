@@ -863,6 +863,7 @@
       const trigW=88, trigH=20;
       const trigX=W/2-trigW/2;
       if (e.offsetX>=trigX && e.offsetX<=trigX+trigW && e.offsetY>=6 && e.offsetY<=6+trigH) {
+        e.stopPropagation(); // prevent bubbling to document which would close it immediately
         if (assetDropdownOpen) closeDropdown(); else openDropdown();
         return;
       }
