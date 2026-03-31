@@ -663,6 +663,7 @@
           activeCoin = coin; candles = []; precisionDots = [];
           sma50arr = []; sma200arr = [];
           loadCandles();
+          if (window.SpatialPlanner?.onAssetChange) window.SpatialPlanner.onAssetChange(coin);
         }
         closeDropdown();
       });
@@ -1121,6 +1122,8 @@
 
   // ── Public API ─────────────────────────────────────────────
   window.SpatialPlanner = {
+
+    onAssetChange: null, // set by orderbook.js to receive asset switch events
 
     init() {
       canvas = document.getElementById('spatial-canvas');

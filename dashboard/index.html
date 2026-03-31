@@ -179,37 +179,27 @@
       <div id="ti-feed" class="feed-scroll"></div>
     </div>
 
-    <!-- Right: Gemini Panel (Reasoning + Chat) -->
-    <div class="bottom-panel" id="gemini-panel">
-      <div class="panel-header" style="padding-bottom:0;">
+    <!-- Right: Order Book + Trade Tape -->
+    <div class="bottom-panel" id="orderbook-panel">
+      <div class="panel-header">
         <span style="display:flex;align-items:center;gap:6px;">
-          <span class="gemini-icon">G</span>GEMINI AI
+          <div class="live-dot"></div>
+          ORDER FLOW
         </span>
-        <div class="gemini-tabs">
-          <button class="g-tab active" id="tab-reasoning" onclick="switchGeminiTab('reasoning')">REASONING</button>
-          <button class="g-tab" id="tab-chat" onclick="switchGeminiTab('chat')">CHAT</button>
-        </div>
+        <span id="ob-asset-label">BTC</span>
       </div>
-
-      <!-- REASONING tab -->
-      <div id="gemini-tab-reasoning" class="feed-scroll" style="padding:8px 10px;">
-        <div id="gemini-reasoning" style="font-size:11px;color:#c4b5fd;line-height:1.6;">Waiting for next signal...</div>
-        <div class="gemini-footer" id="gemini-footer" style="display:none;margin-top:8px;">
-          <span id="gemini-verdict-badge" class="verdict-badge"></span>
-          <span id="gemini-conf" style="font-size:11px;color:var(--purple);"></span>
-          <span class="gemini-sl-tp">SL: <span id="gemini-sl">--</span> &nbsp;TP: <span id="gemini-tp">--</span> &nbsp;R:R <span id="gemini-rr">--</span></span>
+      <div id="ob-body">
+        <div id="ob-book">
+          <div id="ob-asks"></div>
+          <div id="ob-mid">
+            <span id="ob-mid-price">--</span>
+            <span id="ob-spread-val">spread --</span>
+          </div>
+          <div id="ob-bids"></div>
         </div>
-      </div>
-
-      <!-- CHAT tab -->
-      <div id="gemini-tab-chat" style="display:none;flex-direction:column;height:100%;">
-        <div id="gemini-chat-messages" class="feed-scroll" style="flex:1;padding:8px 10px;gap:6px;display:flex;flex-direction:column;"></div>
-        <div style="padding:2px 10px 0;text-align:right;">
-          <span id="gemini-usage-counter" style="font-size:9px;font-family:'Courier New',monospace;color:var(--text-muted);"></span>
-        </div>
-        <div id="gemini-chat-input-bar">
-          <input id="gemini-chat-input" type="text" placeholder="Ask about your trades, market, strategy..." autocomplete="off" />
-          <button id="gemini-chat-send" onclick="sendChatMessage()">SEND</button>
+        <div id="ob-tape">
+          <div class="ob-tape-hdr">TRADES</div>
+          <div id="ob-trades"></div>
         </div>
       </div>
     </div>
@@ -220,5 +210,6 @@
 
 <script src="spatial.js"></script>
 <script src="terminal.js"></script>
+<script src="orderbook.js"></script>
 </body>
 </html>

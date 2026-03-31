@@ -690,6 +690,144 @@ html, body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* ── Order Book / Order Flow ─────────────────────────── */
+#orderbook-panel { display: flex; flex-direction: column; overflow: hidden; }
+
+#ob-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#ob-book {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+#ob-asks {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+#ob-bids {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#ob-mid {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  background: rgba(255,255,255,0.03);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#ob-mid-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+#ob-spread-val {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.ob-row {
+  display: flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  position: relative;
+  cursor: default;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ob-bar {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  pointer-events: none;
+}
+
+.ob-ask .ob-bar { background: rgba(248, 113, 113, 0.13); }
+.ob-bid .ob-bar { background: rgba(74,  222, 128, 0.13); }
+.ob-ask:hover   { background: rgba(248, 113, 113, 0.05); }
+.ob-bid:hover   { background: rgba(74,  222, 128, 0.05); }
+
+.ob-price { flex: 1; font-weight: 600; position: relative; z-index: 1; }
+.ob-size  { position: relative; z-index: 1; color: var(--text-muted); font-size: 10px; }
+.ob-ask .ob-price { color: #f87171; }
+.ob-bid .ob-price { color: #4ade80; }
+
+#ob-tape {
+  width: 145px;
+  min-width: 145px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ob-tape-hdr {
+  padding: 3px 8px;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#ob-trades {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+#ob-trades::-webkit-scrollbar { display: none; }
+
+.ob-trade {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  height: 16px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+.ob-trade.buy  { color: #4ade80; }
+.ob-trade.sell { color: #f87171; }
+.ob-trade-dir  { width: 8px; flex-shrink: 0; }
+.ob-trade-px   { flex: 1; }
+.ob-trade-sz   { color: var(--text-muted); font-size: 9px; }
+.ob-trade-time { color: var(--text-dim); font-size: 9px; }
+
+#ob-asset-label {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--amber);
+}
+
 /* ── Gemini tabs ─────────────────────────────────────── */
 .gemini-tabs {
   display: flex; gap: 4px;
