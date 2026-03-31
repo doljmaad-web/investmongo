@@ -68,7 +68,7 @@ function getBias(asset) {
 
 async function update1hBias(asset) {
   try {
-    const candles1h = await fetchCandles(asset, '1h', 250);
+    const candles1h = await fetchCandles(asset, '1h', 400);
     if (!candles1h || candles1h.length < 60) return;
     const result = detectSignals(candles1h);
     if (result.signal) {
@@ -241,7 +241,7 @@ export async function runServerLoop(broadcastFn) {
     await update1hBias(asset);
 
     try {
-      const candles5m = await fetchCandles(asset, '5m', 250);
+      const candles5m = await fetchCandles(asset, '5m', 400);
       if (!candles5m || candles5m.length < 60) {
         console.log(`[BOT] ${asset}: insufficient 5m candles — skipping`);
       } else {

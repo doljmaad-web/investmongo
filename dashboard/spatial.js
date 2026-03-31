@@ -155,9 +155,9 @@
       const ticker = getTicker(activeCoin);
       let url;
       if (activeInterval === '5m') {
-        url = `/api/spatial/candles?coin=${ticker}&interval=5m&bars=200`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=5m&bars=400`;
       } else if (activeInterval === '1h') {
-        url = `/api/spatial/candles?coin=${ticker}&interval=1h&bars=200`;
+        url = `/api/spatial/candles?coin=${ticker}&interval=1h&bars=400`;
       } else if (activeInterval === '4h') {
         url = `/api/spatial/candles?coin=${ticker}&interval=4h&bars=300`;
       } else if (activeInterval === '1D') {
@@ -394,6 +394,22 @@
       started200 = true;
     }
     ctx.stroke();
+
+    // ── SMA labels at right edge ─────────────────────────────
+    ctx.font = 'bold 9px Inter,"JetBrains Mono",monospace';
+    ctx.textAlign = 'left';
+    // SMA50 label
+    const last50 = sma50arr[Math.min(Math.ceil(viewEnd)-1, sma50arr.length-1)];
+    if (last50 !== null && last50 !== undefined) {
+      ctx.fillStyle = rgba(C.blue, 0.9);
+      ctx.fillText('SMA50', W - PAD.right + 2, priceY(last50) + 3);
+    }
+    // SMA200 label
+    const last200 = sma200arr[Math.min(Math.ceil(viewEnd)-1, sma200arr.length-1)];
+    if (last200 !== null && last200 !== undefined) {
+      ctx.fillStyle = rgba(C.red, 0.9);
+      ctx.fillText('SMA200', W - PAD.right + 2, priceY(last200) + 3);
+    }
     ctx.restore();
   }
 
