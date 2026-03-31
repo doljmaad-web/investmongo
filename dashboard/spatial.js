@@ -34,7 +34,7 @@
   let mouseX = -1, mouseY = -1;
 
   // ── Layout ─────────────────────────────────────────────────
-  const PAD = { top: 34, bot: 24, left: 64, right: 82 };
+  const PAD = { top: 34, bot: 24, left: 10, right: 88 };
 
   // ── Palette ────────────────────────────────────────────────
   const C = {
@@ -377,8 +377,8 @@
       const y = priceY(p);
       ctx.strokeStyle = rgba(C.border,.7);
       ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
-      ctx.fillStyle = rgba(C.muted,.7); ctx.font='10px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='right';
-      ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), PAD.left-3, y+3.5);
+      ctx.fillStyle = rgba(C.white,.88); ctx.font='10px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+      ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, y+3.5);
     }
     ctx.setLineDash([]);
 
@@ -479,15 +479,16 @@
       }
 
       // wick
-      ctx.strokeStyle=rgba(col, isLast?.9:.55); ctx.lineWidth=1;
+      ctx.strokeStyle=rgba(col, isLast ? .95 : .7); ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x,wTop); ctx.lineTo(x,wBot); ctx.stroke();
 
-      // body fill
-      ctx.fillStyle=rgba(dim, isLast?.7:.5); ctx.fillRect(x-bw/2,bTop,bw,bH);
+      // body — solid fill
+      ctx.fillStyle=rgba(col, isLast ? .95 : .80);
+      ctx.fillRect(x-bw/2, bTop, bw, bH);
 
-      // border stroke — clean, no glow
-      ctx.strokeStyle=rgba(col, isLast?1:.85); ctx.lineWidth=isLast?1.2:.8;
-      ctx.strokeRect(x-bw/2,bTop,bw,bH);
+      // border — slightly brighter on last candle
+      ctx.strokeStyle=rgba(col, isLast ? 1 : .9); ctx.lineWidth=isLast ? 1.2 : .6;
+      ctx.strokeRect(x-bw/2, bTop, bw, bH);
     }
   }
 
@@ -567,9 +568,9 @@
     ctx.setLineDash([]);
     const lbl='$'+currentPrice.toLocaleString('en-US',{maximumFractionDigits:0});
     const tw=lbl.length*7.8+14; const ph=18;
-    ctx.fillStyle=col; rr(ctx,PAD.left-tw-2,y-ph/2,tw,ph,2); ctx.fill();
-    ctx.fillStyle='#000'; ctx.font='bold 11px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='right';
-    ctx.fillText(lbl, PAD.left-4, y+4);
+    ctx.fillStyle=col; rr(ctx,W-PAD.right+2,y-ph/2,tw,ph,2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.font='bold 11px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+    ctx.fillText(lbl, W-PAD.right+8, y+4);
   }
 
   // ── Draw: crosshair + tooltip ──────────────────────────────
@@ -581,8 +582,8 @@
     ctx.beginPath(); ctx.moveTo(PAD.left,mouseY); ctx.lineTo(PAD.left+plotW(),mouseY); ctx.stroke();
     ctx.setLineDash([]);
     const price=cachedLo+(cachedHi-cachedLo)*(1-(mouseY-PAD.top)/plotH());
-    ctx.fillStyle=rgba(C.muted,.8); ctx.font='8px Courier New'; ctx.textAlign='right';
-    ctx.fillText('$'+price.toLocaleString('en-US',{maximumFractionDigits:0}), PAD.left-3, mouseY+3);
+    ctx.fillStyle=rgba(C.white,.75); ctx.font='9px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+    ctx.fillText('$'+price.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, mouseY+3);
     const idx=Math.round(xToIdx(mouseX));
     if (idx>=0 && idx<candles.length) {
       const c=candles[idx]; const bull=c.close>=c.open;
@@ -710,7 +711,10 @@
     }, { passive: false });
 
     canvas.addEventListener('mousedown', e => {
-      isDragging = true; dragStartX = e.offsetX; dragStartViewStart = viewStart;
+      const rect = canvas.getBoundingClientRect();
+      isDragging = true;
+      dragStartX = e.clientX - rect.left;  // canvas-relative, consistent with mousemove
+      dragStartViewStart = viewStart;
       canvas.style.cursor = 'grabbing';
     });
     window.addEventListener('mousemove', e => {
@@ -718,7 +722,7 @@
       mouseX = e.clientX - rect.left;
       mouseY = e.clientY - rect.top;
       if (!isDragging) return;
-      const dx = e.offsetX - dragStartX;
+      const dx = mouseX - dragStartX;       // both canvas-relative now
       const span = viewEnd - viewStart;
       viewStart = dragStartViewStart - dx / slotW();
       viewEnd   = viewStart + span;
