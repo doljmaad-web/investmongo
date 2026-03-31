@@ -621,7 +621,9 @@ function fmtPrice(val) {
 
 function formatTime(isoStr) {
   if (!isoStr) return '--';
-  const d = new Date(isoStr);
+  // SQLite stores UTC without 'Z'; add it so the browser converts to local time correctly
+  const normalized = isoStr.includes('T') ? isoStr : isoStr.replace(' ', 'T') + 'Z';
+  const d = new Date(normalized);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
