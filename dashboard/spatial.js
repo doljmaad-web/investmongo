@@ -9,6 +9,7 @@
   // ── State ──────────────────────────────────────────────────
   let canvas, ctx, animId;
   let W = 0, H = 0;
+  let dpr = 1;
   let candles      = [];
   let plan         = null;
   let particles    = [];
@@ -389,7 +390,7 @@
       const y = priceY(p);
       ctx.strokeStyle = rgba(C.border,.7);
       ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(W-PAD.right,y); ctx.stroke();
-      ctx.fillStyle = rgba(C.white,.95); ctx.font='bold 11px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+      ctx.fillStyle = rgba(C.white,.95); ctx.font='bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
       ctx.fillText('$'+p.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, y+3.5);
     }
     ctx.setLineDash([]);
@@ -398,7 +399,7 @@
     const span = viewEnd - viewStart;
     const s = Math.max(0,Math.floor(viewStart));
     const e = Math.min(candles.length,Math.ceil(viewEnd));
-    ctx.fillStyle=rgba(C.white,.72); ctx.font='bold 10px "Courier New",monospace'; ctx.textAlign='center';
+    ctx.fillStyle=rgba(C.white,.72); ctx.font='bold 10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
     const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const isIntraday = activeInterval === '5m' || activeInterval === '1h' || activeInterval === '4h';
     if (isIntraday) {
@@ -564,7 +565,7 @@
       const pw=txt.length*5.6+8; const ph=13; const px=W-PAD.right+3;
       ctx.fillStyle=rgba(col,.15); rr(ctx,px,y-ph/2,pw,ph,2); ctx.fill();
       ctx.strokeStyle=rgba(col,.55); ctx.lineWidth=.5; rr(ctx,px,y-ph/2,pw,ph,2); ctx.stroke();
-      ctx.fillStyle=col; ctx.font='bold 7.5px Courier New'; ctx.textAlign='left';
+      ctx.fillStyle=col; ctx.font='bold 7.5px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
       ctx.fillText(txt, px+4, y+3);
     });
   }
@@ -581,7 +582,7 @@
     const lbl='$'+currentPrice.toLocaleString('en-US',{maximumFractionDigits:0});
     const tw=lbl.length*7.8+14; const ph=18;
     ctx.fillStyle=col; rr(ctx,W-PAD.right+2,y-ph/2,tw,ph,2); ctx.fill();
-    ctx.fillStyle='#000'; ctx.font='bold 11px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+    ctx.fillStyle='#000'; ctx.font='bold 11px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
     ctx.fillText(lbl, W-PAD.right+8, y+4);
   }
 
@@ -594,7 +595,7 @@
     ctx.beginPath(); ctx.moveTo(PAD.left,mouseY); ctx.lineTo(PAD.left+plotW(),mouseY); ctx.stroke();
     ctx.setLineDash([]);
     const price=cachedLo+(cachedHi-cachedLo)*(1-(mouseY-PAD.top)/plotH());
-    ctx.fillStyle=rgba(C.white,.75); ctx.font='9px "JetBrains Mono","Courier New",monospace'; ctx.textAlign='left';
+    ctx.fillStyle=rgba(C.white,.75); ctx.font='9px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
     ctx.fillText('$'+price.toLocaleString('en-US',{maximumFractionDigits:0}), W-PAD.right+4, mouseY+3);
     const idx=Math.round(xToIdx(mouseX));
     if (idx>=0 && idx<candles.length) {
@@ -609,7 +610,7 @@
       tx=Math.max(PAD.left, Math.min(W-PAD.right-tw,tx));
       ctx.fillStyle=rgba(C.panel,.94); rr(ctx,tx,PAD.top+4,tw,16,2); ctx.fill();
       ctx.strokeStyle=rgba(col,.4); ctx.lineWidth=.5; rr(ctx,tx,PAD.top+4,tw,16,2); ctx.stroke();
-      ctx.fillStyle=col; ctx.font='8px Courier New'; ctx.textAlign='left';
+      ctx.fillStyle=col; ctx.font='8px Inter,"JetBrains Mono",monospace'; ctx.textAlign='left';
       ctx.fillText(info, tx+8, PAD.top+15);
     }
   }
@@ -629,7 +630,7 @@
       btn.textContent = coin;
       btn.style.cssText = [
         'border:none','padding:6px 4px','border-radius:3px','cursor:pointer',
-        'font:bold 11px "Courier New",monospace','width:100%','text-align:center',
+        'font:bold 11px Inter,"JetBrains Mono",monospace','width:100%','text-align:center',
         'transition:background .15s'
       ].join(';');
       const updateStyle = () => {
@@ -698,7 +699,7 @@
       rr(ctx, bx, 6, btnW, btnH, 3); ctx.fill();
       if (isActive) { ctx.strokeStyle=rgba(C.amber,.6); ctx.lineWidth=.6; rr(ctx,bx,6,btnW,btnH,3); ctx.stroke(); }
       ctx.fillStyle = isActive ? '#000' : rgba(C.white, .88);
-      ctx.font = isActive ? 'bold 10px Courier New' : '10px Courier New';
+      ctx.font = isActive ? 'bold 10px Inter,"JetBrains Mono",monospace' : '10px Inter,"JetBrains Mono",monospace';
       ctx.textAlign = 'center';
       ctx.fillText(lbl, bx + btnW/2, 20);
       bx += btnW + btnGap;
@@ -712,7 +713,7 @@
     ctx.strokeStyle = rgba(C.amber, .5); ctx.lineWidth = .6;
     rr(ctx, trigX, 6, trigW, trigH, 3); ctx.stroke();
     ctx.fillStyle = rgba(C.white, .98);
-    ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
+    ctx.font = 'bold 12px Inter,"JetBrains Mono",monospace'; ctx.textAlign = 'center';
     ctx.fillText(activeCoin + '  ▾', W / 2, 21);
 
     // ── Plan badge / waiting (right) ──
@@ -720,7 +721,7 @@
       const dir=plan.direction; const dc=dir==='LONG'?C.green:C.red; const db=dir==='LONG'?'#052e16':'#450a0a';
       ctx.fillStyle=db; rr(ctx,W-PAD.right-88,6,36,20,3); ctx.fill();
       ctx.strokeStyle=dc; ctx.lineWidth=.6; rr(ctx,W-PAD.right-88,6,36,20,3); ctx.stroke();
-      ctx.fillStyle=dc; ctx.font='bold 10px Courier New'; ctx.textAlign='center';
+      ctx.fillStyle=dc; ctx.font='bold 10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
       ctx.fillText(dir, W-PAD.right-70, 20);
       const conv=Math.min(1,(plan.conviction||5)/10);
       const cc=conv>.7?C.green:conv>.4?C.amber:C.red;
@@ -728,7 +729,7 @@
       ctx.fillStyle=C.border; rr(ctx,barX,13,44,6,2); ctx.fill();
       ctx.fillStyle=cc;       rr(ctx,barX,13,44*conv,6,2); ctx.fill();
     } else {
-      ctx.fillStyle=rgba(C.muted,.35); ctx.font='10px Courier New'; ctx.textAlign='right';
+      ctx.fillStyle=rgba(C.muted,.35); ctx.font='10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='right';
       ctx.fillText('no signal', W-PAD.right-4, 20);
     }
   }
@@ -770,9 +771,9 @@
   function drawIdle() {
     const sy=((frame*.25)%(H-PAD.top-PAD.bot))+PAD.top;
     ctx.fillStyle=rgba(C.purple,.03); ctx.fillRect(PAD.left,sy,plotW(),2);
-    ctx.fillStyle=rgba(C.muted,.22); ctx.font='10px Courier New'; ctx.textAlign='center';
+    ctx.fillStyle=rgba(C.muted,.22); ctx.font='10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
     ctx.fillText('▸ SPATIAL TRADE PLANNER', W/2, H/2-8);
-    ctx.fillStyle=rgba(C.muted,.12); ctx.font='8px Courier New';
+    ctx.fillStyle=rgba(C.muted,.12); ctx.font='8px Inter,"JetBrains Mono",monospace';
     ctx.fillText('Loading '+activeCoin+' '+activeInterval+' data...', W/2, H/2+8);
   }
 
@@ -782,8 +783,12 @@
     const p = canvas.parentElement.getBoundingClientRect();
     W = p.width  || 600;
     H = p.height || 300;
-    canvas.width  = W;
-    canvas.height = H;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   // ── Events ─────────────────────────────────────────────────
@@ -874,6 +879,7 @@
   function loop() {
     animId = requestAnimationFrame(loop);
     frame++;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = C.bg;
     ctx.fillRect(0,0,W,H);
 
@@ -901,7 +907,7 @@
 
     // plan timestamp bottom-right
     if (plan?.timestamp) {
-      ctx.fillStyle=rgba(C.dim,1); ctx.font='8px Courier New'; ctx.textAlign='right';
+      ctx.fillStyle=rgba(C.dim,1); ctx.font='8px Inter,"JetBrains Mono",monospace'; ctx.textAlign='right';
       ctx.fillText('PLAN @ '+new Date(plan.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
         W-PAD.right, H-6);
     }

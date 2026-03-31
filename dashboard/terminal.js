@@ -469,10 +469,14 @@ function drawChart() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const container = canvas.parentElement;
-  canvas.width  = container.clientWidth - 2;
-  canvas.height = container.clientHeight - 2;
-  const W = canvas.width;
-  const H = canvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  const W = (container.clientWidth - 2);
+  const H = (container.clientHeight - 2);
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   if (W < 10 || H < 10) return;
 
   const now    = Date.now();
