@@ -61,7 +61,7 @@ RESPOND ONLY WITH THIS EXACT JSON — no other text, no markdown, no explanation
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash',
   systemInstruction: SYSTEM_INSTRUCTION,
 });
 
@@ -72,7 +72,7 @@ const model = genAI.getGenerativeModel({
 const ADVISORY_INSTRUCTION = `You are a trading advisor. A BTC futures position just opened. Based on the news and sentiment, respond with only JSON: {"hold": true/false, "caution": true/false, "reason": "one sentence max"}`;
 
 const advisoryModel = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash',
   systemInstruction: ADVISORY_INSTRUCTION,
 });
 
@@ -112,7 +112,7 @@ Format numbers with $ signs and commas. Keep replies under 200 words unless the 
 
 const chatGenAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const chatModel  = chatGenAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash',
   systemInstruction: CHAT_INSTRUCTION,
 });
 
