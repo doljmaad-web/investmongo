@@ -11,16 +11,16 @@ import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
 import { db }                            from './database.js';
 
 // ============================================================
-// Strategy: Precision v9 — 5m yellow/pink dots
+// Strategy: Precision v11 — 1m yellow/pink dots
 //
 // Holding conditions:
-//   COUNTER-TREND (5m opposes 1h last signal):
+//   COUNTER-TREND (1m opposes 1h last signal):
 //     SL = 0.1% from entry
 //     TP = 10% from entry (fixed target)
 //
-//   WITH-TREND (5m aligns with 1h last signal, or no 1h bias yet):
+//   WITH-TREND (1m aligns with 1h last signal, or no 1h bias yet):
 //     SL = 2% from entry
-//     TP = none — hold until opposite 5m dot fires
+//     TP = none — hold until opposite 1m dot fires
 // ============================================================
 const SIGNAL_WINDOW = 5;          // act only if dot fired within last 5 candles
 
@@ -187,7 +187,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     new Date().toISOString(), source, signal.asset, signal.signal,
     signal.type || 'yellow_dot', signal.price,
     signal.rsi || null, signal.sma50 || null, signal.sma200 || null,
-    '5m', signal.pattern || null, signal.strength || 'normal',
+    signal.timeframe || '1m', signal.pattern || null, signal.strength || 'normal',
     'ADVISORY', 75, defaultDecision.reasoning.summary, 'pending', 'low', '[]',
   );
   const signalId = signalRow.lastInsertRowid;
@@ -227,34 +227,38 @@ export async function handleSignal(rawSignal, source = 'server') {
 }
 
 // ============================================================
-// TRACK B: Server loop (every 5 minutes via cron)
+// TRACK B: Server loop (every 1 minute via cron)
 // 1. Update 1h bias (read-only, no trades)
-// 2. Scan 5m — act if dot within last 5 candles
+// 2. Scan 1m with 5m MTF confirmation — act if dot within last 5 candles
 // ============================================================
 export async function runServerLoop(broadcastFn) {
   const assetRows = getTradingAssets(); // [{ asset, deploy_pct }]
   const assetNames = assetRows.map(r => r.asset);
-  console.log(`[BOT] Running Precision v9 5m scan — assets: ${assetNames.join(', ')}`);
+  console.log(`[BOT] Running Precision v11 1m scan — assets: ${assetNames.join(', ')}`);
 
-  // Step 1 — refresh 1h bias + scan 5m for each active asset
+  // Step 1 — refresh 1h bias + scan 1m for each active asset
   for (const { asset } of assetRows) {
     await update1hBias(asset);
 
     try {
-      const candles5m = await fetchCandles(asset, '5m', 400);
-      if (!candles5m || candles5m.length < 60) {
-        console.log(`[BOT] ${asset}: insufficient 5m candles — skipping`);
+      const [candles1m, candles5m] = await Promise.all([
+        fetchCandles(asset, '1m', 400),
+        fetchCandles(asset, '5m', 100),
+      ]);
+
+      if (!candles1m || candles1m.length < 60) {
+        console.log(`[BOT] ${asset}: insufficient 1m candles — skipping`);
       } else {
-        const result = detectSignals(candles5m);
-        console.log(`[BOT] ${asset} 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
+        const result = detectSignals(candles1m, { htfCandles: candles5m });
+        console.log(`[BOT] ${asset} 1m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
 
         if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
-          const outcome = await handleSignal({ ...result, asset, timeframe: '5m' }, 'server');
+          const outcome = await handleSignal({ ...result, asset, timeframe: '1m' }, 'server');
           if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
         }
       }
     } catch (err) {
-      console.error(`[BOT] ${asset} 5m scan error:`, err.message, err.stack);
+      console.error(`[BOT] ${asset} 1m scan error:`, err.message, err.stack);
     }
   }
 

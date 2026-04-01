@@ -414,8 +414,8 @@ app.get('/', (req, res) => {
 // CRON JOBS
 // ============================================================
 
-// Track B: Run indicator every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
+// Track B: Run indicator every minute (Precision v11 — 1m signals)
+cron.schedule('* * * * *', async () => {
   try {
     await runServerLoop(broadcast);
   } catch (err) {
