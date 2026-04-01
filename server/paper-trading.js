@@ -14,6 +14,20 @@ export function getAvailableCapital() {
   return Math.max(0, parseFloat((stats.totalValue - deployed).toFixed(2)));
 }
 
+// Close a single trade by ID (smart exit, reversal, HTF signal)
+export function closeTradeById(tradeId, exitPrice) {
+  const t = db.prepare(`SELECT * FROM trades WHERE id=? AND status='OPEN'`).get(tradeId);
+  if (!t) return;
+  const isLong  = t.direction === 'LONG';
+  const pnlUsd  = isLong
+    ? (exitPrice - t.entry_price) / t.entry_price * t.size_usd
+    : (t.entry_price - exitPrice) / t.entry_price * t.size_usd;
+  db.prepare(`
+    UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?, pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
+  `).run(exitPrice, parseFloat(pnlUsd.toFixed(2)), parseFloat((pnlUsd / t.size_usd * 100).toFixed(2)), tradeId);
+  snapshotPortfolio();
+}
+
 // Close all open positions for an asset (called on signal flip)
 export function closeOpenPosition(asset, exitPrice) {
   const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`).all(asset);

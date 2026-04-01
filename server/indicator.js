@@ -13,8 +13,23 @@
 //   • Engulfing patterns corrected — prior candle direction verified
 // ============================================================
 
+// --- ATR — Wilder's smoothing ---
+export function calcATR(candles, period = 14) {
+  if (candles.length < period + 1) return null;
+  const trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    const h = candles[i].high, l = candles[i].low, pc = candles[i - 1].close;
+    trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+  }
+  let atr = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
+}
+
 // --- RSI — Wilder's smoothing (matches Pine Script ta.rsi) ---
-function calcRSI(closes, period = 14) {
+export function calcRSI(closes, period = 14) {
   if (closes.length < period + 1) return null;
 
   let avgGain = 0, avgLoss = 0;
@@ -62,7 +77,7 @@ function calcVolumeSMA(candles, period) {
 }
 
 // --- Candlestick patterns (v11: prior candle direction verified) ---
-function getPatterns(candles) {
+export function getPatterns(candles) {
   if (candles.length < 2) return {};
   const cur = candles.at(-1);
   const prv = candles.at(-2);

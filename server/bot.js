@@ -1,8 +1,8 @@
-import { detectSignals }     from './indicator.js';
+import { detectSignals, calcRSI, getPatterns, calcATR } from './indicator.js';
 import { getGeminiAdvisory } from './gemini.js';
 import { fetchCoinTelegraphOnly, fearGreed } from './news-scraper.js';
 import {
-  openPaperTrade, closeOpenPosition,
+  openPaperTrade, closeOpenPosition, closeTradeById,
   updateOpenTrades, getPortfolioStats, getAvailableCapital,
 } from './paper-trading.js';
 import { checkRiskLimits }               from './risk.js';
@@ -11,22 +11,33 @@ import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
 import { db }                            from './database.js';
 
 // ============================================================
-// Strategy: Precision v11 — 1m yellow/pink dots
+// Strategy: Precision v11 — 5m yellow/pink dots
 //
-// Holding conditions:
-//   COUNTER-TREND (1m opposes 30m last signal):
-//     SL = 0.1% from entry
-//     TP = 10% from entry (fixed target)
+// Signal: 5m candle with V11 RSI zones, volume filter, MTF (15m) confirmation
+// Bias:   15m last dot signal → determines counter vs with-trend
 //
-//   WITH-TREND (1m aligns with 30m last signal, or no 30m bias yet):
-//     SL = 2% from entry
-//     TP = none — hold until opposite 1m dot fires
+// COUNTER-TREND (5m opposes 15m bias):
+//   SL = 0.5% | TP = 3% fixed
+//
+// WITH-TREND (5m aligns with 15m bias, or no bias yet):
+//   SL = 1.5% | TP = smart exit (reversal candle / ATR trail / 15m flip)
+//
+// SMART EXITS (with-trend only, while in profit):
+//   1. Bearish engulfing on 5m + RSI > 55  → close LONG
+//   2. Bullish engulfing on 5m + RSI < 45  → close SHORT
+//   3. 15m fires opposite dot (barsAgo<3)  → close either
+//   4. ATR(14)×1.5 trailing stop           → activates once profit > 0.8%
 // ============================================================
-const SIGNAL_WINDOW = 5;          // act only if dot fired within last 5 candles
+const SIGNAL_WINDOW = 3;   // act on signal within last 3 candles (~15 min on 5m)
+const SL_COUNTER    = 0.005;  // 0.5%  stop loss — counter-trend
+const TP_COUNTER    = 0.03;   // 3%    take profit — counter-trend
+const SL_WITH       = 0.015;  // 1.5%  stop loss — with-trend
+const ATR_TRAIL_MULT   = 1.5; // ATR multiplier for trailing stop
+const TRAIL_ACTIVATE   = 0.8; // % profit before trailing stop engages
+const DEDUP_MS         = 15 * 60 * 1000; // 15 min dedup window
 
 // ── Trading asset management (persisted in SQLite) ─────────
 export function getTradingAssets() {
-  // Returns [{ asset, deploy_pct }]
   return db.prepare('SELECT asset, deploy_pct FROM trading_assets ORDER BY asset').all();
 }
 export function addTradingAsset(asset, deployPct = 50) {
@@ -37,18 +48,12 @@ export function setTradingAssetPct(asset, deployPct) {
 }
 export function removeTradingAsset(asset) {
   const assets = getTradingAssets();
-  if (assets.length <= 1) return; // always keep at least one asset
+  if (assets.length <= 1) return;
   db.prepare('DELETE FROM trading_assets WHERE asset=?').run(asset.toUpperCase());
 }
 
-const SL_COUNTER    = 0.001;      // 0.1% stop loss for counter-trend
-const TP_COUNTER    = 0.10;       // 10% take profit for counter-trend
-const SL_WITH       = 0.02;       // 2% stop loss for with-trend
-
-// Dedup: 25 min window prevents re-entry on same dot
+// ── Deduplication ───────────────────────────────────────────
 const recentSignals = new Map();
-const DEDUP_MS      = 25 * 60 * 1000;
-
 function isDuplicate(asset, action) {
   const key  = `${asset}_${action}`;
   const last = recentSignals.get(key);
@@ -58,27 +63,105 @@ function isDuplicate(asset, action) {
 }
 
 // ============================================================
-// 30M BIAS — per-asset map, tracks last 30m dot signal
+// 15M BIAS — per-asset map, tracks last 15m dot signal direction
 // ============================================================
-const bias30mMap = new Map(); // asset → { direction, updatedAt }
+const bias15mMap = new Map(); // asset → { direction, updatedAt }
 
 function getBias(asset) {
-  return bias30mMap.get(asset) || { direction: null, updatedAt: null };
+  return bias15mMap.get(asset) || { direction: null, updatedAt: null };
 }
 
-async function update30mBias(asset) {
+async function update15mBias(asset, candles15m) {
   try {
-    const candles30m = await fetchCandles(asset, '30m', 400);
-    if (!candles30m || candles30m.length < 60) return;
-    const result = detectSignals(candles30m, { useProximity: false, useWick: false });
+    if (!candles15m || candles15m.length < 70) return;
+    const result = detectSignals(candles15m, { useProximity: false, useWick: false });
     if (result.signal) {
       const direction = result.signal === 'BUY' ? 'BULLISH' : 'BEARISH';
-      bias30mMap.set(asset, { direction, updatedAt: new Date().toISOString() });
-      console.log(`[BOT] 30m bias ${asset} → ${direction} (RSI=${result.rsi})`);
+      bias15mMap.set(asset, { direction, updatedAt: new Date().toISOString() });
+      console.log(`[BOT] 15m bias ${asset} → ${direction} (RSI=${result.rsi})`);
     }
   } catch (err) {
-    console.error(`[BOT] 30m bias scan error (${asset}):`, err.message);
+    console.error(`[BOT] 15m bias scan error (${asset}):`, err.message);
   }
+}
+
+// ============================================================
+// SMART EXIT ENGINE — checks open trades for profitable exit conditions
+// Called every minute with fresh 5m + 15m candle data
+// ============================================================
+async function checkSmartExits(asset, candles5m, candles15m, currentPrice) {
+  const open = db.prepare(
+    `SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`
+  ).all(asset);
+  if (!open.length) return;
+
+  // 5m indicators
+  const closes5m = candles5m.map(c => c.close);
+  const rsiNow   = calcRSI(closes5m, 14);
+  const pat5m    = getPatterns(candles5m);
+  const atr5m    = calcATR(candles5m, 14);
+
+  // Check if 15m recently fired an opposite signal (within 3 candles = 45 min)
+  let htf15Signal = null;
+  if (candles15m && candles15m.length >= 70) {
+    const htfResult = detectSignals(candles15m, { useProximity: false, useWick: false });
+    if (htfResult.signal && htfResult.barsAgo < 3) htf15Signal = htfResult.signal;
+  }
+
+  for (const trade of open) {
+    const isLong = trade.direction === 'LONG';
+    const pnlPct = isLong
+      ? (currentPrice - trade.entry_price) / trade.entry_price * 100
+      : (trade.entry_price - currentPrice) / trade.entry_price * 100;
+
+    // ── 1. Reversal candle exit — only take when in profit ──
+    if (pnlPct > 0 && rsiNow !== null) {
+      if (isLong && pat5m.isBearishEngulfing && rsiNow > 55) {
+        await smartClose(trade, currentPrice, `bearish engulfing (RSI ${rsiNow?.toFixed(1)})`, pnlPct);
+        continue;
+      }
+      if (!isLong && pat5m.isBullishEngulfing && rsiNow < 45) {
+        await smartClose(trade, currentPrice, `bullish engulfing (RSI ${rsiNow?.toFixed(1)})`, pnlPct);
+        continue;
+      }
+    }
+
+    // ── 2. 15m opposite signal exit — only take when in profit ──
+    if (pnlPct > 0 && htf15Signal) {
+      if ((isLong && htf15Signal === 'SELL') || (!isLong && htf15Signal === 'BUY')) {
+        await smartClose(trade, currentPrice, `15m ${htf15Signal} signal`, pnlPct);
+        continue;
+      }
+    }
+
+    // ── 3. ATR trailing stop — activates once profit > TRAIL_ACTIVATE% ──
+    if (atr5m && pnlPct > TRAIL_ACTIVATE) {
+      const trailSl = isLong
+        ? parseFloat((currentPrice - ATR_TRAIL_MULT * atr5m).toFixed(2))
+        : parseFloat((currentPrice + ATR_TRAIL_MULT * atr5m).toFixed(2));
+
+      // Ratchet: only move SL in the profitable direction
+      const shouldUpdate = isLong
+        ? (trade.stop_loss === 0 || trailSl > trade.stop_loss)
+        : (trade.stop_loss === 0 || trailSl < trade.stop_loss);
+
+      if (shouldUpdate) {
+        db.prepare('UPDATE trades SET stop_loss=? WHERE id=?').run(trailSl, trade.id);
+        console.log(`[BOT] ATR trail ${asset} ${trade.direction}: SL → $${trailSl} (PnL=${pnlPct.toFixed(2)}% ATR=${atr5m.toFixed(4)})`);
+      }
+    }
+  }
+}
+
+async function smartClose(trade, price, reason, pnlPct) {
+  closeTradeById(trade.id, price);
+  const icon = pnlPct >= 0 ? '✅' : '🔴';
+  console.log(`[BOT] Smart exit [${reason}]: ${trade.asset} ${trade.direction} @ $${price} PnL=${pnlPct > 0 ? '+' : ''}${pnlPct.toFixed(2)}%`);
+  sendTelegram(
+    `${icon} SMART EXIT — ${reason}\n` +
+    `${trade.direction} ${trade.asset} @ $${price}\n` +
+    `PnL: ${pnlPct > 0 ? '+' : ''}${pnlPct.toFixed(2)}%`
+  ).catch(() => {});
 }
 
 // ============================================================
@@ -91,7 +174,7 @@ async function postTradeAdvisory(tradeId, signal) {
     const icon     = advisory.caution ? '⚠️' : '✅';
     await sendTelegram(
       `${icon} ADVISORY — Trade #${tradeId}\n` +
-      `${signal.signal} BTC @ $${signal.price} [5m]\n` +
+      `${signal.signal} ${signal.asset} @ $${signal.price} [5m]\n` +
       `${advisory.hold ? 'HOLD' : 'REVIEW'} | Caution: ${advisory.caution ? 'YES' : 'NO'}\n` +
       `${advisory.reason}`
     );
@@ -107,7 +190,6 @@ export async function handleSignal(rawSignal, source = 'server') {
   const signal = { ...rawSignal, source };
   console.log(`[BOT] handleSignal: ${signal.signal} ${signal.asset} @ $${signal.price} barsAgo=${signal.barsAgo ?? '?'}`);
 
-  // Dedup
   if (isDuplicate(signal.asset, signal.signal)) {
     console.log(`[BOT] Duplicate ${signal.signal} — skipping`);
     return null;
@@ -115,7 +197,6 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   const direction = signal.signal === 'BUY' ? 'LONG' : 'SHORT';
 
-  // Don't re-enter same direction
   const existing = db.prepare(
     `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`
   ).get(signal.asset, direction);
@@ -124,12 +205,12 @@ export async function handleSignal(rawSignal, source = 'server') {
     return null;
   }
 
-  // ── Determine counter-trend vs with-trend ───────────────────
-  const bias1h = getBias(signal.asset);
+  // ── Counter-trend vs with-trend ─────────────────────────────
+  const bias15m = getBias(signal.asset);
   const isCounterTrend =
-    bias1h.direction !== null && (
-      (signal.signal === 'BUY'  && bias1h.direction === 'BEARISH') ||
-      (signal.signal === 'SELL' && bias1h.direction === 'BULLISH')
+    bias15m.direction !== null && (
+      (signal.signal === 'BUY'  && bias15m.direction === 'BEARISH') ||
+      (signal.signal === 'SELL' && bias15m.direction === 'BULLISH')
     );
 
   const slPct = isCounterTrend ? SL_COUNTER : SL_WITH;
@@ -150,28 +231,27 @@ export async function handleSignal(rawSignal, source = 'server') {
     : 0;
 
   const tradeType = isCounterTrend ? 'COUNTER-TREND' : 'WITH-TREND';
-  const biasNote  = bias1h.direction ? ` | 30m: ${bias1h.direction}` : ' | 30m: no bias';
+  const biasNote  = bias15m.direction ? ` | 15m: ${bias15m.direction}` : ' | 15m: no bias';
 
-  // Deploy_pct: how much of available capital to use for this trade
-  const assetRow   = db.prepare('SELECT deploy_pct FROM trading_assets WHERE asset=?').get(signal.asset);
-  const deployPct  = assetRow?.deploy_pct ?? 50;
-  const available  = getAvailableCapital();
-  const sizeUsd    = parseFloat((available * deployPct / 100).toFixed(2));
+  const assetRow  = db.prepare('SELECT deploy_pct FROM trading_assets WHERE asset=?').get(signal.asset);
+  const deployPct = assetRow?.deploy_pct ?? 50;
+  const available = getAvailableCapital();
+  const sizeUsd   = parseFloat((available * deployPct / 100).toFixed(2));
 
-  console.log(`[BOT] ${tradeType}${biasNote} → SL=$${stopLoss} (${slPct*100}%) TP=${takeProfit || 'next signal'} | Deploy: ${deployPct}% of $${available} = $${sizeUsd}`);
+  console.log(`[BOT] ${tradeType}${biasNote} → SL=$${stopLoss} (${slPct*100}%) TP=${takeProfit || 'smart exit'} | Deploy: ${deployPct}% of $${available} = $${sizeUsd}`);
 
   const defaultDecision = {
-    verdict:    'CONFIRMED',
-    confidence: 75,
-    size_pct:   deployPct,
-    size_usd:   sizeUsd,
-    entry:      signal.price,
-    stop_loss:  stopLoss,
+    verdict:     'CONFIRMED',
+    confidence:  75,
+    size_pct:    deployPct,
+    size_usd:    sizeUsd,
+    entry:       signal.price,
+    stop_loss:   stopLoss,
     take_profit: takeProfit,
-    reasoning:  {
+    reasoning: {
       summary: isCounterTrend
-        ? `Counter-trend vs 30m ${bias1h.direction} — tight SL 0.1%, TP 10%`
-        : `With-trend (30m ${bias1h.direction || 'no bias'}) — SL 2%, exit on opposite dot`,
+        ? `Counter-trend vs 15m ${bias15m.direction} — SL ${slPct*100}%, TP ${tpPct*100}%`
+        : `With-trend (15m ${bias15m.direction || 'no bias'}) — SL ${slPct*100}%, smart exit`,
     },
     validated_news: [],
   };
@@ -187,7 +267,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     new Date().toISOString(), source, signal.asset, signal.signal,
     signal.type || 'yellow_dot', signal.price,
     signal.rsi || null, signal.sma50 || null, signal.sma200 || null,
-    signal.timeframe || '1m', signal.pattern || null, signal.strength || 'normal',
+    signal.timeframe || '5m', signal.pattern || null, signal.strength || 'normal',
     'ADVISORY', 75, defaultDecision.reasoning.summary, 'pending', 'low', '[]',
   );
   const signalId = signalRow.lastInsertRowid;
@@ -211,14 +291,14 @@ export async function handleSignal(rawSignal, source = 'server') {
   const icon     = signal.signal === 'BUY' ? '📈' : '📉';
   const dotLabel = signal.type === 'yellow_dot' ? '🟡 Yellow dot' : '🩷 Pink dot';
   const exitNote = isCounterTrend
-    ? `SL: $${stopLoss} (0.1%) | TP: $${takeProfit} (10%)`
-    : `SL: $${stopLoss} (2%) | TP: next opposite dot`;
+    ? `SL: $${stopLoss} (0.5%) | TP: $${takeProfit} (3%)`
+    : `SL: $${stopLoss} (1.5%) | TP: smart exit (reversal/ATR trail/15m flip)`;
 
   await sendTelegram(
     `${icon} TRADE OPENED [${tradeType}]\n` +
     `${dotLabel} — ${signal.signal} ${signal.asset} @ $${signal.price}\n` +
     `RSI: ${signal.rsi?.toFixed(1) || '--'} | Pattern: ${signal.pattern || '--'}${biasNote}\n` +
-    `${exitNote}\nSize: 50% | Mode: PAPER`
+    `${exitNote}\nSize: ${deployPct}% | Mode: PAPER`
   );
 
   setImmediate(() => postTradeAdvisory(tradeId, signal));
@@ -227,46 +307,58 @@ export async function handleSignal(rawSignal, source = 'server') {
 }
 
 // ============================================================
-// TRACK B: Server loop (every 1 minute via cron)
-// 1. Update 30m bias (read-only, no trades)
-// 2. Scan 1m with 5m MTF confirmation — act if dot within last 5 candles
+// TRACK B: Server loop (every minute via cron)
+//
+// Per asset:
+//   1. Fetch 5m (400 bars) + 15m (200 bars) candles in parallel
+//   2. Update 15m bias (direction context for new trades)
+//   3. Detect 5m V11 signal — use 15m as MTF confirmation
+//   4. If fresh signal (barsAgo < 3) → handleSignal
+//   5. Run smart exit checks on all open trades
 // ============================================================
 export async function runServerLoop(broadcastFn) {
-  const assetRows = getTradingAssets(); // [{ asset, deploy_pct }]
+  const assetRows  = getTradingAssets();
   const assetNames = assetRows.map(r => r.asset);
-  console.log(`[BOT] Running Precision v11 1m scan — assets: ${assetNames.join(', ')}`);
+  console.log(`[BOT] Precision v11 5m scan — assets: ${assetNames.join(', ')}`);
 
-  // Step 1 — refresh 30m bias + scan 1m for each active asset
   for (const { asset } of assetRows) {
-    await update30mBias(asset);
-
     try {
-      const [candles1m, candles5m] = await Promise.all([
-        fetchCandles(asset, '1m', 400),
-        fetchCandles(asset, '5m', 100),
+      const [candles5m, candles15m] = await Promise.all([
+        fetchCandles(asset, '5m', 400),
+        fetchCandles(asset, '15m', 200),
       ]);
 
-      if (!candles1m || candles1m.length < 60) {
-        console.log(`[BOT] ${asset}: insufficient 1m candles — skipping`);
-      } else {
-        const result = detectSignals(candles1m, {
-          htfCandles:   candles5m,
-          useProximity: false,   // SMA50 proximity too restrictive on 1m
-          useWick:      false,   // wick ratio filter kills doji signals on 1m
-        });
-        console.log(`[BOT] ${asset} 1m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
+      // Update 15m bias with freshly fetched candles
+      await update15mBias(asset, candles15m);
 
-        if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
-          const outcome = await handleSignal({ ...result, asset, timeframe: '1m' }, 'server');
-          if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
-        }
+      if (!candles5m || candles5m.length < 70) {
+        console.log(`[BOT] ${asset}: insufficient 5m candles — skipping`);
+        continue;
       }
+
+      // Detect 5m signal — volume filter on, proximity/wick off (fast TF)
+      const result = detectSignals(candles5m, {
+        htfCandles:   candles15m,
+        useProximity: false,
+        useWick:      false,
+      });
+      console.log(`[BOT] ${asset} 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
+
+      if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
+        const outcome = await handleSignal({ ...result, asset, timeframe: '5m' }, 'server');
+        if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
+      }
+
+      // Smart exit checks — runs every minute regardless of new signals
+      const currentPrice = candles5m.at(-1).close;
+      await checkSmartExits(asset, candles5m, candles15m, currentPrice);
+
     } catch (err) {
-      console.error(`[BOT] ${asset} 1m scan error:`, err.message, err.stack);
+      console.error(`[BOT] ${asset} scan error:`, err.message, err.stack);
     }
   }
 
-  // Step 2 — update P&L for all active assets and broadcast
+  // Update P&L + broadcast
   try {
     const prices = await getCurrentPrices(assetNames);
     updateOpenTrades(prices);
