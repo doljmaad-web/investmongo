@@ -1,5 +1,11 @@
 import { db } from './database.js';
 
+// ── Leverage multiplier ─────────────────────────────────────
+// Change this value to simulate leveraged trading.
+// 1 = no leverage (original behaviour)
+// 3 = 3x leverage, 5 = 5x leverage, etc.
+const LEVERAGE = 5;
+
 export function getCashBalance() {
   const snap = db.prepare(
     'SELECT cash_balance FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 1'
@@ -20,8 +26,8 @@ export function closeTradeById(tradeId, exitPrice) {
   if (!t) return;
   const isLong  = t.direction === 'LONG';
   const pnlUsd  = isLong
-    ? (exitPrice - t.entry_price) / t.entry_price * t.size_usd
-    : (t.entry_price - exitPrice) / t.entry_price * t.size_usd;
+    ? (exitPrice - t.entry_price) / t.entry_price * t.size_usd * LEVERAGE
+    : (t.entry_price - exitPrice) / t.entry_price * t.size_usd * LEVERAGE;
   db.prepare(`
     UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?, pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
   `).run(exitPrice, parseFloat(pnlUsd.toFixed(2)), parseFloat((pnlUsd / t.size_usd * 100).toFixed(2)), tradeId);
@@ -34,8 +40,8 @@ export function closeOpenPosition(asset, exitPrice) {
   for (const t of open) {
     const isLong = t.direction === 'LONG';
     const pnlUsd = isLong
-      ? (exitPrice - t.entry_price) / t.entry_price * t.size_usd
-      : (t.entry_price - exitPrice) / t.entry_price * t.size_usd;
+      ? (exitPrice - t.entry_price) / t.entry_price * t.size_usd * LEVERAGE
+      : (t.entry_price - exitPrice) / t.entry_price * t.size_usd * LEVERAGE;
     db.prepare(`
       UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?, pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
     `).run(exitPrice, parseFloat(pnlUsd.toFixed(2)), parseFloat((pnlUsd / t.size_usd * 100).toFixed(2)), t.id);
@@ -83,15 +89,15 @@ export function updateOpenTrades(prices) {
 
     const isLong  = t.direction === 'LONG';
     const pnlUsd  = isLong
-      ? (price - t.entry_price) / t.entry_price * t.size_usd
-      : (t.entry_price - price) / t.entry_price * t.size_usd;
+      ? (price - t.entry_price) / t.entry_price * t.size_usd * LEVERAGE
+      : (t.entry_price - price) / t.entry_price * t.size_usd * LEVERAGE;
     const pnlPct  = pnlUsd / t.size_usd * 100;
 
     // Hit stop loss? (only if stop_loss > 0 — 0 means disabled)
     if (t.stop_loss > 0 && ((isLong && price <= t.stop_loss) || (!isLong && price >= t.stop_loss))) {
       const finalPnl = isLong
-        ? (t.stop_loss - t.entry_price) / t.entry_price * t.size_usd
-        : (t.entry_price - t.stop_loss) / t.entry_price * t.size_usd;
+        ? (t.stop_loss - t.entry_price) / t.entry_price * t.size_usd * LEVERAGE
+        : (t.entry_price - t.stop_loss) / t.entry_price * t.size_usd * LEVERAGE;
       db.prepare(`
         UPDATE trades SET status='STOPPED', exit_price=?, pnl_usd=?,
         pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
@@ -104,8 +110,8 @@ export function updateOpenTrades(prices) {
     // Hit take profit? (only if take_profit > 0 — 0 means hold until signal)
     if (t.take_profit > 0 && ((isLong && price >= t.take_profit) || (!isLong && price <= t.take_profit))) {
       const finalPnl = isLong
-        ? (t.take_profit - t.entry_price) / t.entry_price * t.size_usd
-        : (t.entry_price - t.take_profit) / t.entry_price * t.size_usd;
+        ? (t.take_profit - t.entry_price) / t.entry_price * t.size_usd * LEVERAGE
+        : (t.entry_price - t.take_profit) / t.entry_price * t.size_usd * LEVERAGE;
       db.prepare(`
         UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?,
         pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
