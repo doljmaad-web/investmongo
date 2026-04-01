@@ -176,7 +176,11 @@
     try {
       const ticker = getTicker(activeCoin);
       let url;
-      if (activeInterval === '5m') {
+      if (activeInterval === '1m') {
+        url = `/api/spatial/candles?coin=${ticker}&interval=1m&bars=400`;
+      } else if (activeInterval === '3m') {
+        url = `/api/spatial/candles?coin=${ticker}&interval=3m&bars=400`;
+      } else if (activeInterval === '5m') {
         url = `/api/spatial/candles?coin=${ticker}&interval=5m&bars=400`;
       } else if (activeInterval === '1h') {
         url = `/api/spatial/candles?coin=${ticker}&interval=1h&bars=400`;
@@ -674,7 +678,7 @@
     const e = Math.min(candles.length,Math.ceil(viewEnd));
     ctx.fillStyle=rgba(C.white,.72); ctx.font='bold 10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
     const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const isIntraday = activeInterval === '5m' || activeInterval === '1h' || activeInterval === '4h';
+    const isIntraday = activeInterval === '1m' || activeInterval === '3m' || activeInterval === '5m' || activeInterval === '1h' || activeInterval === '4h';
     if (isIntraday) {
       // Show HH:MM labels, avoid overlap by spacing
       const step = Math.max(1, Math.floor(span / 8));
@@ -1045,7 +1049,7 @@
     ctx.beginPath(); ctx.moveTo(0, PAD.top); ctx.lineTo(W, PAD.top); ctx.stroke();
 
     // ── Interval buttons (left) ──
-    const btnLabels = ['5m','1h','4h','1D','1W'];
+    const btnLabels = ['1m','3m','5m','1h','4h','1D','1W'];
     const btnW=32, btnH=20, btnGap=4;
     let bx = PAD.left + 4;
     btnLabels.forEach(lbl => {
@@ -1435,7 +1439,7 @@
       }
 
       // Interval buttons (left)
-      const btnLabels=['5m','1h','4h','1D','1W'];
+      const btnLabels=['1m','3m','5m','1h','4h','1D','1W'];
       const btnW=32, btnH=20, btnGap=4;
       let bx=PAD.left+4;
       for (const lbl of btnLabels) {
