@@ -165,6 +165,10 @@ db.exec(`
   );
 
   INSERT OR IGNORE INTO trading_assets (asset) VALUES ('BTC');
+  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('ETH');
+  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('DOGE');
+  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('XAU');
+  INSERT OR IGNORE INTO trading_assets (asset) VALUES ('HYPE');
 `);
 
 // Migration: add deploy_pct column if upgrading from the initial schema

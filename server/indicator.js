@@ -85,7 +85,7 @@ export function getPatterns(candles) {
   const range    = cur.high - cur.low;
 
   return {
-    isDoji: range > 0 && bodySize <= range * 0.1,
+    isDoji: range > 0 && bodySize <= range * 0.15,
 
     // Bullish engulfing: current is bullish, prior was bearish, current body engulfs prior body
     isBullishEngulfing:

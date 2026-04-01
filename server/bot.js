@@ -74,7 +74,7 @@ function getBias(asset) {
 async function update15mBias(asset, candles15m) {
   try {
     if (!candles15m || candles15m.length < 70) return;
-    const result = detectSignals(candles15m, { useProximity: false, useWick: false });
+    const result = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false });
     if (result.signal) {
       const direction = result.signal === 'BUY' ? 'BULLISH' : 'BEARISH';
       bias15mMap.set(asset, { direction, updatedAt: new Date().toISOString() });
@@ -104,7 +104,7 @@ async function checkSmartExits(asset, candles5m, candles15m, currentPrice) {
   // Check if 15m recently fired an opposite signal (within 3 candles = 45 min)
   let htf15Signal = null;
   if (candles15m && candles15m.length >= 70) {
-    const htfResult = detectSignals(candles15m, { useProximity: false, useWick: false });
+    const htfResult = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false });
     if (htfResult.signal && htfResult.barsAgo < 3) htf15Signal = htfResult.signal;
   }
 
@@ -341,6 +341,7 @@ export async function runServerLoop(broadcastFn) {
         htfCandles:   candles15m,
         useProximity: false,
         useWick:      false,
+        useVolume:    false,   // Hyperliquid volume data differs from TradingView
       });
       console.log(`[BOT] ${asset} 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
 
