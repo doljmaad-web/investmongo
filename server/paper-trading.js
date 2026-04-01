@@ -101,24 +101,6 @@ export function updateOpenTrades(prices) {
       continue;
     }
 
-    // Time stop: still negative after 90 minutes → close immediately
-    const TIMEOUT_MS = 90 * 60 * 1000;
-    const ageMs = Date.now() - new Date(t.opened_at).getTime();
-    if (ageMs >= TIMEOUT_MS && pnlUsd < 0) {
-      db.prepare(`
-        UPDATE trades SET status='CLOSED', exit_price=?, pnl_usd=?,
-        pnl_pct=?, closed_at=CURRENT_TIMESTAMP WHERE id=?
-      `).run(
-        parseFloat(price.toFixed(2)),
-        parseFloat(pnlUsd.toFixed(2)),
-        parseFloat(pnlPct.toFixed(2)),
-        t.id
-      );
-      console.log(`[PAPER] Time stop (90min): ${t.asset} ${t.direction} age=${Math.round(ageMs/60000)}min PnL: $${pnlUsd.toFixed(2)}`);
-      snapshotPortfolio();
-      continue;
-    }
-
     // Update live P&L
     db.prepare(`UPDATE trades SET pnl_usd=?, pnl_pct=? WHERE id=?`)
       .run(parseFloat(pnlUsd.toFixed(2)), parseFloat(pnlPct.toFixed(2)), t.id);

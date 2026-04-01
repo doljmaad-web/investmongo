@@ -14,11 +14,11 @@ import { db }                            from './database.js';
 // Strategy: Precision v11 — 1m yellow/pink dots
 //
 // Holding conditions:
-//   COUNTER-TREND (1m opposes 1h last signal):
+//   COUNTER-TREND (1m opposes 30m last signal):
 //     SL = 0.1% from entry
 //     TP = 10% from entry (fixed target)
 //
-//   WITH-TREND (1m aligns with 1h last signal, or no 1h bias yet):
+//   WITH-TREND (1m aligns with 30m last signal, or no 30m bias yet):
 //     SL = 2% from entry
 //     TP = none — hold until opposite 1m dot fires
 // ============================================================
@@ -58,26 +58,26 @@ function isDuplicate(asset, action) {
 }
 
 // ============================================================
-// 1H BIAS — per-asset map, tracks last 1h dot signal
+// 30M BIAS — per-asset map, tracks last 30m dot signal
 // ============================================================
-const bias1hMap = new Map(); // asset → { direction, updatedAt }
+const bias30mMap = new Map(); // asset → { direction, updatedAt }
 
 function getBias(asset) {
-  return bias1hMap.get(asset) || { direction: null, updatedAt: null };
+  return bias30mMap.get(asset) || { direction: null, updatedAt: null };
 }
 
-async function update1hBias(asset) {
+async function update30mBias(asset) {
   try {
-    const candles1h = await fetchCandles(asset, '1h', 400);
-    if (!candles1h || candles1h.length < 60) return;
-    const result = detectSignals(candles1h);
+    const candles30m = await fetchCandles(asset, '30m', 400);
+    if (!candles30m || candles30m.length < 60) return;
+    const result = detectSignals(candles30m, { useProximity: false, useWick: false });
     if (result.signal) {
       const direction = result.signal === 'BUY' ? 'BULLISH' : 'BEARISH';
-      bias1hMap.set(asset, { direction, updatedAt: new Date().toISOString() });
-      console.log(`[BOT] 1h bias ${asset} → ${direction} (RSI=${result.rsi})`);
+      bias30mMap.set(asset, { direction, updatedAt: new Date().toISOString() });
+      console.log(`[BOT] 30m bias ${asset} → ${direction} (RSI=${result.rsi})`);
     }
   } catch (err) {
-    console.error(`[BOT] 1h bias scan error (${asset}):`, err.message);
+    console.error(`[BOT] 30m bias scan error (${asset}):`, err.message);
   }
 }
 
@@ -150,7 +150,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     : 0;
 
   const tradeType = isCounterTrend ? 'COUNTER-TREND' : 'WITH-TREND';
-  const biasNote  = bias1h.direction ? ` | 1h: ${bias1h.direction}` : ' | 1h: no bias';
+  const biasNote  = bias1h.direction ? ` | 30m: ${bias1h.direction}` : ' | 30m: no bias';
 
   // Deploy_pct: how much of available capital to use for this trade
   const assetRow   = db.prepare('SELECT deploy_pct FROM trading_assets WHERE asset=?').get(signal.asset);
@@ -170,8 +170,8 @@ export async function handleSignal(rawSignal, source = 'server') {
     take_profit: takeProfit,
     reasoning:  {
       summary: isCounterTrend
-        ? `Counter-trend vs 1h ${bias1h.direction} — tight SL 0.1%, TP 10%`
-        : `With-trend (1h ${bias1h.direction || 'no bias'}) — SL 2%, exit on opposite dot`,
+        ? `Counter-trend vs 30m ${bias1h.direction} — tight SL 0.1%, TP 10%`
+        : `With-trend (30m ${bias1h.direction || 'no bias'}) — SL 2%, exit on opposite dot`,
     },
     validated_news: [],
   };
@@ -228,7 +228,7 @@ export async function handleSignal(rawSignal, source = 'server') {
 
 // ============================================================
 // TRACK B: Server loop (every 1 minute via cron)
-// 1. Update 1h bias (read-only, no trades)
+// 1. Update 30m bias (read-only, no trades)
 // 2. Scan 1m with 5m MTF confirmation — act if dot within last 5 candles
 // ============================================================
 export async function runServerLoop(broadcastFn) {
@@ -236,9 +236,9 @@ export async function runServerLoop(broadcastFn) {
   const assetNames = assetRows.map(r => r.asset);
   console.log(`[BOT] Running Precision v11 1m scan — assets: ${assetNames.join(', ')}`);
 
-  // Step 1 — refresh 1h bias + scan 1m for each active asset
+  // Step 1 — refresh 30m bias + scan 1m for each active asset
   for (const { asset } of assetRows) {
-    await update1hBias(asset);
+    await update30mBias(asset);
 
     try {
       const [candles1m, candles5m] = await Promise.all([
@@ -249,7 +249,11 @@ export async function runServerLoop(broadcastFn) {
       if (!candles1m || candles1m.length < 60) {
         console.log(`[BOT] ${asset}: insufficient 1m candles — skipping`);
       } else {
-        const result = detectSignals(candles1m, { htfCandles: candles5m });
+        const result = detectSignals(candles1m, {
+          htfCandles:   candles5m,
+          useProximity: false,   // SMA50 proximity too restrictive on 1m
+          useWick:      false,   // wick ratio filter kills doji signals on 1m
+        });
         console.log(`[BOT] ${asset} 1m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi || '-'}`);
 
         if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
