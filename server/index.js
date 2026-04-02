@@ -27,7 +27,7 @@ process.on('SIGTERM', () => {
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
-import { getPortfolioStats, getAvailableCapital } from './paper-trading.js';
+import { getPortfolioStats, getAvailableCapital, closeTradeById } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
 import { db }                          from './database.js';
 
