@@ -326,6 +326,32 @@ function buildSignalCard(s) {
 }
 
 // ============================================================
+// ADMIN: Close all positions
+// ============================================================
+async function closeAllPositions() {
+  const btn = document.getElementById('btn-close-all');
+  const open = state.portfolio?.openTrades || [];
+  if (open.length === 0) return alert('No open positions to close.');
+
+  if (!confirm(`Close ALL ${open.length} open position(s) at market price?`)) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Closing…';
+  try {
+    const res  = await fetch('/api/trades/close-all', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    alert(`✅ Closed ${data.closed} of ${data.total} position(s).`);
+    await refreshPortfolio();
+  } catch (e) {
+    alert('❌ Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⏻ CLOSE ALL';
+  }
+}
+
+// ============================================================
 // POSITIONS
 // ============================================================
 function renderPositions() {
