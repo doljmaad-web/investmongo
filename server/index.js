@@ -123,6 +123,36 @@ app.get('/api/trades', (req, res) => {
   res.json({ open, closed });
 });
 
+// POST /api/trades/close-all  → admin: close every open paper position at current market price
+app.post('/api/trades/close-all', async (req, res) => {
+  try {
+    const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER'`).all();
+    if (open.length === 0) return res.json({ closed: 0, message: 'No open positions' });
+
+    const { getCurrentPrices } = await import('./hyperliquid.js');
+    const coins  = [...new Set(open.map(t => t.asset))];
+    const prices = await getCurrentPrices(coins);
+
+    let closedCount = 0;
+    for (const t of open) {
+      const exitPrice = prices[t.asset];
+      if (!exitPrice) {
+        console.warn(`[ADMIN] No price for ${t.asset}, skipping close`);
+        continue;
+      }
+      closeTradeById(t.id, exitPrice);
+      console.log(`[ADMIN] Force-closed trade #${t.id} ${t.asset} ${t.direction} @ $${exitPrice}`);
+      closedCount++;
+    }
+
+    broadcast({ type: 'portfolio_update' });
+    res.json({ closed: closedCount, total: open.length });
+  } catch (e) {
+    console.error('[ADMIN] close-all error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/news', async (req, res) => {
   try {
     const { news, fearGreed } = await fetchAllNews();
