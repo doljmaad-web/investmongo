@@ -76,34 +76,129 @@ function calcVolumeSMA(candles, period) {
   return slice.reduce((a, b) => a + b, 0) / period;
 }
 
-// --- Candlestick patterns (v11: prior candle direction verified) ---
+// --- Candlestick reversal patterns ---
 export function getPatterns(candles) {
   if (candles.length < 2) return {};
-  const cur = candles.at(-1);
-  const prv = candles.at(-2);
-  const bodySize = Math.abs(cur.open - cur.close);
-  const range    = cur.high - cur.low;
+  const cur  = candles.at(-1);
+  const prv  = candles.at(-2);
+  const prv2 = candles.length >= 3 ? candles.at(-3) : null;
+
+  const bodySize    = Math.abs(cur.open - cur.close);
+  const range       = cur.high - cur.low;
+  const upperShadow = cur.high - Math.max(cur.open, cur.close);
+  const lowerShadow = Math.min(cur.open, cur.close) - cur.low;
+  const prvBody     = Math.abs(prv.open - prv.close);
+
+  // ── Single-candle patterns ──────────────────────────────────
+
+  // Doji: body ≤ 15% of range (indecision)
+  const isDoji = range > 0 && bodySize <= range * 0.15;
+
+  // Hammer: long lower wick (≥2× body), small upper wick — bullish reversal
+  const isHammer =
+    bodySize > 0 &&
+    lowerShadow >= 2 * bodySize &&
+    upperShadow <= bodySize;
+
+  // Inverted Hammer: long upper wick (≥2× body), small lower wick — bullish reversal
+  const isInvertedHammer =
+    bodySize > 0 &&
+    upperShadow >= 2 * bodySize &&
+    lowerShadow <= bodySize;
+
+  // Shooting Star: long upper wick (≥2× body), small lower wick — bearish reversal
+  const isShootingStar =
+    bodySize > 0 &&
+    upperShadow >= 2 * bodySize &&
+    lowerShadow <= bodySize * 0.5;
+
+  // Hanging Man: long lower wick (≥2× body), small upper wick — bearish reversal
+  const isHangingMan =
+    bodySize > 0 &&
+    lowerShadow >= 2 * bodySize &&
+    upperShadow <= bodySize * 0.5;
+
+  // ── Two-candle patterns ─────────────────────────────────────
+
+  // Bullish Engulfing: prior bearish, current bullish and body engulfs prior
+  const isBullishEngulfing =
+    cur.close > cur.open &&
+    prv.open  > prv.close &&
+    cur.close > prv.open  &&
+    cur.open  < prv.close &&
+    bodySize  > prvBody;
+
+  // Bearish Engulfing: prior bullish, current bearish and body engulfs prior
+  const isBearishEngulfing =
+    cur.close < cur.open &&
+    prv.open  < prv.close &&
+    cur.close < prv.open  &&
+    cur.open  > prv.close &&
+    bodySize  > prvBody;
+
+  // Piercing Line: prior bearish, current bullish opens below prior low,
+  // closes above prior midpoint — bullish reversal
+  const isPiercingLine =
+    prv.open  > prv.close &&
+    cur.close > cur.open  &&
+    cur.open  < prv.low   &&
+    cur.close > prv.close + prvBody * 0.5 &&
+    cur.close < prv.open;
+
+  // Dark Cloud Cover: prior bullish, current bearish opens above prior high,
+  // closes below prior midpoint — bearish reversal
+  const isDarkCloudCover =
+    prv.close > prv.open  &&
+    cur.close < cur.open  &&
+    cur.open  > prv.high  &&
+    cur.close < prv.open  + prvBody * 0.5 &&
+    cur.close > prv.close;
+
+  // ── Three-candle patterns ───────────────────────────────────
+
+  // Morning Star: large bearish, small body (star), large bullish — bullish reversal
+  const isMorningStar = prv2 !== null && (() => {
+    const p2Body = Math.abs(prv2.open - prv2.close);
+    const starBody = prvBody;
+    return (
+      prv2.open  > prv2.close &&               // candle 1: bearish
+      p2Body > range * 0.3 &&                  // candle 1: significant body
+      starBody < p2Body * 0.3 &&               // candle 2: small star body
+      cur.close  > cur.open &&                 // candle 3: bullish
+      cur.close  > prv2.open - p2Body * 0.5   // candle 3: closes above midpoint of candle 1
+    );
+  })();
+
+  // Evening Star: large bullish, small body (star), large bearish — bearish reversal
+  const isEveningStar = prv2 !== null && (() => {
+    const p2Body = Math.abs(prv2.open - prv2.close);
+    const starBody = prvBody;
+    return (
+      prv2.close > prv2.open &&                // candle 1: bullish
+      p2Body > range * 0.3 &&                  // candle 1: significant body
+      starBody < p2Body * 0.3 &&               // candle 2: small star body
+      cur.close  < cur.open &&                 // candle 3: bearish
+      cur.close  < prv2.open + p2Body * 0.5   // candle 3: closes below midpoint of candle 1
+    );
+  })();
 
   return {
-    isDoji: range > 0 && bodySize <= range * 0.15,
+    // Bullish reversal patterns (qualify for BUY signals)
+    isDoji,
+    isHammer,
+    isInvertedHammer,
+    isBullishEngulfing,
+    isPiercingLine,
+    isMorningStar,
 
-    // Bullish engulfing: current is bullish, prior was bearish, current body engulfs prior body
-    isBullishEngulfing:
-      cur.close > cur.open &&          // current candle is bullish
-      prv.open  > prv.close &&         // prior candle was bearish ← FIXED in v11
-      cur.close > prv.open  &&
-      cur.open  < prv.close &&
-      bodySize  > Math.abs(prv.open - prv.close),
+    // Bearish reversal patterns (qualify for SELL signals)
+    isShootingStar,
+    isHangingMan,
+    isBearishEngulfing,
+    isDarkCloudCover,
+    isEveningStar,
 
-    // Bearish engulfing: current is bearish, prior was bullish, current body engulfs prior body
-    isBearishEngulfing:
-      cur.close < cur.open &&          // current candle is bearish
-      prv.open  < prv.close &&         // prior candle was bullish ← FIXED in v11
-      cur.close < prv.open  &&
-      cur.open  > prv.close &&
-      bodySize  > Math.abs(prv.open - prv.close),
-
-    // Wick rejection ratios
+    // Wick rejection ratios (used by filters)
     bullishWickRejection: range > 0 && (cur.close - cur.low)  / range > 0.6,
     bearishWickRejection: range > 0 && (cur.high  - cur.close) / range > 0.6,
 
@@ -161,13 +256,13 @@ export function detectSignals(candles, cfg = {}) {
   const {
     sma50Len       = 50,
     sma200Len      = 200,
-    rsiLen         = 14,
+    rsiLen         = 8,
     rsiObMin       = 55,   // tightened from 40
     rsiObMax       = 85,
     rsiOsMin       = 18,
     rsiOsMax       = 45,   // tightened from 60
-    lookback       = 20,   // increased from 10
-    crossConfirm   = 3,    // cooldown bars before cycle resets
+    lookback       = 10,   // short window → easier entry on fast TFs
+    crossConfirm   = 1,    // 1 bar cooldown → fires sooner after RSI crosses 50
 
     // Volume filter
     useVolume      = true,
@@ -231,18 +326,24 @@ export function detectSignals(candles, cfg = {}) {
     const hiRsi = Math.max(...last);
     const loRsi = Math.min(...last);
 
-    // OS zone: RSI 18–45 AND RSI has been below 50 for whole lookback
-    const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && hiRsi < 50;
+    // OS zone: RSI 18–45 AND RSI hasn't spiked above 52 in lookback (allows brief touches of 50)
+    const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && hiRsi < 52;
 
-    // OB zone: RSI 55–85 AND RSI has been above 50 for whole lookback
-    const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax && loRsi > 50;
+    // OB zone: RSI 55–85 AND RSI hasn't dipped below 48 in lookback (allows brief touches of 50)
+    const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax && loRsi > 48;
 
     // Cooldown state — confirmed cycle
     const { confirmedBullCycle, confirmedBearCycle } = calcCooldownState(rsiHist, crossConfirm);
 
     // Patterns for this slice
     const patterns = getPatterns(slice);
-    const { isDoji, isBullishEngulfing, isBearishEngulfing } = patterns;
+    const {
+      isDoji, isHammer, isInvertedHammer, isBullishEngulfing, isPiercingLine, isMorningStar,
+      isShootingStar, isHangingMan, isBearishEngulfing, isDarkCloudCover, isEveningStar,
+    } = patterns;
+
+    const isBullishPattern = isDoji || isHammer || isInvertedHammer || isBullishEngulfing || isPiercingLine || isMorningStar;
+    const isBearishPattern = isDoji || isShootingStar || isHangingMan || isBearishEngulfing || isDarkCloudCover || isEveningStar;
 
     // --- Volume filter ---
     const sliceVol = slice.at(-1).volume || 0;
@@ -261,7 +362,7 @@ export function detectSignals(candles, cfg = {}) {
     const goldSignal =
       osZone &&
       hookUp &&
-      (isDoji || isBullishEngulfing) &&
+      isBullishPattern &&
       confirmedBullCycle &&
       volOk &&
       wickOkBull &&
@@ -269,12 +370,13 @@ export function detectSignals(candles, cfg = {}) {
       htfConfirmsBull;
 
     if (goldSignal) {
-      console.log(
-        `[INDICATOR] YELLOW DOT found ${i} candles ago — ` +
-        `RSI=${rsiNow} hiRSI=${hiRsi.toFixed(1)} ` +
-        `isDoji=${isDoji} bullEng=${isBullishEngulfing} ` +
-        `vol=${volOk} wick=${wickOkBull} prox=${proxOk} htf=${htfConfirmsBull}`
-      );
+      const patternName = isBullishEngulfing ? 'bullish_engulfing'
+        : isHammer          ? 'hammer'
+        : isInvertedHammer  ? 'inverted_hammer'
+        : isPiercingLine    ? 'piercing_line'
+        : isMorningStar     ? 'morning_star'
+        : 'doji';
+      console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} hiRSI=${hiRsi.toFixed(1)} pattern=${patternName} htf=${htfConfirmsBull}`);
       return {
         signal:   'BUY',
         type:     'yellow_dot',
@@ -285,7 +387,7 @@ export function detectSignals(candles, cfg = {}) {
         rsi:      rsiNow,
         sma50,
         sma200,
-        pattern:  isBullishEngulfing ? 'bullish_engulfing' : 'doji',
+        pattern:  patternName,
         trend:    sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
         barsAgo:  i,
       };
@@ -295,7 +397,7 @@ export function detectSignals(candles, cfg = {}) {
     const pinkSignal =
       obZone &&
       hookDown &&
-      (isDoji || isBearishEngulfing) &&
+      isBearishPattern &&
       confirmedBearCycle &&
       volOk &&
       wickOkBear &&
@@ -303,12 +405,13 @@ export function detectSignals(candles, cfg = {}) {
       htfConfirmsBear;
 
     if (pinkSignal) {
-      console.log(
-        `[INDICATOR] PINK DOT found ${i} candles ago — ` +
-        `RSI=${rsiNow} loRSI=${loRsi.toFixed(1)} ` +
-        `isDoji=${isDoji} bearEng=${isBearishEngulfing} ` +
-        `vol=${volOk} wick=${wickOkBear} prox=${proxOk} htf=${htfConfirmsBear}`
-      );
+      const patternName = isBearishEngulfing ? 'bearish_engulfing'
+        : isShootingStar  ? 'shooting_star'
+        : isHangingMan    ? 'hanging_man'
+        : isDarkCloudCover ? 'dark_cloud_cover'
+        : isEveningStar   ? 'evening_star'
+        : 'doji';
+      console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} loRSI=${loRsi.toFixed(1)} pattern=${patternName} htf=${htfConfirmsBear}`);
       return {
         signal:   'SELL',
         type:     'pink_dot',
@@ -319,7 +422,7 @@ export function detectSignals(candles, cfg = {}) {
         rsi:      rsiNow,
         sma50,
         sma200,
-        pattern:  isBearishEngulfing ? 'bearish_engulfing' : 'doji',
+        pattern:  patternName,
         trend:    sma50 && sma200 ? (sma50 > sma200 ? 'uptrend' : 'downtrend') : 'unknown',
         barsAgo:  i,
       };

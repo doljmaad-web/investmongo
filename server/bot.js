@@ -11,29 +11,30 @@ import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
 import { db }                            from './database.js';
 
 // ============================================================
-// Strategy: Precision v11 — 5m yellow/pink dots
+// Strategy: Precision v11 — 3m yellow/pink dots (fast entry, fast TP)
 //
-// Signal: 5m candle with V11 RSI zones, volume filter, MTF (15m) confirmation
+// Signal: 3m candle with V11 RSI zones, MTF (15m) confirmation
 // Bias:   15m last dot signal → determines counter vs with-trend
 //
-// COUNTER-TREND (5m opposes 15m bias):
-//   SL = 0.5% | TP = 3% fixed
+// COUNTER-TREND (3m opposes 15m bias):
+//   SL = 0.5% | TP = 1.5% fixed
 //
-// WITH-TREND (5m aligns with 15m bias, or no bias yet):
-//   SL = 1.5% | TP = smart exit (reversal candle / ATR trail / 15m flip)
+// WITH-TREND (3m aligns with 15m bias, or no bias yet):
+//   SL = 0.8% | TP = 1.5% fixed + ATR trailing stop @ 0.4% profit
 //
-// SMART EXITS (with-trend only, while in profit):
-//   1. Bearish engulfing on 5m + RSI > 55  → close LONG
-//   2. Bullish engulfing on 5m + RSI < 45  → close SHORT
+// SMART EXITS (while in profit):
+//   1. Bearish engulfing on 3m + RSI > 52  → close LONG
+//   2. Bullish engulfing on 3m + RSI < 48  → close SHORT
 //   3. 15m fires opposite dot (barsAgo<3)  → close either
-//   4. ATR(14)×1.5 trailing stop           → activates once profit > 0.8%
+//   4. ATR(14)×1.0 trailing stop           → activates once profit > 0.4%
 // ============================================================
-const SIGNAL_WINDOW = 3;   // act on signal within last 3 candles (~15 min on 5m)
+const SIGNAL_WINDOW = 3;   // act on signal within last 3 candles (~9 min on 3m)
 const SL_COUNTER    = 0.005;  // 0.5%  stop loss — counter-trend
-const TP_COUNTER    = 0.03;   // 3%    take profit — counter-trend
-const SL_WITH       = 0.015;  // 1.5%  stop loss — with-trend
-const ATR_TRAIL_MULT   = 1.5; // ATR multiplier for trailing stop
-const TRAIL_ACTIVATE   = 0.8; // % profit before trailing stop engages
+const TP_COUNTER    = 0.015;  // 1.5%  take profit — counter-trend
+const SL_WITH       = 0.008;  // 0.8%  stop loss — with-trend
+const TP_WITH       = 0.015;  // 1.5%  take profit — with-trend (fast lock)
+const ATR_TRAIL_MULT   = 1.0; // ATR multiplier for trailing stop (tighter)
+const TRAIL_ACTIVATE   = 0.4; // % profit before trailing stop engages
 const DEDUP_MS         = 15 * 60 * 1000; // 15 min dedup window
 
 // ── Trading asset management (persisted in SQLite) ─────────
@@ -74,7 +75,7 @@ function getBias(asset) {
 async function update15mBias(asset, candles15m) {
   try {
     if (!candles15m || candles15m.length < 70) return;
-    const result = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false });
+    const result = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false, htfOsLevel: 60, htfObLevel: 40 });
     if (result.signal) {
       const direction = result.signal === 'BUY' ? 'BULLISH' : 'BEARISH';
       bias15mMap.set(asset, { direction, updatedAt: new Date().toISOString() });
@@ -89,22 +90,22 @@ async function update15mBias(asset, candles15m) {
 // SMART EXIT ENGINE — checks open trades for profitable exit conditions
 // Called every minute with fresh 5m + 15m candle data
 // ============================================================
-async function checkSmartExits(asset, candles5m, candles15m, currentPrice) {
+async function checkSmartExits(asset, candles3m, candles15m, currentPrice) {
   const open = db.prepare(
     `SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`
   ).all(asset);
   if (!open.length) return;
 
-  // 5m indicators
-  const closes5m = candles5m.map(c => c.close);
-  const rsiNow   = calcRSI(closes5m, 14);
-  const pat5m    = getPatterns(candles5m);
-  const atr5m    = calcATR(candles5m, 14);
+  // 3m indicators (RSI 8 matches indicator period)
+  const closes3m = candles3m.map(c => c.close);
+  const rsiNow   = calcRSI(closes3m, 8);
+  const pat5m    = getPatterns(candles3m);
+  const atr5m    = calcATR(candles3m, 14);
 
   // Check if 15m recently fired an opposite signal (within 3 candles = 45 min)
   let htf15Signal = null;
   if (candles15m && candles15m.length >= 70) {
-    const htfResult = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false });
+    const htfResult = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false, htfOsLevel: 60, htfObLevel: 40 });
     if (htfResult.signal && htfResult.barsAgo < 3) htf15Signal = htfResult.signal;
   }
 
@@ -116,11 +117,11 @@ async function checkSmartExits(asset, candles5m, candles15m, currentPrice) {
 
     // ── 1. Reversal candle exit — only take when in profit ──
     if (pnlPct > 0 && rsiNow !== null) {
-      if (isLong && pat5m.isBearishEngulfing && rsiNow > 55) {
+      if (isLong && pat5m.isBearishEngulfing && rsiNow > 52) {
         await smartClose(trade, currentPrice, `bearish engulfing (RSI ${rsiNow?.toFixed(1)})`, pnlPct);
         continue;
       }
-      if (!isLong && pat5m.isBullishEngulfing && rsiNow < 45) {
+      if (!isLong && pat5m.isBullishEngulfing && rsiNow < 48) {
         await smartClose(trade, currentPrice, `bullish engulfing (RSI ${rsiNow?.toFixed(1)})`, pnlPct);
         continue;
       }
@@ -214,7 +215,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     );
 
   const slPct = isCounterTrend ? SL_COUNTER : SL_WITH;
-  const tpPct = isCounterTrend ? TP_COUNTER : 0;
+  const tpPct = isCounterTrend ? TP_COUNTER : TP_WITH;
 
   const stopLoss = parseFloat((
     signal.signal === 'BUY'
@@ -251,7 +252,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     reasoning: {
       summary: isCounterTrend
         ? `Counter-trend vs 15m ${bias15m.direction} — SL ${slPct*100}%, TP ${tpPct*100}%`
-        : `With-trend (15m ${bias15m.direction || 'no bias'}) — SL ${slPct*100}%, smart exit`,
+        : `With-trend (15m ${bias15m.direction || 'no bias'}) — SL ${slPct*100}%, TP ${tpPct*100}% + ATR trail`,
     },
     validated_news: [],
   };
@@ -291,8 +292,8 @@ export async function handleSignal(rawSignal, source = 'server') {
   const icon     = signal.signal === 'BUY' ? '📈' : '📉';
   const dotLabel = signal.type === 'yellow_dot' ? '🟡 Yellow dot' : '🩷 Pink dot';
   const exitNote = isCounterTrend
-    ? `SL: $${stopLoss} (0.5%) | TP: $${takeProfit} (3%)`
-    : `SL: $${stopLoss} (1.5%) | TP: smart exit (reversal/ATR trail/15m flip)`;
+    ? `SL: $${stopLoss} (0.5%) | TP: $${takeProfit} (1.5%)`
+    : `SL: $${stopLoss} (0.8%) | TP: $${takeProfit} (1.5%) + ATR trail`;
 
   await sendTelegram(
     `${icon} TRADE OPENED [${tradeType}]\n` +
@@ -310,49 +311,51 @@ export async function handleSignal(rawSignal, source = 'server') {
 // TRACK B: Server loop (every minute via cron)
 //
 // Per asset:
-//   1. Fetch 5m (400 bars) + 15m (200 bars) candles in parallel
+//   1. Fetch 3m (400 bars) + 15m (200 bars) candles in parallel
 //   2. Update 15m bias (direction context for new trades)
-//   3. Detect 5m V11 signal — use 15m as MTF confirmation
+//   3. Detect 3m V11 signal — use 15m as MTF confirmation
 //   4. If fresh signal (barsAgo < 3) → handleSignal
 //   5. Run smart exit checks on all open trades
 // ============================================================
 export async function runServerLoop(broadcastFn) {
   const assetRows  = getTradingAssets();
   const assetNames = assetRows.map(r => r.asset);
-  console.log(`[BOT] Precision v11 5m scan — assets: ${assetNames.join(', ')}`);
+  console.log(`[BOT] Precision v11 3m scan — assets: ${assetNames.join(', ')}`);
 
   for (const { asset } of assetRows) {
     try {
-      const [candles5m, candles15m] = await Promise.all([
-        fetchCandles(asset, '5m', 400),
+      const [candles3m, candles15m] = await Promise.all([
+        fetchCandles(asset, '3m', 400),
         fetchCandles(asset, '15m', 200),
       ]);
 
       // Update 15m bias with freshly fetched candles
       await update15mBias(asset, candles15m);
 
-      if (!candles5m || candles5m.length < 70) {
-        console.log(`[BOT] ${asset}: insufficient 5m candles — skipping`);
+      if (!candles3m || candles3m.length < 70) {
+        console.log(`[BOT] ${asset}: insufficient 3m candles — skipping`);
         continue;
       }
 
-      // Detect 5m signal — volume filter on, proximity/wick off (fast TF)
-      const result = detectSignals(candles5m, {
+      // Detect 3m signal — proximity/wick/volume off (fast TF), looser HTF gate
+      const result = detectSignals(candles3m, {
         htfCandles:   candles15m,
         useProximity: false,
         useWick:      false,
         useVolume:    false,   // Hyperliquid volume data differs from TradingView
+        htfOsLevel:   60,      // HTF RSI < 60 confirms bull (was 55)
+        htfObLevel:   40,      // HTF RSI > 40 confirms bear (was 45)
       });
-      console.log(`[BOT] ${asset} 5m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
+      console.log(`[BOT] ${asset} 3m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
 
       if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
-        const outcome = await handleSignal({ ...result, asset, timeframe: '5m' }, 'server');
+        const outcome = await handleSignal({ ...result, asset, timeframe: '3m' }, 'server');
         if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
       }
 
       // Smart exit checks — runs every minute regardless of new signals
-      const currentPrice = candles5m.at(-1).close;
-      await checkSmartExits(asset, candles5m, candles15m, currentPrice);
+      const currentPrice = candles3m.at(-1).close;
+      await checkSmartExits(asset, candles3m, candles15m, currentPrice);
 
     } catch (err) {
       console.error(`[BOT] ${asset} scan error:`, err.message, err.stack);
