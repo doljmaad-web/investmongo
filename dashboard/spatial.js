@@ -1126,7 +1126,11 @@
     const sd=document.getElementById('sp-direction');
     if(sd){ sd.textContent=plan.direction; sd.className='sp-dir-badge '+(plan.direction==='LONG'?'long':'short'); }
     const sp=document.getElementById('sp-panel');
-    if(sp) sp.classList.add('active');
+    if(sp) {
+      const wasActive = sp.classList.contains('active');
+      sp.classList.add('active');
+      if (!wasActive) setTimeout(resize, 320); // re-measure canvas after panel slides in
+    }
 
     const sigEl=document.getElementById('sp-signal-details');
     if (sigEl && plan._signal) {
