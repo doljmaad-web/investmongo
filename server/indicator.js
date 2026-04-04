@@ -123,7 +123,14 @@ export function detectSignals(candles, cfg = {}) {
     sma50Len  = 50,
     sma200Len = 200,
     lookback  = 10,
+    trendBias = 'neutral',  // 'neutral' | 'long' | 'short'
   } = cfg;
+
+  // Aggressive mode overrides — loosen the favoured direction's conditions
+  const effOsMax = trendBias === 'long'  ? 65 : rsiOsMax;   // Long mode: wider OS zone (18-65)
+  const effObMin = trendBias === 'short' ? 36 : rsiObMin;   // Short mode: wider OB zone (36-85)
+  const hiRsiCap = trendBias === 'long'  ? 52 : 50;         // Long mode: allow brief RSI touch of 50
+  const loRsiFlr = trendBias === 'short' ? 48 : 50;         // Short mode: allow brief RSI touch of 50
 
   if (candles.length < sma50Len + lookback) {
     return { signal: null, reason: 'insufficient_candles' };
@@ -156,17 +163,21 @@ export function detectSignals(candles, cfg = {}) {
     const hiRsi = Math.max(...last);
     const loRsi = Math.min(...last);
 
-    // OS zone: RSI 18–60 AND RSI hasn't crossed above 50 in lookback (highest < 50)
-    const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && hiRsi < 50;
+    // OS zone: RSI in range AND RSI 50-memory check (loosened in Long Trend mode)
+    const osZone = rsiNow >= rsiOsMin && rsiNow <= effOsMax && hiRsi < hiRsiCap;
 
-    // OB zone: RSI 40–85 AND RSI hasn't crossed below 50 in lookback (lowest > 50)
-    const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax && loRsi > 50;
+    // OB zone: RSI in range AND RSI 50-memory check (loosened in Short Trend mode)
+    const obZone = rsiNow >= effObMin && rsiNow <= rsiObMax && loRsi > loRsiFlr;
 
     // Patterns for this slice
     const { isDoji, isBullishEngulfing, isBearishEngulfing } = getPatterns(slice);
 
+    // In directional modes, skip the non-favoured signal entirely
+    const allowBuy  = trendBias !== 'short';
+    const allowSell = trendBias !== 'long';
+
     // ── Yellow dot — BUY ─────────────────────────────────────
-    if (osZone && hookUp && (isDoji || isBullishEngulfing)) {
+    if (allowBuy && osZone && hookUp && (isDoji || isBullishEngulfing)) {
       const patternName = isBullishEngulfing ? 'bullish_engulfing' : 'doji';
       console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} hiRSI=${hiRsi.toFixed(1)} pattern=${patternName}`);
       return {
@@ -186,7 +197,7 @@ export function detectSignals(candles, cfg = {}) {
     }
 
     // ── Pink dot — SELL ──────────────────────────────────────
-    if (obZone && hookDown && (isDoji || isBearishEngulfing)) {
+    if (allowSell && obZone && hookDown && (isDoji || isBearishEngulfing)) {
       const patternName = isBearishEngulfing ? 'bearish_engulfing' : 'doji';
       console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} loRSI=${loRsi.toFixed(1)} pattern=${patternName}`);
       return {

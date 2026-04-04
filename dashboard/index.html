@@ -36,18 +36,45 @@
   <!-- ============ MAIN 3-COLUMN LAYOUT ============ -->
   <div id="main">
 
-    <!-- LEFT: Signal Feed -->
+    <!-- LEFT: Signal Feed + Admin Trend Control -->
     <div class="panel" id="panel-left">
-      <div class="panel-header">
-        <h3>Precision v9 Signals</h3>
-        <div class="header-right">
-          <div class="live-dot"></div>
-          <span style="font-size:10px;color:var(--text-muted);" id="signal-count">0</span>
+
+      <!-- Top half: Signal Feed -->
+      <div id="signal-section">
+        <div class="panel-header">
+          <h3>Precision v9 Signals</h3>
+          <div class="header-right">
+            <div class="live-dot"></div>
+            <span style="font-size:10px;color:var(--text-muted);" id="signal-count">0</span>
+          </div>
+        </div>
+        <div class="panel-body" id="signal-feed">
+          <div class="empty-state">Waiting for signals...</div>
         </div>
       </div>
-      <div class="panel-body" id="signal-feed">
-        <div class="empty-state">Waiting for signals...</div>
+
+      <!-- Divider -->
+      <div class="section-divider" style="margin:0;"></div>
+
+      <!-- Bottom half: Admin Trend Bias -->
+      <div id="trend-bias-section">
+        <div class="panel-header" style="padding:6px 12px;">
+          <h3>Admin Trend Control</h3>
+          <div class="header-right">
+            <div class="live-dot" style="background:var(--amber);box-shadow:0 0 4px var(--amber);"></div>
+          </div>
+        </div>
+        <div id="trend-btn-group">
+          <button class="trend-btn active" id="tbtn-neutral"  onclick="setTrendBias('neutral')">⚡ Neutral</button>
+          <button class="trend-btn long"   id="tbtn-long"     onclick="setTrendBias('long')">▲ Long Trend</button>
+          <button class="trend-btn short"  id="tbtn-short"    onclick="setTrendBias('short')">▼ Short Trend</button>
+        </div>
+        <div id="trend-status-box">
+          <div id="trend-status-icon">⚡</div>
+          <div id="trend-status-text">Bot trading independently in both directions</div>
+        </div>
       </div>
+
     </div>
 
     <!-- CENTER: Spatial Trade Planner (left) + AUM Chart (right) -->

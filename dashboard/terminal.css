@@ -1087,3 +1087,91 @@ html, body {
   /* Positions: tighter */
   .pos-pnl { font-size: 14px; }
 }
+
+/* ====== SIGNAL + TREND BIAS SPLIT PANEL ====== */
+#panel-left {
+  display: flex;
+  flex-direction: column;
+}
+
+#signal-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#signal-section .panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#trend-bias-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+#trend-btn-group {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px 6px;
+}
+
+.trend-btn {
+  flex: 1;
+  padding: 7px 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.trend-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.trend-btn.active {
+  background: rgba(232,160,32,0.15);
+  border-color: var(--amber);
+  color: var(--amber);
+  box-shadow: 0 0 8px rgba(232,160,32,0.2);
+}
+.trend-btn.long.active {
+  background: rgba(38,217,135,0.15);
+  border-color: var(--green);
+  color: var(--green);
+  box-shadow: 0 0 8px rgba(38,217,135,0.2);
+}
+.trend-btn.short.active {
+  background: rgba(224,69,90,0.15);
+  border-color: var(--red);
+  color: var(--red);
+  box-shadow: 0 0 8px rgba(224,69,90,0.2);
+}
+
+#trend-status-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 12px 10px;
+  min-height: 36px;
+}
+#trend-status-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+#trend-status-text {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}

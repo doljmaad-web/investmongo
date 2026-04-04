@@ -39,6 +39,16 @@ const ATR_TRAIL_MULT   = 1.0; // ATR multiplier for trailing stop (tighter)
 const TRAIL_ACTIVATE   = 0.4; // % profit before trailing stop engages
 const DEDUP_MS         = 5 * 60 * 1000; // 5 min dedup window (3m candles need faster reset)
 
+// ── Admin trend bias ─────────────────────────────────────────
+// 'neutral' | 'long' | 'short' — set via dashboard admin buttons
+let trendBias = 'neutral';
+export function getTrendBias() { return trendBias; }
+export function setTrendBias(bias) {
+  if (!['neutral','long','short'].includes(bias)) return;
+  trendBias = bias;
+  console.log(`[BOT] Admin trend bias set → ${bias.toUpperCase()}`);
+}
+
 // Price rounding — preserves meaningful decimal places for all assets
 // e.g. DOGE $0.09: toFixed(2) destroys precision, need toFixed(6)
 function roundPrice(p) {
@@ -352,7 +362,7 @@ export async function runServerLoop(broadcastFn) {
       }
 
       // Detect 3m signal — proximity/wick/volume off (fast TF), looser HTF gate
-      const result = detectSignals(candles3m);
+      const result = detectSignals(candles3m, { trendBias });
       console.log(`[BOT] ${asset} 3m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
 
       if (result.signal && result.barsAgo < SIGNAL_WINDOW) {

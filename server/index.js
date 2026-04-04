@@ -6,7 +6,7 @@ import path              from 'path';
 import { fileURLToPath } from 'url';
 import cron              from 'node-cron';
 
-import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, setTradingAssetPct, removeTradingAsset } from './bot.js';
+import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, setTradingAssetPct, removeTradingAsset, getTrendBias, setTrendBias } from './bot.js';
 
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
@@ -198,6 +198,21 @@ app.post('/api/trading/assets', (req, res) => {
     removeTradingAsset(asset);
   }
   res.json({ assets: getTradingAssets() });
+});
+
+// GET /api/trend-bias   → returns current admin trend bias
+// POST /api/trend-bias  → sets trend bias { bias: 'neutral'|'long'|'short' }
+app.get('/api/trend-bias', (req, res) => {
+  res.json({ bias: getTrendBias() });
+});
+
+app.post('/api/trend-bias', (req, res) => {
+  const { bias } = req.body;
+  if (!['neutral','long','short'].includes(bias)) return res.status(400).json({ error: 'invalid bias' });
+  setTrendBias(bias);
+  // Broadcast new bias to all dashboard clients
+  broadcast({ type: 'trend_bias', data: { bias } });
+  res.json({ bias });
 });
 
 // ============================================================

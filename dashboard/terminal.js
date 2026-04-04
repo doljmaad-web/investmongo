@@ -43,6 +43,54 @@ let wsRetry  = null;
 let chartCtx = null;
 
 // ============================================================
+// ADMIN TREND BIAS
+// ============================================================
+let currentTrendBias = 'neutral';
+
+async function loadTrendBias() {
+  try {
+    const r = await fetch('/api/trend-bias');
+    const d = await r.json();
+    applyTrendBias(d.bias || 'neutral');
+  } catch (_) {}
+}
+
+async function setTrendBias(bias) {
+  try {
+    await fetch('/api/trend-bias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bias }),
+    });
+    applyTrendBias(bias);
+  } catch (_) {}
+}
+
+function applyTrendBias(bias) {
+  currentTrendBias = bias;
+  ['neutral','long','short'].forEach(b => {
+    const btn = document.getElementById(`tbtn-${b}`);
+    if (btn) btn.classList.toggle('active', b === bias);
+  });
+  const icon = document.getElementById('trend-status-icon');
+  const text = document.getElementById('trend-status-text');
+  if (!icon || !text) return;
+  if (bias === 'neutral') {
+    icon.textContent = '⚡';
+    text.textContent = 'Bot trading independently in both directions';
+    text.style.color = 'var(--text-muted)';
+  } else if (bias === 'long') {
+    icon.textContent = '▲';
+    text.textContent = 'LONG TREND active — bot aggressively hunting Yellow dot BUY entries. Short signals suppressed.';
+    text.style.color = 'var(--green)';
+  } else {
+    icon.textContent = '▼';
+    text.textContent = 'SHORT TREND active — bot aggressively hunting Pink dot SELL entries. Long signals suppressed.';
+    text.style.color = 'var(--red)';
+  }
+}
+
+// ============================================================
 // WEBSOCKET
 // ============================================================
 function connect() {
@@ -120,6 +168,11 @@ function handleMessage(msg) {
         updateFGBadge();
       }
       break;
+  }
+
+  if (msg.type === 'trend_bias') {
+    applyTrendBias(msg.data.bias);
+    return;
   }
 }
 
@@ -770,6 +823,7 @@ window.addEventListener('load', () => {
   window.addEventListener('resize', () => drawChart());
   fetchTradeIntel();
   setInterval(fetchTradeIntel, 60000);
+  loadTrendBias();
 
   document.querySelectorAll('.ti-pill').forEach(pill => {
     pill.addEventListener('click', () => {
@@ -794,4 +848,6 @@ window.addEventListener('load', () => {
     });
   });
 });
+
+window.setTrendBias = setTrendBias;
 
