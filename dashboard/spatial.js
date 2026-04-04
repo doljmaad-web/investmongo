@@ -137,11 +137,8 @@
     if (!vc.length) return { hi: 100, lo: 0 };
     let hi = -Infinity, lo = Infinity;
     vc.forEach(c => { if (c.high > hi) hi = c.high; if (c.low < lo) lo = c.low; });
-    if (plan) {
-      [plan.tp3, plan.tp2, plan.tp1, plan.entry, plan.sl].forEach(p => {
-        if (p) { if (p > hi) hi = p; if (p < lo) lo = p; }
-      });
-    }
+    // Do NOT include plan TP/SL in range — they are far outside candle range
+    // and would compress all candles into a thin sliver. Draw them as overlays instead.
     const m = (hi - lo) * 0.05;
     return { hi: hi + m, lo: lo - m };
   }
