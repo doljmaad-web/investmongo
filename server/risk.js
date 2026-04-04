@@ -2,7 +2,7 @@ import { db } from './database.js';
 import { getPortfolioStats } from './paper-trading.js';
 
 const LIMITS = {
-  maxDailyLossUsd:    1000,  // Stop trading for the day if daily loss hits this
+  maxDailyLossUsd:    3000,  // Stop trading for the day if daily loss hits this
   maxOpenPositions:   5,     // one per asset (BTC, ETH, DOGE, GOLD, HYPE)
   maxExposureUsd:     9000,  // Up to 90% exposure (50% position size on $10k+)
   minGeminiConfidence: 50,   // Minimum confidence to execute any trade

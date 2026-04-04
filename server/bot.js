@@ -37,7 +37,19 @@ const SL_WITH       = 0.008;  // 0.8%  stop loss — with-trend
 const TP_WITH       = 0.015;  // 1.5%  take profit — with-trend (fast lock)
 const ATR_TRAIL_MULT   = 1.0; // ATR multiplier for trailing stop (tighter)
 const TRAIL_ACTIVATE   = 0.4; // % profit before trailing stop engages
-const DEDUP_MS         = 15 * 60 * 1000; // 15 min dedup window
+const DEDUP_MS         = 5 * 60 * 1000; // 5 min dedup window (3m candles need faster reset)
+
+// Price rounding — preserves meaningful decimal places for all assets
+// e.g. DOGE $0.09: toFixed(2) destroys precision, need toFixed(6)
+function roundPrice(p) {
+  if (p >= 10000) return parseFloat(p.toFixed(1));
+  if (p >= 1000)  return parseFloat(p.toFixed(2));
+  if (p >= 100)   return parseFloat(p.toFixed(3));
+  if (p >= 10)    return parseFloat(p.toFixed(4));
+  if (p >= 1)     return parseFloat(p.toFixed(5));
+  if (p >= 0.1)   return parseFloat(p.toFixed(6));
+  return parseFloat(p.toFixed(8));
+}
 
 // ── Trading asset management (persisted in SQLite) ─────────
 export function getTradingAssets() {
@@ -219,18 +231,18 @@ export async function handleSignal(rawSignal, source = 'server') {
   const slPct = isCounterTrend ? SL_COUNTER : SL_WITH;
   const tpPct = isCounterTrend ? TP_COUNTER : TP_WITH;
 
-  const stopLoss = parseFloat((
+  const stopLoss = roundPrice(
     signal.signal === 'BUY'
       ? signal.price * (1 - slPct)
       : signal.price * (1 + slPct)
-  ).toFixed(2));
+  );
 
   const takeProfit = tpPct > 0
-    ? parseFloat((
+    ? roundPrice(
         signal.signal === 'BUY'
           ? signal.price * (1 + tpPct)
           : signal.price * (1 - tpPct)
-      ).toFixed(2))
+      )
     : 0;
 
   const tradeType = isCounterTrend ? 'COUNTER-TREND' : 'WITH-TREND';
