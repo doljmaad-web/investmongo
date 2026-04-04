@@ -50,7 +50,7 @@ const COINGECKO_IDS = {
   BTC:  'bitcoin',
   ETH:  'ethereum',
   DOGE: 'dogecoin',
-  XAU:  'gold',      // CoinGecko uses "tether-gold" or similar; gold may return empty
+  GOLD: 'gold',      // Hyperliquid ticker is GOLD (not XAU)
   HYPE: 'hyperliquid',
 };
 
