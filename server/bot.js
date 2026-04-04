@@ -11,9 +11,11 @@ import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
 import { db }                            from './database.js';
 
 // ============================================================
-// Strategy: Precision v11 — 3m yellow/pink dots (fast entry, fast TP)
+// Strategy: Precision v9 — 3m yellow/pink dots (fast entry, fast TP)
 //
-// Signal: 3m candle with V11 RSI zones, MTF (15m) confirmation
+// Signal: 3m candle matching Pine Script v9 indicator exactly
+//   OS zone: RSI 18–60, highest(RSI,10)<50, doji/bullish engulfing, hook up
+//   OB zone: RSI 40–85, lowest(RSI,10)>50, doji/bearish engulfing, hook down
 // Bias:   15m last dot signal → determines counter vs with-trend
 //
 // COUNTER-TREND (3m opposes 15m bias):
@@ -75,7 +77,7 @@ function getBias(asset) {
 async function update15mBias(asset, candles15m) {
   try {
     if (!candles15m || candles15m.length < 70) return;
-    const result = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false, htfOsLevel: 60, htfObLevel: 40 });
+    const result = detectSignals(candles15m);
     if (result.signal) {
       const direction = result.signal === 'BUY' ? 'BULLISH' : 'BEARISH';
       bias15mMap.set(asset, { direction, updatedAt: new Date().toISOString() });
@@ -98,14 +100,14 @@ async function checkSmartExits(asset, candles3m, candles15m, currentPrice) {
 
   // 3m indicators (RSI 8 matches indicator period)
   const closes3m = candles3m.map(c => c.close);
-  const rsiNow   = calcRSI(closes3m, 8);
+  const rsiNow   = calcRSI(closes3m, 14);
   const pat5m    = getPatterns(candles3m);
   const atr5m    = calcATR(candles3m, 14);
 
   // Check if 15m recently fired an opposite signal (within 3 candles = 45 min)
   let htf15Signal = null;
   if (candles15m && candles15m.length >= 70) {
-    const htfResult = detectSignals(candles15m, { useProximity: false, useWick: false, useVolume: false, htfOsLevel: 60, htfObLevel: 40 });
+    const htfResult = detectSignals(candles15m);
     if (htfResult.signal && htfResult.barsAgo < 3) htf15Signal = htfResult.signal;
   }
 
@@ -338,14 +340,7 @@ export async function runServerLoop(broadcastFn) {
       }
 
       // Detect 3m signal — proximity/wick/volume off (fast TF), looser HTF gate
-      const result = detectSignals(candles3m, {
-        htfCandles:   candles15m,
-        useProximity: false,
-        useWick:      false,
-        useVolume:    false,   // Hyperliquid volume data differs from TradingView
-        htfOsLevel:   60,      // HTF RSI < 60 confirms bull (was 55)
-        htfObLevel:   40,      // HTF RSI > 40 confirms bear (was 45)
-      });
+      const result = detectSignals(candles3m);
       console.log(`[BOT] ${asset} 3m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
 
       if (result.signal && result.barsAgo < SIGNAL_WINDOW) {

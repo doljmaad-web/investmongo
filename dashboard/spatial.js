@@ -19,13 +19,13 @@
   let candleTimer  = null;
 
   // ── Asset list ─────────────────────────────────────────────
-  const ASSETS = ['BTC','ETH','SOL','XRP','DOGE','BNB','AVAX','LINK','ARB','SUI','ZEC','HYPE','TAO','PENDLE','PEPE'];
+  const ASSETS = ['BTC','ETH','SOL','XRP','DOGE','BNB','AVAX','LINK','ARB','SUI','ZEC','HYPE','TAO','PENDLE','GOLD','PEPE'];
   const TICKER_MAP = { 'PEPE': 'kPEPE' }; // display name → Hyperliquid ticker
   function getTicker(coin) { return TICKER_MAP[coin] || coin; }
 
   let activeCoin     = 'BTC';
   let activeYear     = new Date().getFullYear();
-  let activeInterval = '5m';
+  let activeInterval = '3m';
   let tradingMap     = new Map(); // asset → deploy_pct  (only active assets)
   let capitalInfo    = { totalValue: 10000, available: 10000, deployed: 0 };
   let tradePopup     = null;     // null | { coin, selectedPct }
