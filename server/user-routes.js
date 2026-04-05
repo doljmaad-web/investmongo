@@ -46,6 +46,7 @@ function ensureUserBalance(userId) {
  * Assigns a unique Arbitrum deposit address to a new user.
  */
 function assignDepositAddress(userId) {
+  if (!userId) { console.error('[AUTH] assignDepositAddress: no userId'); return null; }
   try {
     const index   = getNextDepositIndex();
     const address = generateDepositAddress(index);
@@ -118,10 +119,13 @@ router.get('/api/auth/google/callback', async (req, res) => {
         VALUES (?, ?, ?, 'google')
       `).run(email, name, picture || null);
 
-      user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid);
+      // sql.js lastInsertRowid can be unreliable — fall back to email lookup
+      user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid)
+          || db.prepare(`SELECT * FROM users WHERE email = ?`).get(email);
+      if (!user) throw new Error('Failed to create user account — please try again');
       assignDepositAddress(user.id);
       ensureUserBalance(user.id);
-      user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
+      user = db.prepare(`SELECT * FROM users WHERE email = ?`).get(email);
     } else {
       // Update avatar and name in case they changed
       db.prepare(`UPDATE users SET avatar = ?, name = ? WHERE id = ?`)
@@ -191,10 +195,12 @@ router.get('/api/auth/github/callback', async (req, res) => {
         VALUES (?, ?, ?, ?, 'github', ?)
       `).run(githubId, email || null, name || login, avatar_url || null, isAdmin);
 
-      user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid);
+      user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(info.lastInsertRowid)
+          || db.prepare(`SELECT * FROM users WHERE github_id = ?`).get(githubId);
+      if (!user) throw new Error('Failed to create user account — please try again');
       assignDepositAddress(user.id);
       ensureUserBalance(user.id);
-      user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
+      user = db.prepare(`SELECT * FROM users WHERE github_id = ?`).get(githubId);
     } else {
       // Update GitHub fields + admin status
       db.prepare(`
@@ -203,7 +209,6 @@ router.get('/api/auth/github/callback', async (req, res) => {
 
       if (!user.deposit_address) {
         assignDepositAddress(user.id);
-        user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
       }
       ensureUserBalance(user.id);
       user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(user.id);
