@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DeFiMongo — Automated Agentic Trading</title>
-  <meta name="description" content="AI-powered crypto trading platform using Precision indicator signals validated by Gemini AI. 24/7 automated execution across BTC, ETH, DOGE, XAU, and HYPE." />
+  <meta name="description" content="Deposit your crypto assets and let DeFiMongo's Automated Agentic Trading engine grow them for you. AI-validated decisions. Hyperliquid execution. Deposit and withdraw anytime." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,18 +12,17 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #050810;
-      --bg2:       #0b0f1e;
-      --bg3:       #111629;
-      --border:    rgba(79, 110, 247, 0.18);
-      --blue:      #4f6ef7;
-      --blue-lt:   #7b93ff;
-      --green:     #4ade80;
-      --green-dk:  #22c55e;
-      --gold:      #f59e0b;
-      --text:      #e8ecf8;
-      --muted:     #7b86a8;
-      --card:      rgba(255,255,255,0.03);
+      --bg:       #050810;
+      --bg2:      #0b0f1e;
+      --bg3:      #111629;
+      --border:   rgba(79, 110, 247, 0.18);
+      --blue:     #4f6ef7;
+      --blue-lt:  #7b93ff;
+      --green:    #4ade80;
+      --gold:     #f59e0b;
+      --text:     #e8ecf8;
+      --muted:    #7b86a8;
+      --card:     rgba(255,255,255,0.03);
     }
 
     html { scroll-behavior: smooth; }
@@ -36,115 +35,115 @@
       overflow-x: hidden;
     }
 
-    /* ── NAV ─────────────────────────────────────────────────── */
+    /* NAV */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 clamp(1.5rem, 5vw, 4rem);
       height: 68px;
-      background: rgba(5, 8, 16, 0.85);
-      backdrop-filter: blur(14px);
+      background: rgba(5, 8, 16, 0.88);
+      backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
     }
-
-    .nav-logo {
-      display: flex; align-items: center; gap: 10px;
-      text-decoration: none;
-    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
     .logo-mark {
       width: 36px; height: 36px;
       background: linear-gradient(135deg, var(--blue), var(--green));
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 1.1rem; color: #fff;
-      letter-spacing: -0.5px;
+      font-weight: 900; font-size: 1.05rem; color: #fff;
     }
     .logo-text { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.2rem; color: var(--text); }
     .logo-text span { color: var(--green); }
-
     .nav-links { display: flex; gap: 2rem; list-style: none; }
     .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color .2s; }
     .nav-links a:hover { color: var(--text); }
-
     .nav-ctas { display: flex; gap: 0.75rem; }
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 0.55rem 1.25rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; text-decoration: none; transition: all .2s; border: none; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 0.55rem 1.25rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.9rem;
+      cursor: pointer; text-decoration: none;
+      transition: all .2s; border: none;
+    }
     .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
     .btn-primary { background: var(--blue); color: #fff; }
     .btn-primary:hover { background: var(--blue-lt); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(79,110,247,.4); }
-    .btn-green { background: var(--green); color: #0a1a0f; }
+    .btn-green { background: var(--green); color: #071208; font-weight: 700; }
     .btn-green:hover { background: #6ee89a; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(74,222,128,.35); }
     .btn-lg { padding: 0.85rem 2rem; font-size: 1rem; border-radius: 10px; }
-    .btn-xl { padding: 1rem 2.4rem; font-size: 1.05rem; border-radius: 12px; }
+    .btn-xl { padding: 1rem 2.5rem; font-size: 1.05rem; border-radius: 12px; }
+    .btn-outline-green { background: transparent; border: 1px solid var(--green); color: var(--green); }
+    .btn-outline-green:hover { background: rgba(74,222,128,.1); }
 
-    /* ── HERO ────────────────────────────────────────────────── */
+    /* HERO */
     .hero {
       min-height: 100vh;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       text-align: center;
-      padding: 7rem clamp(1.5rem, 6vw, 6rem) 5rem;
-      position: relative;
-      overflow: hidden;
+      padding: 8rem clamp(1.5rem, 6vw, 6rem) 5rem;
+      position: relative; overflow: hidden;
     }
-
     .hero-glow {
       position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
-      width: 900px; height: 600px;
-      background: radial-gradient(ellipse at center, rgba(79,110,247,.18) 0%, transparent 65%);
+      width: 960px; height: 640px;
+      background: radial-gradient(ellipse at center, rgba(79,110,247,.16) 0%, transparent 65%);
       pointer-events: none;
     }
     .hero-glow2 {
-      position: absolute; bottom: -10%; right: -10%;
-      width: 500px; height: 500px;
-      background: radial-gradient(ellipse at center, rgba(74,222,128,.1) 0%, transparent 65%);
+      position: absolute; bottom: -10%; right: -5%;
+      width: 480px; height: 480px;
+      background: radial-gradient(ellipse at center, rgba(74,222,128,.09) 0%, transparent 65%);
       pointer-events: none;
     }
-
     .hero-badge {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 0.4rem 1rem; border-radius: 100px;
+      padding: 0.4rem 1.1rem; border-radius: 100px;
       background: rgba(79,110,247,.12); border: 1px solid rgba(79,110,247,.3);
       font-size: 0.82rem; font-weight: 600; color: var(--blue-lt);
       margin-bottom: 1.8rem; letter-spacing: 0.02em;
     }
     .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
     .hero h1 {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(2.6rem, 7vw, 5.5rem);
-      font-weight: 800;
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      max-width: 860px;
-      margin-bottom: 1.4rem;
+      font-size: clamp(2.8rem, 7.5vw, 5.8rem);
+      font-weight: 800; line-height: 1.06; letter-spacing: -0.03em;
+      max-width: 900px; margin-bottom: 1.5rem;
     }
     .hero h1 .accent-blue { color: var(--blue-lt); }
     .hero h1 .accent-green { color: var(--green); }
-
     .hero-sub {
-      font-size: clamp(1rem, 2.5vw, 1.25rem);
-      color: var(--muted);
-      max-width: 600px;
-      margin-bottom: 2.4rem;
-      font-weight: 400;
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--muted); max-width: 580px;
+      margin-bottom: 1rem; font-weight: 400;
     }
-
-    .hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3.5rem; }
-
-    .hero-integrations {
-      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center;
+    .hero-tagline {
+      font-size: clamp(0.85rem, 2vw, 1rem);
+      color: var(--green); font-weight: 600;
+      letter-spacing: 0.02em; margin-bottom: 2.5rem;
+    }
+    .hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
+    .hero-deposit-note {
       font-size: 0.82rem; color: var(--muted);
+      display: flex; align-items: center; gap: 6px; margin-bottom: 3rem;
     }
-    .hero-integrations span { font-weight: 500; }
-    .hero-tags { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
-    .hero-tag {
-      padding: 0.3rem 0.75rem; border-radius: 6px;
+    .hero-deposit-note span { color: var(--text); font-weight: 500; }
+    .hero-assets-row {
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: center;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .hero-assets-row strong { color: var(--text); font-size: 0.82rem; }
+    .asset-chip {
+      padding: 0.28rem 0.7rem; border-radius: 6px;
       background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
-      font-size: 0.8rem; font-weight: 500; color: var(--text);
+      font-size: 0.78rem; font-weight: 600; color: var(--text);
     }
 
-    /* ── STATS BAR ───────────────────────────────────────────── */
+    /* STATS BAR */
     .stats-bar {
       background: var(--bg2);
       border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
@@ -152,7 +151,6 @@
       display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 2rem; text-align: center;
     }
-    .stat-item {}
     .stat-val {
       font-family: 'Space Grotesk', sans-serif;
       font-size: clamp(1.8rem, 4vw, 2.8rem);
@@ -160,37 +158,50 @@
       background: linear-gradient(135deg, var(--blue-lt), var(--green));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .stat-label { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+    .stat-label { font-size: 0.84rem; color: var(--muted); margin-top: 0.25rem; }
 
-    /* ── SECTION COMMONS ─────────────────────────────────────── */
-    section { padding: 5rem clamp(1.5rem, 5vw, 4rem); }
+    /* SECTION COMMONS */
+    section { padding: 5.5rem clamp(1.5rem, 5vw, 4rem); }
     .section-tag {
       display: inline-block; padding: 0.3rem 0.85rem; border-radius: 6px;
       background: rgba(79,110,247,.12); border: 1px solid rgba(79,110,247,.25);
-      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+      font-size: 0.76rem; font-weight: 700; letter-spacing: 0.09em;
       text-transform: uppercase; color: var(--blue-lt); margin-bottom: 1rem;
     }
     .section-tag.green { background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.25); color: var(--green); }
     .section-tag.gold { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.25); color: var(--gold); }
     h2 {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: clamp(1.8rem, 4vw, 3rem);
-      font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
-      max-width: 700px; margin-bottom: 1rem;
+      font-size: clamp(1.9rem, 4vw, 3.1rem);
+      font-weight: 700; letter-spacing: -0.03em; line-height: 1.14;
+      max-width: 720px; margin-bottom: 1rem;
     }
-    .section-sub { font-size: 1.05rem; color: var(--muted); max-width: 560px; margin-bottom: 3rem; }
+    .section-sub { font-size: 1.05rem; color: var(--muted); max-width: 580px; margin-bottom: 3rem; line-height: 1.7; }
     .center { text-align: center; }
     .center h2, .center .section-sub { margin-left: auto; margin-right: auto; }
 
-    /* ── TOOLS SECTION ───────────────────────────────────────── */
+    /* DEPOSIT STRIP */
+    .deposit-strip {
+      background: linear-gradient(90deg, rgba(74,222,128,.07), rgba(79,110,247,.07));
+      border-top: 1px solid rgba(74,222,128,.2); border-bottom: 1px solid rgba(74,222,128,.2);
+      padding: 1.4rem clamp(1.5rem, 5vw, 4rem);
+      display: flex; align-items: center; justify-content: center;
+      gap: 2.5rem; flex-wrap: wrap; text-align: center;
+    }
+    .deposit-item { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
+    .deposit-item .di-icon { font-size: 1.1rem; }
+    .deposit-item strong { color: var(--green); font-weight: 700; }
+    .deposit-item span { color: var(--muted); }
+    .dep-divider { width: 1px; height: 28px; background: var(--border); }
+
+    /* TOOLS */
     .tools-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
       gap: 1.5rem; margin-top: 3rem;
     }
     .tool-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px; padding: 2.2rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 2.4rem;
       display: flex; flex-direction: column; gap: 1.2rem;
       transition: border-color .25s, transform .25s;
       position: relative; overflow: hidden;
@@ -200,6 +211,8 @@
       background: linear-gradient(90deg, var(--blue), var(--green));
       opacity: 0; transition: opacity .25s;
     }
+    .tool-card.featured { border-color: rgba(79,110,247,.35); }
+    .tool-card.featured::before { opacity: 1; }
     .tool-card:hover { border-color: var(--blue); transform: translateY(-4px); }
     .tool-card:hover::before { opacity: 1; }
     .tool-icon {
@@ -208,8 +221,9 @@
     }
     .tool-icon.blue { background: rgba(79,110,247,.15); }
     .tool-icon.green { background: rgba(74,222,128,.12); }
-    .tool-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; }
-    .tool-card p { color: var(--muted); font-size: 0.95rem; line-height: 1.65; flex: 1; }
+    .tool-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.35rem; font-weight: 700; }
+    .tool-card .tool-sub { font-size: 0.78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--blue-lt); margin-top: -0.6rem; }
+    .tool-card p { color: var(--muted); font-size: 0.95rem; line-height: 1.7; flex: 1; }
     .tool-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .chip {
       padding: 0.25rem 0.65rem; border-radius: 5px;
@@ -217,14 +231,14 @@
       background: rgba(255,255,255,.06); color: var(--muted);
     }
 
-    /* ── HOW IT WORKS ────────────────────────────────────────── */
+    /* HOW IT WORKS */
     .hiw { background: var(--bg2); }
     .steps {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 0; margin-top: 3rem; position: relative;
+      gap: 0; margin-top: 3rem;
     }
     .step {
-      padding: 2rem 1.5rem;
+      padding: 2.2rem 1.8rem;
       border-right: 1px solid var(--border);
       position: relative;
     }
@@ -232,171 +246,190 @@
     .step-num {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 3rem; font-weight: 800;
-      color: rgba(79,110,247,.18); line-height: 1;
-      margin-bottom: 1rem;
+      color: rgba(79,110,247,.2); line-height: 1; margin-bottom: 1rem;
     }
     .step h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
     .step p { font-size: 0.88rem; color: var(--muted); line-height: 1.65; }
     .step-connector {
-      position: absolute; top: 2.5rem; right: -12px;
+      position: absolute; top: 2.6rem; right: -12px;
       width: 24px; height: 24px; border-radius: 50%;
       background: var(--blue); display: flex; align-items: center; justify-content: center;
       font-size: 0.65rem; color: #fff; font-weight: 700; z-index: 1;
     }
     .step:last-child .step-connector { display: none; }
 
-    /* ── STRATEGY SECTION ────────────────────────────────────── */
+    /* STRATEGY CARDS */
     .strategy-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 1.5rem; margin-top: 3rem;
     }
-    .strat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 2rem;
-    }
+    .strat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; }
     .strat-badge {
       display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px;
-      font-size: 0.78rem; font-weight: 700; margin-bottom: 1.2rem;
+      font-size: 0.76rem; font-weight: 700; margin-bottom: 1.2rem;
     }
     .strat-badge.ct { background: rgba(245,158,11,.15); color: var(--gold); }
     .strat-badge.wt { background: rgba(74,222,128,.12); color: var(--green); }
+    .strat-badge.se { background: rgba(79,110,247,.12); color: var(--blue-lt); }
     .strat-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem; }
-    .strat-card p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.65; }
+    .strat-card p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.7; }
     .strat-params { display: flex; gap: 1.5rem; }
     .param { text-align: center; }
     .param-val { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; }
     .param-val.red { color: #f87171; }
     .param-val.green { color: var(--green); }
-    .param-label { font-size: 0.75rem; color: var(--muted); }
+    .param-label { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
 
-    /* ── AI SECTION ──────────────────────────────────────────── */
+    /* AI SECTION */
     .ai-section { background: var(--bg2); }
     .ai-grid {
       display: grid; grid-template-columns: 1fr 1fr;
       gap: 4rem; align-items: center; margin-top: 3rem;
     }
-    @media (max-width: 768px) { .ai-grid { grid-template-columns: 1fr; gap: 2rem; } }
     .ai-visual {
       background: var(--bg3); border: 1px solid var(--border);
       border-radius: 16px; padding: 2rem;
       display: flex; flex-direction: column; gap: 0.75rem;
     }
-    .ai-visual-header { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .ai-visual-header {
+      font-size: 0.75rem; color: var(--muted); font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; margin-bottom: 0.5rem;
+    }
     .ai-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 0.75rem 1rem; border-radius: 8px; background: rgba(255,255,255,.03);
-      border: 1px solid rgba(255,255,255,.05); font-size: 0.88rem;
+      padding: 0.75rem 1rem; border-radius: 8px;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05);
+      font-size: 0.88rem;
     }
     .ai-row-label { color: var(--muted); }
-    .ai-pill {
-      padding: 0.2rem 0.6rem; border-radius: 5px;
-      font-size: 0.75rem; font-weight: 700;
-    }
+    .ai-pill { padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.73rem; font-weight: 700; }
     .ai-pill.pass { background: rgba(74,222,128,.15); color: var(--green); }
     .ai-pill.warn { background: rgba(245,158,11,.15); color: var(--gold); }
     .ai-pill.fail { background: rgba(248,113,113,.15); color: #f87171; }
-    .ai-features { display: flex; flex-direction: column; gap: 1.25rem; }
+    .ai-features { display: flex; flex-direction: column; gap: 1.35rem; }
     .ai-feat { display: flex; gap: 1rem; align-items: flex-start; }
-    .ai-feat-icon { width: 36px; height: 36px; border-radius: 8px; background: rgba(79,110,247,.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; }
+    .ai-feat-icon {
+      width: 38px; height: 38px; border-radius: 9px;
+      background: rgba(79,110,247,.12);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 1rem;
+    }
     .ai-feat h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem; }
-    .ai-feat p { font-size: 0.85rem; color: var(--muted); }
+    .ai-feat p { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
 
-    /* ── ASSETS SECTION ──────────────────────────────────────── */
+    /* ASSETS */
     .assets-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem; margin-top: 3rem;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem; margin-top: 3rem;
     }
     .asset-card {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 1.5rem 1rem; text-align: center;
-      transition: border-color .2s;
+      border-radius: 14px; overflow: hidden;
+      transition: border-color .2s, transform .2s;
+      display: flex; flex-direction: column;
     }
-    .asset-card:hover { border-color: var(--blue); }
+    .asset-card:hover { border-color: var(--blue); transform: translateY(-3px); }
+    .asset-header { padding: 1.4rem 1.2rem 1rem; text-align: center; }
     .asset-symbol {
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em;
+      font-size: 1.7rem; font-weight: 800; letter-spacing: -0.03em;
       background: linear-gradient(135deg, var(--blue-lt), var(--green));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .asset-name { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; }
+    .asset-name { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
     .asset-live { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--green); font-weight: 600; margin-top: 0.5rem; }
     .live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    .asset-chart {
+      width: 100%; aspect-ratio: 16/9;
+      background: var(--bg3); border-top: 1px solid var(--border);
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .asset-chart img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .asset-chart-placeholder {
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      color: var(--muted); font-size: 0.75rem; text-align: center; padding: 1rem;
+    }
+    .asset-chart-placeholder .ph-icon { font-size: 1.5rem; opacity: .4; }
 
-    /* ── COMING SOON ─────────────────────────────────────────── */
-    .coming-soon {
-      background: linear-gradient(135deg, rgba(79,110,247,.08), rgba(74,222,128,.06));
-      border: 1px solid var(--border); border-radius: 20px;
-      padding: 4rem 3rem; text-align: center;
+    /* CTA BAND */
+    .cta-band {
+      background: linear-gradient(135deg, rgba(79,110,247,.09), rgba(74,222,128,.06));
+      border: 1px solid var(--border); border-radius: 22px;
+      padding: 5rem 3rem; text-align: center;
       margin: 0 clamp(1.5rem, 5vw, 4rem);
       position: relative; overflow: hidden;
     }
-    .coming-soon::before {
+    .cta-band::before {
       content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 30% 50%, rgba(79,110,247,.12) 0%, transparent 60%),
-                  radial-gradient(ellipse at 70% 50%, rgba(74,222,128,.08) 0%, transparent 60%);
+      background: radial-gradient(ellipse at 25% 50%, rgba(79,110,247,.13) 0%, transparent 55%),
+                  radial-gradient(ellipse at 75% 50%, rgba(74,222,128,.08) 0%, transparent 55%);
     }
-    .coming-soon > * { position: relative; z-index: 1; }
-    .coming-soon h2 { margin: 0 auto 1rem; max-width: 600px; }
-    .coming-soon p { color: var(--muted); max-width: 500px; margin: 0 auto 2rem; }
-    .waitlist-form { display: flex; gap: 0.75rem; max-width: 420px; margin: 0 auto; }
-    .waitlist-input {
-      flex: 1; padding: 0.85rem 1.1rem; border-radius: 10px;
-      background: rgba(255,255,255,.06); border: 1px solid var(--border);
-      color: var(--text); font-size: 0.95rem; outline: none;
-      transition: border-color .2s;
-    }
-    .waitlist-input:focus { border-color: var(--blue); }
-    .waitlist-input::placeholder { color: var(--muted); }
+    .cta-band > * { position: relative; z-index: 1; }
+    .cta-band h2 { margin: 0 auto 1rem; max-width: 640px; }
+    .cta-band .cta-sub { color: var(--muted); max-width: 520px; margin: 0 auto 0.75rem; font-size: 1.05rem; line-height: 1.7; }
+    .cta-band .cta-note { color: var(--green); font-size: 0.9rem; font-weight: 600; margin-bottom: 2.2rem; }
+    .cta-band-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 
-    /* ── FOOTER ──────────────────────────────────────────────── */
+    /* FOOTER */
     footer {
       margin-top: 5rem;
       background: var(--bg2);
       border-top: 1px solid var(--border);
-      padding: 3rem clamp(1.5rem, 5vw, 4rem) 2rem;
+      padding: 3.5rem clamp(1.5rem, 5vw, 4rem) 2rem;
     }
     .footer-top {
       display: flex; justify-content: space-between; align-items: flex-start;
       gap: 2rem; flex-wrap: wrap; margin-bottom: 2.5rem;
     }
-    .footer-brand { max-width: 280px; }
-    .footer-brand .logo-text { display: block; margin-bottom: 0.75rem; font-size: 1.1rem; }
-    .footer-brand p { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
-    .footer-links h5 { font-size: 0.8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
-    .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .footer-brand { max-width: 290px; }
+    .footer-brand p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-top: 0.75rem; }
+    .footer-links h5 {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 1rem;
+    }
+    .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }
     .footer-links a { color: var(--text); text-decoration: none; font-size: 0.88rem; transition: color .2s; }
     .footer-links a:hover { color: var(--blue); }
     .footer-bottom {
       border-top: 1px solid var(--border); padding-top: 1.5rem;
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 1rem; font-size: 0.8rem; color: var(--muted);
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 1rem;
     }
-    .disclaimer {
-      font-size: 0.72rem; color: var(--muted);
-      opacity: .65; max-width: 600px; line-height: 1.5;
-    }
+    .footer-copy { font-size: 0.82rem; color: var(--muted); }
+    .disclaimer { font-size: 0.72rem; color: var(--muted); opacity: .6; max-width: 580px; line-height: 1.6; }
 
-    /* ── MOBILE ──────────────────────────────────────────────── */
+    /* MOBILE */
+    @media (max-width: 900px) {
+      .assets-grid { grid-template-columns: repeat(2, 1fr); }
+      .ai-grid { grid-template-columns: 1fr; gap: 2rem; }
+    }
     @media (max-width: 768px) {
       .nav-links { display: none; }
       .tools-grid { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; }
-      .step { border-right: none; border-bottom: 1px solid var(--border); padding: 1.5rem; }
+      .step { border-right: none; border-bottom: 1px solid var(--border); }
       .step:last-child { border-bottom: none; }
       .step-connector { display: none; }
       .strategy-grid { grid-template-columns: 1fr; }
-      .waitlist-form { flex-direction: column; }
-      .coming-soon { padding: 2.5rem 1.5rem; }
+      .cta-band { padding: 3rem 1.5rem; }
+      .deposit-strip { flex-direction: column; gap: 1rem; }
+      .dep-divider { display: none; }
+    }
+    @media (max-width: 520px) {
+      .assets-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ── SCROLL ANIMATION ────────────────────────────────────── */
-    .fade-in { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+    /* SCROLL ANIMATION */
+    .fade-in { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s ease; }
     .fade-in.visible { opacity: 1; transform: none; }
   </style>
 </head>
 <body>
 
-<!-- ── NAV ─────────────────────────────────────────────── -->
+<!-- NAV -->
 <nav>
   <a href="#" class="nav-logo">
     <div class="logo-mark">DM</div>
@@ -405,163 +438,196 @@
   <ul class="nav-links">
     <li><a href="#how-it-works">How It Works</a></li>
     <li><a href="#strategies">Strategies</a></li>
-    <li><a href="#ai">AI Validation</a></li>
+    <li><a href="#ai">AI Engine</a></li>
     <li><a href="#assets">Assets</a></li>
   </ul>
   <div class="nav-ctas">
-    <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-ghost">Crypto Scanner</a>
-    <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary">AAT</a>
+    <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-ghost">Market Intelligence</a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary">AAT Terminal</a>
   </div>
 </nav>
 
-<!-- ── HERO ─────────────────────────────────────────────── -->
+<!-- HERO -->
 <section class="hero">
   <div class="hero-glow"></div>
   <div class="hero-glow2"></div>
 
   <div class="hero-badge">
     <span class="badge-dot"></span>
-    Live Paper Trading — AI-Validated Signals Active
+    Hyperliquid Agentic Trading — AI-Based Decisions — Live
   </div>
 
   <h1>
-    Your Signals.<br />
-    Your <span class="accent-blue">Edge.</span><br />
-    Your <span class="accent-green">Profits.</span>
+    Maximize Returns &amp;<br />
+    Lower Your <span class="accent-blue">Cost Basis</span><br />
+    with <span class="accent-green">Automated Agentic Trading</span>
   </h1>
 
   <p class="hero-sub">
-    Precision indicator signals validated by Gemini AI. 24/7 automated execution across the top crypto markets — no emotion, no sleep, no missed entries.
+    Deposit your crypto assets and let DeFiMongo's Automated Agentic Trading engine grow them for you. Every decision is validated by Gemini AI — no emotion, no manual intervention, no missed entries.
   </p>
 
+  <p class="hero-tagline">Deposit &amp; Withdraw Anytime</p>
+
   <div class="hero-ctas">
-    <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-green btn-xl">
-      📡 Crypto Scanner
-    </a>
-    <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary btn-xl">
-      ⚡ AAT Terminal
-    </a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary btn-xl">⚡ Start with AAT</a>
+    <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-outline-green btn-xl">📡 Market Intelligence</a>
   </div>
 
-  <div class="hero-integrations">
-    <span>Markets traded:</span>
-    <div class="hero-tags">
-      <span class="hero-tag">BTC</span>
-      <span class="hero-tag">ETH</span>
-      <span class="hero-tag">DOGE</span>
-      <span class="hero-tag">XAU</span>
-      <span class="hero-tag">HYPE</span>
-    </div>
+  <div class="hero-deposit-note">
+    Accepted deposits:&nbsp;
+    <span>USDT</span>&nbsp;·&nbsp;
+    <span>BTC</span>&nbsp;·&nbsp;
+    <span>ETH</span>&nbsp;·&nbsp;
+    <span>USDC</span>&nbsp;·&nbsp;
+    <span>SOL</span>
+  </div>
+
+  <div class="hero-assets-row">
+    <strong>Trading on:</strong>
+    <span class="asset-chip">BTC</span>
+    <span class="asset-chip">ETH</span>
+    <span class="asset-chip">DOGE</span>
+    <span class="asset-chip">HYPE</span>
   </div>
 </section>
 
-<!-- ── STATS ─────────────────────────────────────────────── -->
-<div class="stats-bar fade-in">
-  <div class="stat-item">
-    <div class="stat-val">5m</div>
-    <div class="stat-label">Signal Timeframe</div>
+<!-- DEPOSIT STRIP -->
+<div class="deposit-strip fade-in">
+  <div class="deposit-item">
+    <span class="di-icon">💰</span>
+    <div><strong>Deposit Anytime</strong> <span>— USDT, BTC, ETH, USDC, SOL</span></div>
   </div>
-  <div class="stat-item">
-    <div class="stat-val">24/7</div>
-    <div class="stat-label">Server Scanning</div>
+  <div class="dep-divider"></div>
+  <div class="deposit-item">
+    <span class="di-icon">📤</span>
+    <div><strong>Withdraw Anytime</strong> <span>— No lock-up periods</span></div>
   </div>
-  <div class="stat-item">
-    <div class="stat-val">Gemini</div>
-    <div class="stat-label">AI Validator</div>
+  <div class="dep-divider"></div>
+  <div class="deposit-item">
+    <span class="di-icon">🤖</span>
+    <div><strong>Fully Automated</strong> <span>— AI executes every trade</span></div>
   </div>
-  <div class="stat-item">
-    <div class="stat-val">5</div>
-    <div class="stat-label">Live Assets</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-val">2</div>
-    <div class="stat-label">Signal Tracks</div>
+  <div class="dep-divider"></div>
+  <div class="deposit-item">
+    <span class="di-icon">🔗</span>
+    <div><strong>Hyperliquid Execution</strong> <span>— Institutional-grade infrastructure</span></div>
   </div>
 </div>
 
-<!-- ── TOOLS ─────────────────────────────────────────────── -->
-<section id="tools">
+<!-- STATS -->
+<div class="stats-bar fade-in">
+  <div class="stat-item">
+    <div class="stat-val">24/7</div>
+    <div class="stat-label">Autonomous Operation</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">5m</div>
+    <div class="stat-label">Strategy Timeframe</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">Gemini</div>
+    <div class="stat-label">AI Decision Engine</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">4</div>
+    <div class="stat-label">Active Markets</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val">6:1</div>
+    <div class="stat-label">Risk/Reward Ratio</div>
+  </div>
+</div>
+
+<!-- PLATFORM -->
+<section id="platform">
   <div class="center">
     <div class="section-tag">Platform</div>
-    <h2>Two powerful tools. One edge.</h2>
-    <p class="section-sub">DeFiMongo gives you both a visual signal scanner and a fully automated trading terminal — built on the same Precision v11 engine.</p>
+    <h2>Two services. Built around your growth.</h2>
+    <p class="section-sub">DeFiMongo offers a fully automated asset growth service backed by a complementary market intelligence platform — both powered by the same Precision V9 strategy engine.</p>
   </div>
 
   <div class="tools-grid fade-in">
-    <div class="tool-card">
-      <div class="tool-icon green">📡</div>
-      <h3>Crypto Scanner</h3>
-      <p>A real-time visual dashboard powered by the Precision v11 indicator. See yellow dots (BUY) and pink dots (SELL) fire across BTC, ETH, DOGE, XAU, and HYPE — with live candlestick charts and signal overlays updated every 5 minutes.</p>
-      <div class="tool-tags">
-        <span class="chip">Precision v11</span>
-        <span class="chip">5m Candles</span>
-        <span class="chip">Multi-asset</span>
-        <span class="chip">Visual</span>
+    <div class="tool-card featured">
+      <div class="tool-icon blue">⚡</div>
+      <div>
+        <h3>Automated Agentic Trading</h3>
+        <div class="tool-sub">Core Service — AAT</div>
       </div>
-      <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-green">Open Crypto Scanner →</a>
+      <p>Deposit your assets and our autonomous trading engine does the rest. The AAT system executes positions on Hyperliquid based on Precision V9 strategy signals, each pre-screened by Gemini AI for macro conditions, sentiment, and on-chain risk — before any capital is deployed.</p>
+      <div class="tool-tags">
+        <span class="chip">Hyperliquid</span>
+        <span class="chip">Gemini AI</span>
+        <span class="chip">Smart Exits</span>
+        <span class="chip">Deposit &amp; Withdraw</span>
+      </div>
+      <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary btn-lg">Open AAT Terminal →</a>
     </div>
 
     <div class="tool-card">
-      <div class="tool-icon blue">⚡</div>
-      <h3>AAT — Automated Agentic Trading</h3>
-      <p>The full autonomous trading terminal. Gemini AI validates every signal, evaluates news sentiment, macro risk, whale activity and funding rates before executing. Smart exits protect profits in real time — no manual intervention required.</p>
-      <div class="tool-tags">
-        <span class="chip">Gemini AI</span>
-        <span class="chip">Smart Exits</span>
-        <span class="chip">Auto-execute</span>
-        <span class="chip">Paper Mode</span>
+      <div class="tool-icon green">📡</div>
+      <div>
+        <h3>Crypto Scanner</h3>
+        <div class="tool-sub" style="color:var(--green)">Market Intelligence Platform</div>
       </div>
-      <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary">Open AAT Terminal →</a>
+      <p>A real-time market intelligence dashboard for DeFiMongo clients. Monitor live strategy signals across BTC, ETH, DOGE, and HYPE — visualized on 5-minute candlestick charts. Understand what the algorithm is seeing and why it acts when it does.</p>
+      <div class="tool-tags">
+        <span class="chip">Precision V9</span>
+        <span class="chip">5m Candles</span>
+        <span class="chip">Multi-Asset</span>
+        <span class="chip">Complementary</span>
+      </div>
+      <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-outline-green btn-lg">Open Market Intelligence →</a>
     </div>
   </div>
 </section>
 
-<!-- ── HOW IT WORKS ────────────────────────────────────── -->
+<!-- HOW IT WORKS -->
 <section id="how-it-works" class="hiw fade-in">
   <div class="center">
     <div class="section-tag">Process</div>
-    <h2>How the bot thinks</h2>
-    <p class="section-sub">Every trade goes through four stages — from raw signal to protected profit — without any manual touch.</p>
+    <h2>From deposit to compounding returns</h2>
+    <p class="section-sub">Four autonomous stages handle everything between depositing your assets and growing them — without any manual action on your part.</p>
   </div>
 
   <div class="steps">
     <div class="step">
       <div class="step-num">01</div>
-      <h4>Signal Fires</h4>
-      <p>Precision v11 detects a yellow dot (BUY) or pink dot (SELL) on the 5m chart — confirmed by RSI zone, engulfing candle pattern, and 1.3× volume spike.</p>
+      <h4>You Deposit</h4>
+      <p>Deposit USDT, BTC, ETH, USDC, or SOL. Your capital is allocated to the AAT engine. Withdraw at any time — no lock-up, no notice period required.</p>
       <div class="step-connector">→</div>
     </div>
     <div class="step">
       <div class="step-num">02</div>
-      <h4>AI Validates</h4>
-      <p>Gemini 2.5 Flash checks real-time news sentiment, macro risk, on-chain whale activity, and exchange funding rates before approving the trade.</p>
+      <h4>Strategy Fires</h4>
+      <p>Precision V9 continuously scans BTC, ETH, DOGE, and HYPE on 5-minute candles, cross-referencing 15-minute trend bias. A confirmed entry signal triggers the validation pipeline.</p>
       <div class="step-connector">→</div>
     </div>
     <div class="step">
       <div class="step-num">03</div>
-      <h4>Trade Executes</h4>
-      <p>The bot opens the position on Hyperliquid with the correct SL and TP pre-calculated based on trend alignment — counter-trend or with-trend strategy.</p>
+      <h4>AI Validates</h4>
+      <p>Gemini AI performs a multi-factor pre-trade check — news sentiment, macro risk, whale positioning, funding rates — before authorising any execution. High-risk setups are rejected automatically.</p>
       <div class="step-connector">→</div>
     </div>
     <div class="step">
       <div class="step-num">04</div>
-      <h4>Smart Exit Monitors</h4>
-      <p>While in profit, the bot watches for reversal patterns, opposite 15m signals, and activates an ATR-based trailing stop once profit exceeds 0.8%.</p>
+      <h4>Executes &amp; Protects</h4>
+      <p>The position opens on Hyperliquid with pre-calculated risk parameters. A smart exit engine monitors in real time — activating an ATR trailing stop once profit exceeds 0.8% and closing on reversal confirmation.</p>
     </div>
   </div>
 </section>
 
-<!-- ── STRATEGIES ─────────────────────────────────────── -->
+<!-- STRATEGIES -->
 <section id="strategies" class="fade-in">
   <div class="section-tag">Edge</div>
-  <h2>Two strategies. Built for any market condition.</h2>
-  <p class="section-sub">The bot dynamically selects counter-trend or with-trend execution based on 15m bias alignment — tighter risk when fighting the trend, wider room when riding it.</p>
+  <h2>Two execution strategies. One objective — growth.</h2>
+  <p class="section-sub">The AAT engine dynamically selects its execution mode based on trend alignment across timeframes, calibrating risk parameters to match market conditions precisely.</p>
 
   <div class="strategy-grid">
     <div class="strat-card">
-      <span class="strat-badge ct">Counter-Trend</span>
-      <h3>Precision Scalp</h3>
-      <p>When the 5m signal opposes the 15m bias, the bot takes a tight, high-conviction scalp. Strict stop-loss keeps risk minimal, while the 3% target captures the mean-reversion bounce.</p>
+      <span class="strat-badge ct">Precision Scalp</span>
+      <h3>Counter-Trend Execution</h3>
+      <p>When the 5-minute signal opposes the 15-minute trend bias, the engine executes a tight mean-reversion scalp. A strict stop-loss minimises downside while the fixed 3% target captures the reversion bounce with a superior risk-to-reward ratio.</p>
       <div class="strat-params">
         <div class="param">
           <div class="param-val red">0.5%</div>
@@ -572,36 +638,36 @@
           <div class="param-label">Take Profit</div>
         </div>
         <div class="param">
-          <div class="param-val" style="color: var(--gold)">6:1</div>
-          <div class="param-label">R:R Ratio</div>
+          <div class="param-val" style="color:var(--gold)">6 : 1</div>
+          <div class="param-label">Risk / Reward</div>
         </div>
       </div>
     </div>
 
     <div class="strat-card">
-      <span class="strat-badge wt">With-Trend</span>
-      <h3>Momentum Ride</h3>
-      <p>When the 5m signal aligns with the 15m bias, the bot rides momentum with a wider stop and a smart exit engine — no fixed TP, instead locked in by reversal confirmation or ATR trailing stop.</p>
+      <span class="strat-badge wt">Momentum Ride</span>
+      <h3>With-Trend Execution</h3>
+      <p>When the 5-minute signal aligns with the 15-minute trend bias, the engine rides the momentum with a wider stop and a dynamic exit system. No fixed take-profit — instead the position is held until a reversal is confirmed or the ATR trailing stop is triggered.</p>
       <div class="strat-params">
         <div class="param">
           <div class="param-val red">1.5%</div>
           <div class="param-label">Stop Loss</div>
         </div>
         <div class="param">
-          <div class="param-val green">Smart</div>
+          <div class="param-val green">Dynamic</div>
           <div class="param-label">Take Profit</div>
         </div>
         <div class="param">
-          <div class="param-val" style="color: var(--gold)">ATR</div>
-          <div class="param-label">Trailing</div>
+          <div class="param-val" style="color:var(--gold)">ATR</div>
+          <div class="param-label">Trailing Stop</div>
         </div>
       </div>
     </div>
 
     <div class="strat-card">
-      <span class="strat-badge" style="background:rgba(74,222,128,.12);color:var(--green)">Smart Exit</span>
-      <h3>Profit Protection</h3>
-      <p>Four independent exit triggers work in parallel on with-trend trades: bearish/bullish engulfing patterns, opposite 15m dot signal within 3 candles, and ATR(14)×1.5 trailing stop activated above 0.8% profit.</p>
+      <span class="strat-badge se">Smart Exit Engine</span>
+      <h3>Profit Protection Layer</h3>
+      <p>On every with-trend position, four independent exit triggers operate in parallel — bearish or bullish engulfing patterns, an opposing 15-minute strategy signal within 3 candles, and an ATR(14)×1.5 trailing stop that activates once profit exceeds 0.8%.</p>
       <div class="strat-params">
         <div class="param">
           <div class="param-val" style="color:var(--blue-lt)">4</div>
@@ -620,15 +686,15 @@
   </div>
 </section>
 
-<!-- ── AI VALIDATION ──────────────────────────────────── -->
+<!-- AI SECTION -->
 <section id="ai" class="ai-section fade-in">
   <div class="section-tag">Intelligence</div>
   <h2>Every trade pre-screened by Gemini AI</h2>
-  <p class="section-sub">Before any position opens, our Gemini 2.5 Flash integration runs a multi-factor validation check — filtering out high-risk entries that indicators alone would miss.</p>
+  <p class="section-sub">Before any capital is deployed, Gemini 2.5 Flash runs a real-time multi-factor risk assessment — filtering out high-risk entries that price action alone cannot detect.</p>
 
   <div class="ai-grid">
     <div class="ai-visual">
-      <div class="ai-visual-header">AI Validation Report — Sample</div>
+      <div class="ai-visual-header">AI Pre-Trade Assessment — Live Example</div>
       <div class="ai-row">
         <span class="ai-row-label">News Sentiment</span>
         <span class="ai-pill pass">BULLISH</span>
@@ -647,11 +713,11 @@
       </div>
       <div class="ai-row">
         <span class="ai-row-label">On-Chain Flow</span>
-        <span class="ai-pill pass">INFLOW</span>
+        <span class="ai-pill pass">NET INFLOW</span>
       </div>
-      <div class="ai-row" style="border-color:rgba(74,222,128,.2);background:rgba(74,222,128,.05)">
-        <span style="font-weight:600">Verdict</span>
-        <span class="ai-pill pass" style="font-size:.82rem">✓ APPROVED</span>
+      <div class="ai-row" style="border-color:rgba(74,222,128,.22);background:rgba(74,222,128,.05)">
+        <span style="font-weight:600">Decision</span>
+        <span class="ai-pill pass" style="font-size:.8rem;padding:.28rem .85rem">✓ APPROVED — EXECUTE</span>
       </div>
     </div>
 
@@ -659,104 +725,140 @@
       <div class="ai-feat">
         <div class="ai-feat-icon">📰</div>
         <div>
-          <h4>News Sentiment</h4>
-          <p>Real-time RSS feed analysis across major crypto news sources. Flags negative macro events before they crater your trade.</p>
+          <h4>News Sentiment Analysis</h4>
+          <p>Real-time aggregation across major financial and crypto news sources. Negative macro events are identified and used to filter trades before they are placed.</p>
         </div>
       </div>
       <div class="ai-feat">
         <div class="ai-feat-icon">🐋</div>
         <div>
           <h4>Whale Activity Detection</h4>
-          <p>Monitors large wallet movements and exchange inflows/outflows to identify smart money positioning before entry.</p>
+          <p>Monitors large wallet movements and exchange inflows to identify institutional positioning that may invalidate a setup before the engine commits capital.</p>
         </div>
       </div>
       <div class="ai-feat">
         <div class="ai-feat-icon">📊</div>
         <div>
-          <h4>Funding Rate Analysis</h4>
-          <p>Checks perpetual futures funding rates across exchanges — extreme funding is a leading reversal indicator the bot won't ignore.</p>
+          <h4>Funding Rate Assessment</h4>
+          <p>Evaluates perpetual futures funding rates across major exchanges — extreme funding imbalances are a leading reversal indicator the system does not ignore.</p>
         </div>
       </div>
       <div class="ai-feat">
         <div class="ai-feat-icon">🌍</div>
         <div>
           <h4>Macro Risk Filter</h4>
-          <p>Evaluates broader market conditions including Fed policy signals, DXY correlation, and risk-off events that invalidate setups.</p>
+          <p>Assesses broader market conditions including Fed policy signals, DXY correlation, and systemic risk events that would otherwise invalidate a technically valid setup.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── ASSETS ─────────────────────────────────────────── -->
+<!-- ASSETS -->
 <section id="assets" class="fade-in">
   <div class="center">
     <div class="section-tag green">Coverage</div>
-    <h2>5 markets. Always watching.</h2>
-    <p class="section-sub">Track B's server loop scans all five assets every minute — so no signal fires while you sleep.</p>
+    <h2>Four markets. Always active.</h2>
+    <p class="section-sub">The AAT engine scans all four assets every minute, around the clock — so no high-probability entry is ever missed regardless of time zone or market hours.</p>
   </div>
 
   <div class="assets-grid">
+
     <div class="asset-card">
-      <div class="asset-symbol">BTC</div>
-      <div class="asset-name">Bitcoin</div>
-      <div class="asset-live"><span class="live-dot"></span> Live</div>
+      <div class="asset-header">
+        <div class="asset-symbol">BTC</div>
+        <div class="asset-name">Bitcoin</div>
+        <div class="asset-live"><span class="live-dot"></span> Active</div>
+      </div>
+      <div class="asset-chart">
+        <img src="images/btc.png" alt="BTC Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+        <div class="asset-chart-placeholder" style="display:none">
+          <span class="ph-icon">📈</span>
+          <span>Precision V9 Strategy Chart</span>
+        </div>
+      </div>
     </div>
+
     <div class="asset-card">
-      <div class="asset-symbol">ETH</div>
-      <div class="asset-name">Ethereum</div>
-      <div class="asset-live"><span class="live-dot"></span> Live</div>
+      <div class="asset-header">
+        <div class="asset-symbol">ETH</div>
+        <div class="asset-name">Ethereum</div>
+        <div class="asset-live"><span class="live-dot"></span> Active</div>
+      </div>
+      <div class="asset-chart">
+        <img src="images/eth.png" alt="ETH Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+        <div class="asset-chart-placeholder" style="display:none">
+          <span class="ph-icon">📈</span>
+          <span>Precision V9 Strategy Chart</span>
+        </div>
+      </div>
     </div>
+
     <div class="asset-card">
-      <div class="asset-symbol">DOGE</div>
-      <div class="asset-name">Dogecoin</div>
-      <div class="asset-live"><span class="live-dot"></span> Live</div>
+      <div class="asset-header">
+        <div class="asset-symbol">DOGE</div>
+        <div class="asset-name">Dogecoin</div>
+        <div class="asset-live"><span class="live-dot"></span> Active</div>
+      </div>
+      <div class="asset-chart">
+        <img src="images/doge.png" alt="DOGE Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+        <div class="asset-chart-placeholder" style="display:none">
+          <span class="ph-icon">📈</span>
+          <span>Precision V9 Strategy Chart</span>
+        </div>
+      </div>
     </div>
+
     <div class="asset-card">
-      <div class="asset-symbol">XAU</div>
-      <div class="asset-name">Gold</div>
-      <div class="asset-live"><span class="live-dot"></span> Live</div>
+      <div class="asset-header">
+        <div class="asset-symbol">HYPE</div>
+        <div class="asset-name">Hyperliquid</div>
+        <div class="asset-live"><span class="live-dot"></span> Active</div>
+      </div>
+      <div class="asset-chart">
+        <img src="images/hype.png" alt="HYPE Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+        <div class="asset-chart-placeholder" style="display:none">
+          <span class="ph-icon">📈</span>
+          <span>Precision V9 Strategy Chart</span>
+        </div>
+      </div>
     </div>
-    <div class="asset-card">
-      <div class="asset-symbol">HYPE</div>
-      <div class="asset-name">Hyperliquid</div>
-      <div class="asset-live"><span class="live-dot"></span> Live</div>
-    </div>
+
   </div>
 </section>
 
-<!-- ── COMING SOON ────────────────────────────────────── -->
-<div class="coming-soon fade-in" id="invest">
-  <div class="section-tag gold" style="margin-bottom:1.2rem">Coming Soon</div>
-  <h2>Managed Investment Program</h2>
-  <p>Once the strategy is proven and reliable, DeFiMongo will open an asset management program — you allocate, the algorithm trades. Full transparency, automated execution, no discretionary decisions.</p>
-  <form class="waitlist-form" onsubmit="handleWaitlist(event)">
-    <input type="email" class="waitlist-input" placeholder="Enter your email for early access" id="waitlist-email" />
-    <button type="submit" class="btn btn-primary btn-lg">Notify Me</button>
-  </form>
-  <p id="waitlist-msg" style="margin-top:1rem;font-size:.88rem;color:var(--green);display:none">You're on the list. We'll be in touch.</p>
+<!-- CTA BAND -->
+<div class="cta-band fade-in">
+  <div class="section-tag gold" style="margin-bottom:1.2rem">Get Started</div>
+  <h2>Maximize Returns &amp; Lower Your Cost Basis</h2>
+  <p class="cta-sub">Deposit your assets today and let the AAT engine work around the clock to grow your portfolio. AI-validated decisions, institutional execution infrastructure, and full flexibility to withdraw at any time.</p>
+  <p class="cta-note">Deposit &amp; Withdraw Anytime — No Lock-up. No Minimums.</p>
+  <div class="cta-band-btns">
+    <a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" class="btn btn-primary btn-xl">⚡ Start with AAT</a>
+    <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="btn btn-outline-green btn-xl">📡 Market Intelligence</a>
+  </div>
 </div>
 
-<!-- ── FOOTER ─────────────────────────────────────────── -->
+<!-- FOOTER -->
 <footer>
   <div class="footer-top">
     <div class="footer-brand">
       <span class="logo-text">Defi<span style="color:var(--green)">Mongo</span></span>
-      <p>Automated Agentic Trading powered by Precision v11 indicators and Gemini AI validation. Built for the edge — not the hype.</p>
+      <p>Automated Agentic Trading powered by Precision V9 strategy execution and Gemini AI decision validation. Institutional-grade infrastructure, built for individual investors.</p>
     </div>
     <div class="footer-links">
       <h5>Platform</h5>
       <ul>
-        <li><a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank">Crypto Scanner</a></li>
         <li><a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank">AAT Terminal</a></li>
+        <li><a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank">Market Intelligence</a></li>
       </ul>
     </div>
     <div class="footer-links">
       <h5>Strategy</h5>
       <ul>
-        <li><a href="#strategies">Counter-Trend</a></li>
-        <li><a href="#strategies">With-Trend</a></li>
-        <li><a href="#strategies">Smart Exits</a></li>
+        <li><a href="#strategies">Precision Scalp</a></li>
+        <li><a href="#strategies">Momentum Ride</a></li>
+        <li><a href="#strategies">Smart Exit Engine</a></li>
       </ul>
     </div>
     <div class="footer-links">
@@ -764,33 +866,22 @@
       <ul>
         <li><a href="#how-it-works">How It Works</a></li>
         <li><a href="#ai">AI Validation</a></li>
-        <li><a href="#invest">Managed Program</a></li>
+        <li><a href="#assets">Covered Assets</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
-    <span>© 2026 DeFiMongo. All rights reserved.</span>
-    <span class="disclaimer">This platform is currently in paper trading mode. Past performance is not indicative of future results. Crypto trading involves significant risk. No financial advice is provided.</span>
+    <span class="footer-copy">© 2026 DeFiMongo. All rights reserved.</span>
+    <p class="disclaimer">All trading involves risk. Past performance is not indicative of future results. DeFiMongo does not provide financial advice. Clients should assess their own risk tolerance before depositing assets.</p>
   </div>
 </footer>
 
 <script>
-  // Scroll fade-in
   const observer = new IntersectionObserver(
     entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
-    { threshold: 0.12 }
+    { threshold: 0.1 }
   );
   document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-
-  // Waitlist form
-  function handleWaitlist(e) {
-    e.preventDefault();
-    const email = document.getElementById('waitlist-email').value;
-    if (!email) return;
-    document.getElementById('waitlist-msg').style.display = 'block';
-    document.getElementById('waitlist-email').value = '';
-    document.querySelector('.waitlist-form button').disabled = true;
-  }
 </script>
 </body>
 </html>
