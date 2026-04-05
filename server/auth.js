@@ -52,16 +52,15 @@ export function adminMiddleware(req, res, next) {
 
 // ── Google OAuth ─────────────────────────────────────────────
 
-const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-
 /**
  * Returns the Google OAuth authorization URL.
  * @param {string} redirectUri  e.g. https://yourapp.up.railway.app/auth
  */
 export function getGoogleAuthUrl(redirectUri) {
+  const clientId = process.env.GOOGLE_CLIENT_ID || '';
+  if (!clientId) throw new Error('GOOGLE_CLIENT_ID env var is not set');
   const params = new URLSearchParams({
-    client_id:     GOOGLE_CLIENT_ID,
+    client_id:     clientId,
     redirect_uri:  redirectUri,
     response_type: 'code',
     scope:         'openid email profile',
@@ -76,14 +75,16 @@ export function getGoogleAuthUrl(redirectUri) {
  * @returns {{ id, email, name, picture }}
  */
 export async function googleExchange(code, redirectUri) {
+  const clientId     = process.env.GOOGLE_CLIENT_ID     || '';
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
   // Exchange code for tokens
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id:     GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
+      client_id:     clientId,
+      client_secret: clientSecret,
       redirect_uri:  redirectUri,
       grant_type:    'authorization_code',
     }),
@@ -109,16 +110,15 @@ export async function googleExchange(code, redirectUri) {
 
 // ── GitHub OAuth ─────────────────────────────────────────────
 
-const GITHUB_CLIENT_ID     = process.env.GITHUB_CLIENT_ID     || '';
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
-
 /**
  * Returns the GitHub OAuth authorization URL.
  * @param {string} redirectUri
  */
 export function getGithubAuthUrl(redirectUri) {
+  const clientId = process.env.GITHUB_CLIENT_ID || '';
+  if (!clientId) throw new Error('GITHUB_CLIENT_ID env var is not set');
   const params = new URLSearchParams({
-    client_id:    GITHUB_CLIENT_ID,
+    client_id:    clientId,
     redirect_uri: redirectUri,
     scope:        'read:user user:email',
     state:        'github',
@@ -131,6 +131,8 @@ export function getGithubAuthUrl(redirectUri) {
  * @returns {{ id, login, name, avatar_url, email }}
  */
 export async function githubExchange(code, redirectUri) {
+  const clientId     = process.env.GITHUB_CLIENT_ID     || '';
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET || '';
   const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
     method:  'POST',
     headers: {
@@ -138,8 +140,8 @@ export async function githubExchange(code, redirectUri) {
       'Accept':       'application/json',
     },
     body: JSON.stringify({
-      client_id:     GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
+      client_id:     clientId,
+      client_secret: clientSecret,
       code,
       redirect_uri:  redirectUri,
     }),

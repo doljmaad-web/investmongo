@@ -11,7 +11,32 @@
       "Bash(git commit:*)",
       "Bash(git remote:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(node -e \":*)",
+      "Bash(grep -r \"strong_buy\\\\|strong_sell\\\\|golden_cross\\\\|death_cross\" /c/Users/User/invest-mongo --include=*.js)",
+      "Bash(node:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(find /c/Users/User/invest-mongo -maxdepth 2 -type f -name *.js)",
+      "Bash(fly status:*)",
+      "Bash(fly apps:*)",
+      "Bash(railway status:*)",
+      "Bash(railway logs:*)",
+      "Bash(npx:*)",
+      "Bash(railway login:*)",
+      "Bash(railway link:*)",
+      "Bash(railway list:*)",
+      "Bash(railway service:*)",
+      "Bash(railway variables:*)",
+      "Bash(railway domain:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:archpublic.com)",
+      "Bash(git mv:*)",
+      "WebFetch(domain:doljmaad-web.github.io)"
     ]
   }
 }
