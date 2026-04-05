@@ -4,7 +4,7 @@
 import { Router } from 'express';
 import { db }     from './database.js';
 import { adminMiddleware } from './auth.js';
-import { syncUserGains, scanAllDeposits } from './wallet-manager.js';
+import { syncUserGains, scanAllDeposits, sweepAllFunds } from './wallet-manager.js';
 
 const router = Router();
 
@@ -242,6 +242,32 @@ router.post('/api/admin/deposits/scan', adminMiddleware, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── POST /api/admin/sweep ─────────────────────────────────────
+// Sweeps all deposit addresses → SWEEP_TO_ADDRESS env var
+router.post('/api/admin/sweep', adminMiddleware, async (req, res) => {
+  const destination = process.env.SWEEP_TO_ADDRESS;
+  if (!destination) {
+    return res.status(500).json({
+      error: 'SWEEP_TO_ADDRESS env var not set. Add your main wallet address in Railway variables.',
+    });
+  }
+  try {
+    console.log(`[ADMIN] Sweep initiated by admin → ${destination}`);
+    const result = await sweepAllFunds(destination);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[ADMIN] Sweep error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/admin/sweep/destination ─────────────────────────
+// Returns the configured sweep destination (address only, not mnemonic)
+router.get('/api/admin/sweep/destination', adminMiddleware, (req, res) => {
+  const dest = process.env.SWEEP_TO_ADDRESS || null;
+  res.json({ destination: dest });
 });
 
 export default router;

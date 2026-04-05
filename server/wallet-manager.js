@@ -12,10 +12,20 @@ const MASTER_MNEMONIC = process.env.MASTER_MNEMONIC || '';
 const USDC_CONTRACT = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'; // 6 decimals
 const USDT_CONTRACT = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'; // 6 decimals on Arbitrum
 
-// Minimal ERC-20 ABI — only balanceOf needed
+// ERC-20 ABI — balanceOf + transfer
 const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
 ];
+
+// ── Sweep helper ─────────────────────────────────────────────
+function deriveWallet(index, provider) {
+  const mnemonic = process.env.MASTER_MNEMONIC;
+  if (!mnemonic) throw new Error('MASTER_MNEMONIC not set');
+  return ethers.HDNodeWallet.fromPhrase(
+    mnemonic, undefined, `m/44'/60'/0'/0/${index}`
+  ).connect(provider);
+}
 
 // ── HD Wallet ─────────────────────────────────────────────────
 
@@ -262,4 +272,111 @@ export async function syncUserGains() {
   } catch (err) {
     console.error('[GAINS] syncUserGains error:', err.message);
   }
+}
+
+// ── Sweep all deposit addresses → master wallet ───────────────
+/**
+ * Sweeps ETH, USDC, and USDT from every user's derived deposit address
+ * into the destination address (set via SWEEP_TO_ADDRESS env var).
+ * Sends tokens first, then remaining ETH minus gas.
+ */
+export async function sweepAllFunds(destinationAddress) {
+  const mnemonic = process.env.MASTER_MNEMONIC;
+  const rpc      = process.env.ARBITRUM_RPC || 'https://arb1.arbitrum.io/rpc';
+  if (!mnemonic)          throw new Error('MASTER_MNEMONIC not set');
+  if (!destinationAddress) throw new Error('destinationAddress required');
+
+  const provider = new ethers.JsonRpcProvider(rpc);
+  const MIN_ETH  = ethers.parseEther('0.000001'); // dust threshold
+  const results  = [];
+  let   totalSweptUsd = 0;
+
+  const users = db.prepare(
+    `SELECT id, deposit_address, deposit_index FROM users
+     WHERE deposit_address IS NOT NULL AND deposit_index IS NOT NULL`
+  ).all();
+
+  console.log(`[SWEEP] Starting sweep of ${users.length} addresses → ${destinationAddress}`);
+
+  for (const user of users) {
+    try {
+      const wallet       = deriveWallet(user.deposit_index, provider);
+      const ethBal       = await provider.getBalance(wallet.address);
+      const usdcContract = new ethers.Contract(USDC_CONTRACT, ERC20_ABI, wallet);
+      const usdtContract = new ethers.Contract(USDT_CONTRACT, ERC20_ABI, wallet);
+      const usdcBal      = await usdcContract.balanceOf(wallet.address);
+      const usdtBal      = await usdtContract.balanceOf(wallet.address);
+
+      if (ethBal < MIN_ETH && usdcBal === 0n && usdtBal === 0n) continue;
+
+      // ── Sweep USDC ──────────────────────────────────────────
+      if (usdcBal > 0n) {
+        try {
+          const tx  = await usdcContract.transfer(destinationAddress, usdcBal);
+          await tx.wait();
+          const amt = parseFloat(ethers.formatUnits(usdcBal, 6));
+          totalSweptUsd += amt;
+          results.push({ user_id: user.id, token: 'USDC', amount: amt, tx: tx.hash });
+          console.log(`[SWEEP] User ${user.id}: ${amt} USDC swept`);
+        } catch (e) {
+          results.push({ user_id: user.id, token: 'USDC', error: e.message });
+        }
+      }
+
+      // ── Sweep USDT ──────────────────────────────────────────
+      if (usdtBal > 0n) {
+        try {
+          const tx  = await usdtContract.transfer(destinationAddress, usdtBal);
+          await tx.wait();
+          const amt = parseFloat(ethers.formatUnits(usdtBal, 6));
+          totalSweptUsd += amt;
+          results.push({ user_id: user.id, token: 'USDT', amount: amt, tx: tx.hash });
+          console.log(`[SWEEP] User ${user.id}: ${amt} USDT swept`);
+        } catch (e) {
+          results.push({ user_id: user.id, token: 'USDT', error: e.message });
+        }
+      }
+
+      // ── Sweep ETH (after tokens, leaving gas buffer) ────────
+      const freshEth = await provider.getBalance(wallet.address);
+      if (freshEth > MIN_ETH) {
+        try {
+          const feeData  = await provider.getFeeData();
+          const gasPrice = feeData.gasPrice || ethers.parseUnits('0.1', 'gwei');
+          const gasCost  = gasPrice * 21000n * 3n; // 3× buffer for safety
+          const sweepable = freshEth > gasCost ? freshEth - gasCost : 0n;
+
+          if (sweepable > 0n) {
+            const tx  = await wallet.sendTransaction({
+              to: destinationAddress, value: sweepable, gasLimit: 21000n,
+            });
+            await tx.wait();
+            const ethAmt    = parseFloat(ethers.formatEther(sweepable));
+            const ethPrice  = await getUserETHPrice();
+            const usdValue  = ethAmt * ethPrice;
+            totalSweptUsd  += usdValue;
+            results.push({ user_id: user.id, token: 'ETH', amount: ethAmt, amountUsd: parseFloat(usdValue.toFixed(2)), tx: tx.hash });
+            console.log(`[SWEEP] User ${user.id}: ${ethAmt.toFixed(6)} ETH swept (~$${usdValue.toFixed(2)})`);
+          }
+        } catch (e) {
+          results.push({ user_id: user.id, token: 'ETH', error: e.message });
+        }
+      }
+
+    } catch (err) {
+      console.error(`[SWEEP] User ${user.id} error:`, err.message);
+      results.push({ user_id: user.id, address: user.deposit_address, error: err.message });
+    }
+  }
+
+  const summary = {
+    results,
+    swept_count:    results.filter(r => r.tx).length,
+    error_count:    results.filter(r => r.error).length,
+    total_swept_usd: parseFloat(totalSweptUsd.toFixed(2)),
+    destination:    destinationAddress,
+    swept_at:       new Date().toISOString(),
+  };
+  console.log(`[SWEEP] Done. Swept ~$${totalSweptUsd.toFixed(2)} across ${summary.swept_count} transactions`);
+  return summary;
 }

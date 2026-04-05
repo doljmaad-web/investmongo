@@ -479,6 +479,7 @@
         <span class="sync-info" id="lastSyncLabel">Gains: never synced</span>
         <button class="btn btn-gold" onclick="syncGains()">Sync Gains</button>
         <button class="btn btn-outline" onclick="loadAll()">Refresh All</button>
+        <button class="btn" style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.5);color:#4ade80;font-weight:700;" onclick="openSweepModal()">💸 Sweep Funds</button>
       </div>
     </div>
 
@@ -1070,11 +1071,107 @@
       }
     }
 
+    // ── Sweep funds ───────────────────────────────────────────
+    async function openSweepModal() {
+      // Fetch configured destination first
+      const data = await api('/api/admin/sweep/destination');
+      const dest = data.destination;
+      document.getElementById('sweepDestDisplay').textContent = dest
+        ? dest
+        : '⚠️ Not configured — add SWEEP_TO_ADDRESS in Railway';
+      document.getElementById('sweepResults').style.display = 'none';
+      document.getElementById('sweepResults').innerHTML = '';
+      openModal('sweepModal');
+    }
+
+    async function executeSweep() {
+      const btn = document.getElementById('btnExecuteSweep');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Sweeping...';
+      const resultsEl = document.getElementById('sweepResults');
+      resultsEl.style.display = 'none';
+      try {
+        const data = await api('/api/admin/sweep', { method: 'POST' });
+        if (data.error) throw new Error(data.error);
+
+        let html = `<div style="margin-bottom:12px;padding:12px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:8px;">
+          <strong style="color:#4ade80">✓ Sweep complete</strong><br>
+          <span style="color:var(--muted);font-size:13px;">
+            ${data.swept_count} transaction(s) · ~$${data.total_swept_usd.toFixed(2)} swept
+            · ${data.error_count} error(s)
+          </span>
+        </div>`;
+
+        if (data.results && data.results.length > 0) {
+          html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="color:var(--muted);">
+              <th style="text-align:left;padding:4px 8px;">User</th>
+              <th style="text-align:left;padding:4px 8px;">Token</th>
+              <th style="text-align:right;padding:4px 8px;">Amount</th>
+              <th style="text-align:left;padding:4px 8px;">Tx / Error</th>
+            </tr></thead><tbody>`;
+          for (const r of data.results) {
+            const isErr = !!r.error;
+            html += `<tr style="border-top:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:4px 8px;color:var(--muted);">#${r.user_id}</td>
+              <td style="padding:4px 8px;font-weight:600;">${escHtml(r.token)}</td>
+              <td style="padding:4px 8px;text-align:right;">${r.amount != null ? r.amount.toFixed(r.token==='ETH'?6:2) : '—'}</td>
+              <td style="padding:4px 8px;${isErr?'color:#f87171;':'color:#4ade80;'}">
+                ${isErr ? escHtml(r.error) : `<a href="https://arbiscan.io/tx/${r.tx}" target="_blank" style="color:#4ade80;">${r.tx.slice(0,14)}…</a>`}
+              </td>
+            </tr>`;
+          }
+          html += '</tbody></table>';
+        }
+
+        resultsEl.innerHTML = html;
+        resultsEl.style.display = 'block';
+        await loadStats();
+      } catch (e) {
+        resultsEl.innerHTML = `<div style="color:#f87171;padding:10px;background:rgba(248,113,113,0.1);border-radius:8px;">Error: ${escHtml(e.message)}</div>`;
+        resultsEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💸 Execute Sweep';
+      }
+    }
+
     // ── Init ──────────────────────────────────────────────────
     (async () => {
       await loadStats();
       await loadWithdrawals('recentWithdrawalsWrap');
     })();
   </script>
+
+  <!-- Sweep Modal -->
+  <div class="modal-overlay" id="sweepModal">
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-header">
+        <h3 class="modal-title">💸 Sweep All Deposit Addresses</h3>
+        <button class="modal-close" onclick="closeModal('sweepModal')">✕</button>
+      </div>
+      <div style="padding:0 24px 24px;">
+        <p style="color:var(--muted);font-size:14px;margin-bottom:16px;line-height:1.6;">
+          This will send all ETH, USDC, and USDT sitting in every customer's deposit address into your main wallet.
+          Tokens are swept first, then remaining ETH minus gas.
+        </p>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Destination Wallet</div>
+          <div id="sweepDestDisplay" style="font-family:monospace;font-size:13px;color:#4ade80;word-break:break-all;"></div>
+        </div>
+        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:12px;margin-bottom:20px;font-size:13px;color:#fbbf24;">
+          ⚠️ This action sends real on-chain transactions. Make sure <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">SWEEP_TO_ADDRESS</code> is set to your correct wallet before proceeding.
+        </div>
+        <div id="sweepResults" style="display:none;margin-bottom:16px;max-height:300px;overflow-y:auto;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button class="btn btn-outline" onclick="closeModal('sweepModal')">Cancel</button>
+          <button class="btn" id="btnExecuteSweep" onclick="executeSweep()"
+            style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.5);color:#4ade80;font-weight:700;">
+            💸 Execute Sweep
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
