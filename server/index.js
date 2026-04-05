@@ -178,6 +178,20 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), time: new Date().toISOString() });
 });
 
+// Diagnostic — shows which auth env vars are present (values hidden)
+app.get('/api/env-check', (req, res) => {
+  res.json({
+    GOOGLE_CLIENT_ID:     !!process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+    GITHUB_CLIENT_ID:     !!process.env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: !!process.env.GITHUB_CLIENT_SECRET,
+    ADMIN_GITHUB_USERNAME:!!process.env.ADMIN_GITHUB_USERNAME,
+    JWT_SECRET:           !!process.env.JWT_SECRET,
+    MASTER_MNEMONIC:      !!process.env.MASTER_MNEMONIC,
+    ARBITRUM_RPC:         !!process.env.ARBITRUM_RPC,
+  });
+});
+
 app.get('/api/capital', (req, res) => {
   const stats     = getPortfolioStats();
   const available = getAvailableCapital();
