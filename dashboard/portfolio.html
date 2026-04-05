@@ -84,13 +84,30 @@
     }
 
     .nav-link {
-      color: var(--muted);
+      display: inline-flex; align-items: center; gap: 6px;
       text-decoration: none;
-      font-size: 14px;
-      transition: color 0.15s;
+      font-size: 13px; font-weight: 600;
+      padding: 7px 16px; border-radius: 8px;
+      border: 1px solid; transition: all 0.18s;
     }
-
-    .nav-link:hover { color: var(--text); }
+    .nav-link.blue {
+      color: #7b93ff; border-color: rgba(79,110,247,0.45);
+      background: rgba(79,110,247,0.08);
+    }
+    .nav-link.blue:hover {
+      background: rgba(79,110,247,0.18); border-color: #4f6ef7;
+      color: #fff; transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(79,110,247,0.3);
+    }
+    .nav-link.green {
+      color: #4ade80; border-color: rgba(74,222,128,0.45);
+      background: rgba(74,222,128,0.08);
+    }
+    .nav-link.green:hover {
+      background: rgba(74,222,128,0.18); border-color: #4ade80;
+      color: #fff; transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(74,222,128,0.25);
+    }
 
     .user-chip {
       display: flex;
@@ -620,7 +637,7 @@
       .grid-2    { grid-template-columns: 1fr; }
       .navbar    { padding: 0 16px; }
       .main      { padding: 24px 16px; }
-      .nav-link  { display: none; }
+      .nav-link  { display: none !important; }
     }
 
     @media (max-width: 480px) {
@@ -640,7 +657,8 @@
       <span class="nav-logo-text">DeFiMongo</span>
     </a>
     <div class="nav-right">
-      <a href="/" class="nav-link">AAT Terminal</a>
+      <a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" class="nav-link green">📡 DeFiMongo</a>
+      <a href="/" class="nav-link blue">⚡ AAT Terminal</a>
       <div class="user-chip">
         <div class="user-avatar" id="userAvatar"></div>
         <span class="user-name" id="userName">Loading...</span>
