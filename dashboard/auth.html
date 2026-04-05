@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — DeFiMongo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #050810;
+      --surface:  #0d1117;
+      --surface2: #161b27;
+      --border:   rgba(255,255,255,0.08);
+      --blue:     #4f6ef7;
+      --blue-dim: rgba(79,110,247,0.15);
+      --green:    #4ade80;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --radius:   14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Radial glow background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(79,110,247,0.12) 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 40% at 80% 80%, rgba(74,222,128,0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,110,247,0.08);
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .heading {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .subheading {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 36px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: background 0.18s, border-color 0.18s, transform 0.12s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.18);
+      transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) { transform: translateY(0); }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #3d5ce6;
+      border-color: #3d5ce6;
+    }
+
+    .btn-metamask {
+      border-color: rgba(245,149,14,0.3);
+    }
+
+    .btn-metamask:hover:not(:disabled) {
+      border-color: rgba(245,149,14,0.5);
+      background: rgba(245,149,14,0.08);
+    }
+
+    .btn-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .btn.loading .btn-spinner { display: block; }
+    .btn.loading .btn-label   { opacity: 0; position: absolute; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .footer-text {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 28px;
+      line-height: 1.6;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert-error {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.25);
+      color: var(--green);
+    }
+
+    .alert.visible { display: block; }
+
+    /* Icon SVGs */
+    svg { flex-shrink: 0; }
+
+    @media (max-width: 480px) {
+      .card { padding: 36px 24px; }
+      .heading { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-wrap">
+      <div class="logo-icon">M</div>
+      <span class="logo-text">DeFiMongo</span>
+    </div>
+
+    <h1 class="heading">Sign In to DeFiMongo</h1>
+    <p class="subheading">Access your portfolio and manage your investments</p>
+
+    <div class="alert alert-error" id="alertError"></div>
+    <div class="alert alert-success" id="alertSuccess"></div>
+
+    <!-- Google Button -->
+    <button class="btn" id="btnGoogle" onclick="loginGoogle()">
+      <span class="btn-spinner"></span>
+      <span class="btn-label" style="display:flex;align-items:center;gap:12px;">
+        <!-- Google icon -->
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </span>
+    </button>
+
+    <div class="divider">or</div>
+
+    <!-- MetaMask Button -->
+    <button class="btn btn-metamask" id="btnMetaMask" onclick="loginMetaMask()">
+      <span class="btn-spinner"></span>
+      <span class="btn-label" style="display:flex;align-items:center;gap:12px;">
+        <!-- MetaMask fox icon -->
+        <svg width="22" height="22" viewBox="0 0 318.6 318.6" xmlns="http://www.w3.org/2000/svg">
+          <polygon fill="#E2761B" stroke="#E2761B" stroke-linecap="round" stroke-linejoin="round" points="274.1,35.5 174.6,109.4 193,65.8"/>
+          <polygon fill="#E4761B" stroke="#E4761B" stroke-linecap="round" stroke-linejoin="round" points="44.4,35.5 143.1,110.1 125.6,65.8"/>
+          <polygon fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" points="238.3,206.8 211.8,247.4 268.5,263 284.8,207.7"/>
+          <polygon fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" points="33.9,207.7 50.1,263 106.8,247.4 80.3,206.8"/>
+          <polygon fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" points="103.6,138.2 87.8,162.1 144.1,164.6 142.1,104.1"/>
+          <polygon fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" points="214.9,138.2 175.9,103.4 174.6,164.6 230.8,162.1"/>
+          <polygon fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" points="106.8,247.4 140.6,230.9 111.4,208.1"/>
+          <polygon fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" points="177.9,230.9 211.8,247.4 207.1,208.1"/>
+          <polygon fill="#E4761B" stroke="#E4761B" stroke-linecap="round" stroke-linejoin="round" points="211.8,247.4 177.9,230.9 180.6,253 180.3,262.3"/>
+          <polygon fill="#E4761B" stroke="#E4761B" stroke-linecap="round" stroke-linejoin="round" points="106.8,247.4 138.3,262.3 138.1,253 140.6,230.9"/>
+          <polygon fill="#D3D3D3" stroke="#D3D3D3" stroke-linecap="round" stroke-linejoin="round" points="138.8,193.5 110.6,185.2 130.5,176.1"/>
+          <polygon fill="#D3D3D3" stroke="#D3D3D3" stroke-linecap="round" stroke-linejoin="round" points="179.7,193.5 188,176.1 208,185.2"/>
+          <polygon fill="#CD6116" stroke="#CD6116" stroke-linecap="round" stroke-linejoin="round" points="106.8,247.4 111.6,206.8 80.3,207.7"/>
+          <polygon fill="#CD6116" stroke="#CD6116" stroke-linecap="round" stroke-linejoin="round" points="207,206.8 211.8,247.4 238.3,207.7"/>
+          <polygon fill="#CD6116" stroke="#CD6116" stroke-linecap="round" stroke-linejoin="round" points="230.8,162.1 174.6,164.6 179.7,193.5 188,176.1 208,185.2"/>
+          <polygon fill="#CD6116" stroke="#CD6116" stroke-linecap="round" stroke-linejoin="round" points="110.6,185.2 130.5,176.1 138.8,193.5 144.1,164.6 87.8,162.1"/>
+          <polygon fill="#E4751F" stroke="#E4751F" stroke-linecap="round" stroke-linejoin="round" points="87.8,162.1 111.4,208.1 110.6,185.2"/>
+          <polygon fill="#E4751F" stroke="#E4751F" stroke-linecap="round" stroke-linejoin="round" points="208,185.2 207.1,208.1 230.8,162.1"/>
+          <polygon fill="#E4751F" stroke="#E4751F" stroke-linecap="round" stroke-linejoin="round" points="144.1,164.6 138.8,193.5 145.4,227.6 146.9,182.7"/>
+          <polygon fill="#E4751F" stroke="#E4751F" stroke-linecap="round" stroke-linejoin="round" points="174.6,164.6 171.9,182.6 172.9,227.6 179.7,193.5"/>
+          <polygon fill="#F6851B" stroke="#F6851B" stroke-linecap="round" stroke-linejoin="round" points="179.7,193.5 172.9,227.6 177.9,230.9 207.1,208.1 208,185.2"/>
+          <polygon fill="#F6851B" stroke="#F6851B" stroke-linecap="round" stroke-linejoin="round" points="110.6,185.2 111.4,208.1 140.6,230.9 145.4,227.6 138.8,193.5"/>
+          <polygon fill="#C0AD9E" stroke="#C0AD9E" stroke-linecap="round" stroke-linejoin="round" points="180.3,262.3 180.6,253 178.1,250.8 140.4,250.8 138.1,253 138.3,262.3 106.8,247.4 117.8,256.4 140.1,271.9 178.4,271.9 200.8,256.4 211.8,247.4"/>
+          <polygon fill="#161616" stroke="#161616" stroke-linecap="round" stroke-linejoin="round" points="177.9,230.9 172.9,227.6 145.4,227.6 140.6,230.9 138.1,253 140.4,250.8 178.1,250.8 180.6,253"/>
+          <polygon fill="#763D16" stroke="#763D16" stroke-linecap="round" stroke-linejoin="round" points="278.3,114.2 286.8,73.4 274.1,35.5 177.9,106.9 214.9,138.2 267.2,153.5 278.9,140 273.8,136.4 281.8,129.1 275.6,124.3 283.6,118.2"/>
+          <polygon fill="#763D16" stroke="#763D16" stroke-linecap="round" stroke-linejoin="round" points="31.8,73.4 40.3,114.2 34.9,118.2 42.9,124.3 36.8,129.1 44.8,136.4 39.7,140 51.3,153.5 103.6,138.2 140.6,106.9 44.4,35.5"/>
+          <polygon fill="#F6851B" stroke="#F6851B" stroke-linecap="round" stroke-linejoin="round" points="267.2,153.5 214.9,138.2 230.8,162.1 207.1,208.1 238.3,207.7 284.8,207.7"/>
+          <polygon fill="#F6851B" stroke="#F6851B" stroke-linecap="round" stroke-linejoin="round" points="103.6,138.2 51.3,153.5 33.9,207.7 80.3,207.7 111.4,208.1 87.8,162.1"/>
+          <polygon fill="#F6851B" stroke="#F6851B" stroke-linecap="round" stroke-linejoin="round" points="174.6,164.6 177.9,106.9 193.2,65.8 125.6,65.8 140.6,106.9 144.1,164.6 145.3,182.8 145.4,227.6 172.9,227.6 173.1,182.8"/>
+        </svg>
+        Connect MetaMask
+      </span>
+    </button>
+
+    <p class="footer-text">
+      New here? Your account is created automatically on first sign in.
+    </p>
+  </div>
+
+  <script>
+    // ── Helpers ──────────────────────────────────────────────
+
+    function showError(msg) {
+      const el = document.getElementById('alertError');
+      el.textContent = msg;
+      el.classList.add('visible');
+      document.getElementById('alertSuccess').classList.remove('visible');
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById('alertSuccess');
+      el.textContent = msg;
+      el.classList.add('visible');
+      document.getElementById('alertError').classList.remove('visible');
+    }
+
+    function setLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      if (loading) {
+        btn.classList.add('loading');
+        btn.disabled = true;
+      } else {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    }
+
+    function saveAuth(token, user) {
+      localStorage.setItem('dm_token', token);
+      localStorage.setItem('dm_user',  JSON.stringify(user));
+    }
+
+    function redirectAfterLogin(user) {
+      if (user.is_admin) {
+        window.location.href = '/admin';
+      } else {
+        window.location.href = '/portfolio';
+      }
+    }
+
+    // ── Google OAuth ──────────────────────────────────────────
+
+    async function loginGoogle() {
+      setLoading('btnGoogle', true);
+      try {
+        const redirectUri = window.location.origin + '/auth';
+        const res  = await fetch(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        window.location.href = data.url;
+      } catch (e) {
+        showError('Google sign-in failed: ' + e.message);
+        setLoading('btnGoogle', false);
+      }
+    }
+
+    // ── GitHub OAuth callback handler ─────────────────────────
+
+    async function handleOAuthCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const code   = params.get('code');
+      const state  = params.get('state');
+      if (!code) return;
+
+      // Determine provider by state param or try both
+      const redirectUri = window.location.origin + '/auth';
+
+      // Clean URL immediately
+      window.history.replaceState({}, '', '/auth');
+
+      if (state === 'github') {
+        // GitHub callback
+        setLoading('btnGoogle', true);
+        try {
+          const res  = await fetch(`/api/auth/github/callback?code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirectUri)}`);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          saveAuth(data.token, data.user);
+          showSuccess('Signed in! Redirecting...');
+          setTimeout(() => redirectAfterLogin(data.user), 800);
+        } catch (e) {
+          showError('GitHub sign-in failed: ' + e.message);
+          setLoading('btnGoogle', false);
+        }
+      } else {
+        // Google callback (no state or state !== 'github')
+        setLoading('btnGoogle', true);
+        try {
+          const res  = await fetch(`/api/auth/google/callback?code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirectUri)}`);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          saveAuth(data.token, data.user);
+          showSuccess('Signed in! Redirecting...');
+          setTimeout(() => redirectAfterLogin(data.user), 800);
+        } catch (e) {
+          showError('Google sign-in failed: ' + e.message);
+          setLoading('btnGoogle', false);
+        }
+      }
+    }
+
+    // ── MetaMask ──────────────────────────────────────────────
+
+    async function loginMetaMask() {
+      if (!window.ethereum) {
+        showError('MetaMask is not installed. Please install it from metamask.io');
+        return;
+      }
+
+      setLoading('btnMetaMask', true);
+      try {
+        // Request accounts
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const address  = accounts[0];
+        if (!address) throw new Error('No account selected');
+
+        // Get nonce
+        const nonceRes  = await fetch('/api/auth/metamask/nonce', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ address }),
+        });
+        const nonceData = await nonceRes.json();
+        if (nonceData.error) throw new Error(nonceData.error);
+
+        const nonce = nonceData.nonce;
+
+        // Sign message using personal_sign
+        const signature = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [nonce, address],
+        });
+
+        // Verify signature
+        const verifyRes  = await fetch('/api/auth/metamask/verify', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ address, signature, nonce }),
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.error) throw new Error(verifyData.error);
+
+        saveAuth(verifyData.token, verifyData.user);
+        showSuccess('Wallet connected! Redirecting...');
+        setTimeout(() => redirectAfterLogin(verifyData.user), 800);
+
+      } catch (e) {
+        if (e.code === 4001) {
+          showError('Signature request was cancelled.');
+        } else {
+          showError('MetaMask sign-in failed: ' + (e.message || 'Unknown error'));
+        }
+        setLoading('btnMetaMask', false);
+      }
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+
+    // If already logged in, redirect
+    const existingToken = localStorage.getItem('dm_token');
+    const existingUser  = localStorage.getItem('dm_user');
+    if (existingToken && existingUser) {
+      try {
+        const user = JSON.parse(existingUser);
+        // Verify token is still valid
+        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${existingToken}` } })
+          .then(r => r.json())
+          .then(data => {
+            if (data.user) redirectAfterLogin(data.user);
+          })
+          .catch(() => {});
+      } catch {}
+    }
+
+    // Handle OAuth callback on page load
+    handleOAuthCallback();
+  </script>
+</body>
+</html>

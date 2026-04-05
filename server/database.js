@@ -186,5 +186,71 @@ db.exec(`
   );
 `);
 
+// ── Auth & Portfolio Schema ───────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    email            TEXT UNIQUE,
+    wallet_address   TEXT UNIQUE,
+    github_id        TEXT UNIQUE,
+    name             TEXT NOT NULL,
+    avatar           TEXT,
+    auth_provider    TEXT NOT NULL,
+    deposit_address  TEXT UNIQUE,
+    deposit_index    INTEGER UNIQUE,
+    tier             TEXT DEFAULT 'flexible',
+    tier_pct         REAL DEFAULT 9,
+    lock_months      INTEGER DEFAULT 0,
+    lock_until       TEXT,
+    is_admin         INTEGER DEFAULT 0,
+    created_at       TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS client_deposits (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL,
+    tx_hash       TEXT UNIQUE,
+    amount_native REAL,
+    amount_usd    REAL NOT NULL,
+    token         TEXT DEFAULT 'ETH',
+    network       TEXT DEFAULT 'arbitrum',
+    status        TEXT DEFAULT 'pending',
+    deposited_at  TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS user_balances (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER UNIQUE NOT NULL,
+    deposited_usd       REAL DEFAULT 0,
+    visible_balance_usd REAL DEFAULT 0,
+    total_gain_usd      REAL DEFAULT 0,
+    monthly_gain_usd    REAL DEFAULT 0,
+    gain_reset_at       TEXT DEFAULT (datetime('now')),
+    last_updated        TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS client_withdrawals (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    amount_usd   REAL NOT NULL,
+    to_address   TEXT NOT NULL,
+    status       TEXT DEFAULT 'pending',
+    tx_hash      TEXT,
+    requested_at TEXT DEFAULT (datetime('now')),
+    processed_at TEXT,
+    admin_note   TEXT
+  );
+`);
+
+// Migrations — safe to run on every boot
+try { db.exec(`ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'flexible'`); } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN tier_pct REAL DEFAULT 9`); } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN lock_months INTEGER DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN lock_until TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN deposit_address TEXT UNIQUE`); } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN deposit_index INTEGER UNIQUE`); } catch (_) {}
+try { db.exec(`ALTER TABLE user_balances ADD COLUMN monthly_gain_usd REAL DEFAULT 0`); } catch (_) {}
+try { db.exec(`ALTER TABLE user_balances ADD COLUMN gain_reset_at TEXT DEFAULT (datetime('now'))`); } catch (_) {}
+
 export { db };
 export default db;

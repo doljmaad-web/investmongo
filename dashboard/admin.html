@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — DeFiMongo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #050810;
+      --surface:  #0d1117;
+      --surface2: #161b27;
+      --surface3: #1e2536;
+      --border:   rgba(255,255,255,0.08);
+      --blue:     #4f6ef7;
+      --blue-dim: rgba(79,110,247,0.12);
+      --green:    #4ade80;
+      --green-dim:rgba(74,222,128,0.1);
+      --gold:     #fbbf24;
+      --red:      #f87171;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+    }
+
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 64px;
+      background: rgba(13,17,23,0.9);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--blue), var(--gold));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    .nav-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .admin-badge {
+      background: rgba(251,191,36,0.15);
+      border: 1px solid rgba(251,191,36,0.3);
+      color: var(--gold);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 5px 12px;
+    }
+
+    .user-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--gold));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .btn-signout {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-signout:hover { color: var(--red); border-color: var(--red); }
+
+    /* Main */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 36px 24px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .sync-info {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: rgba(79,110,247,0.3); }
+    .stat-card.alert-card { border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.05); }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stat-value.gold { color: var(--gold); }
+    .stat-value.green { color: var(--green); }
+
+    /* Tabs */
+    .section-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      padding: 8px 18px;
+      border-radius: 9px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-confirmed, .status-sent     { background: var(--green-dim); color: var(--green); }
+    .status-pending                     { background: rgba(251,191,36,0.12); color: var(--gold); }
+    .status-rejected                    { background: rgba(248,113,113,0.12); color: var(--red); }
+    .status-approved                    { background: var(--blue-dim); color: var(--blue); }
+
+    /* Provider badge */
+    .provider-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary  { background: var(--blue);  color: #fff; }
+    .btn-primary:hover { background: #3d5ce6; }
+
+    .btn-gold     { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.35); color: var(--gold); }
+    .btn-gold:hover { background: rgba(251,191,36,0.22); }
+
+    .btn-red      { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+    .btn-red:hover { background: rgba(248,113,113,0.2); }
+
+    .btn-outline  { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.2); }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 440px;
+      transform: translateY(16px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .form-group { margin-bottom: 14px; }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form-input:focus { border-color: var(--blue); }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .alert.visible { display: block; }
+    .alert-error   { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: var(--green-dim); border: 1px solid rgba(74,222,128,0.25); color: var(--green); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    @media (max-width: 900px) {
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .navbar    { padding: 0 16px; }
+      .main      { padding: 20px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="nav-icon">A</div>
+      <span class="nav-title">DeFiMongo Admin</span>
+      <span class="admin-badge">ADMIN</span>
+    </div>
+    <div class="nav-right">
+      <a href="/" class="nav-link">AAT Terminal</a>
+      <div class="user-chip">
+        <div class="user-avatar" id="adminAvatar">A</div>
+        <span style="font-size:13px;font-weight:500;" id="adminName">Admin</span>
+      </div>
+      <button class="btn-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="page-header">
+      <h1 class="page-title">Admin Dashboard</h1>
+      <div class="page-actions">
+        <span class="sync-info" id="lastSyncLabel">Gains: never synced</span>
+        <button class="btn btn-gold" onclick="syncGains()">Sync Gains</button>
+        <button class="btn btn-outline" onclick="loadAll()">Refresh All</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="statUsers">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total AUM</div>
+        <div class="stat-value green" id="statAUM">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gain Paid Out</div>
+        <div class="stat-value" id="statGainPaid">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Platform Profit</div>
+        <div class="stat-value green" id="statProfit">—</div>
+      </div>
+      <div class="stat-card" id="pendingCard">
+        <div class="stat-label">Pending Withdrawals</div>
+        <div class="stat-value" id="statPending">—</div>
+      </div>
+    </div>
+
+    <!-- Section tabs -->
+    <div class="section-tabs">
+      <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn"        onclick="switchTab('users')">Users</button>
+      <button class="tab-btn"        onclick="switchTab('deposits')">Deposits</button>
+      <button class="tab-btn"        onclick="switchTab('withdrawals')">Withdrawals</button>
+    </div>
+
+    <!-- Overview tab -->
+    <div class="tab-section active" id="tab-overview">
+      <div class="card">
+        <div class="card-title">Platform Overview</div>
+        <p style="color:var(--muted); font-size:14px; line-height:1.7;">
+          Welcome to the DeFiMongo admin panel. Use the tabs above to manage users, review deposits, and process withdrawal requests.
+          Use <strong style="color:var(--text);">Sync Gains</strong> to distribute today's bot profits to user balances.
+          Use the <strong style="color:var(--text);">Deposits</strong> tab to trigger a manual deposit scan.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent Withdrawals</div>
+        <div id="recentWithdrawalsWrap">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users tab -->
+    <div class="tab-section" id="tab-users">
+      <div class="card">
+        <div class="card-title">
+          All Users
+          <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="loadUsers()">Refresh</button>
+        </div>
+        <div class="table-wrap" id="usersTableWrap">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deposits tab -->
+    <div class="tab-section" id="tab-deposits">
+      <div class="card">
+        <div class="card-title">
+          All Deposits
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-gold" onclick="scanDeposits()">Scan Deposits</button>
+            <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="loadDeposits()">Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="depositsTableWrap">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Withdrawals tab -->
+    <div class="tab-section" id="tab-withdrawals">
+      <div class="card">
+        <div class="card-title">
+          Withdrawal Requests
+          <button class="btn btn-outline" style="padding:6px 12px; font-size:12px;" onclick="loadWithdrawals()">Refresh</button>
+        </div>
+        <div class="table-wrap" id="withdrawalsTableWrap">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Approve modal -->
+  <div class="modal-overlay" id="approveModal">
+    <div class="modal">
+      <div class="modal-title">
+        Approve Withdrawal
+        <button class="modal-close" onclick="closeModal('approveModal')">&#x2715;</button>
+      </div>
+      <div class="alert alert-error"   id="approveError"></div>
+      <div class="alert alert-success" id="approveSuccess"></div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;" id="approveDesc">
+        Enter the on-chain transaction hash after sending the funds.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Transaction hash</label>
+        <input class="form-input" id="approveTxHash" type="text" placeholder="0x..." />
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="submitApprove()">Mark as Sent</button>
+    </div>
+  </div>
+
+  <!-- Reject modal -->
+  <div class="modal-overlay" id="rejectModal">
+    <div class="modal">
+      <div class="modal-title">
+        Reject Withdrawal
+        <button class="modal-close" onclick="closeModal('rejectModal')">&#x2715;</button>
+      </div>
+      <div class="alert alert-error"   id="rejectError"></div>
+      <div class="alert alert-success" id="rejectSuccess"></div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;" id="rejectDesc">
+        The balance will be refunded to the user.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Rejection reason (optional)</label>
+        <input class="form-input" id="rejectNote" type="text" placeholder="e.g. Suspicious activity" />
+      </div>
+      <button class="btn btn-red" style="width:100%;" onclick="submitReject()">Reject &amp; Refund</button>
+    </div>
+  </div>
+
+  <!-- Credit modal -->
+  <div class="modal-overlay" id="creditModal">
+    <div class="modal">
+      <div class="modal-title">
+        Manual Credit / Debit
+        <button class="modal-close" onclick="closeModal('creditModal')">&#x2715;</button>
+      </div>
+      <div class="alert alert-error"   id="creditError"></div>
+      <div class="alert alert-success" id="creditSuccess"></div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:16px;" id="creditDesc">
+        Adjust visible balance. Use negative to deduct.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Amount USD (negative to debit)</label>
+        <input class="form-input" id="creditAmount" type="number" placeholder="e.g. 50 or -50" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <input class="form-input" id="creditNote" type="text" placeholder="Reason for adjustment" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="submitCredit()">Apply Adjustment</button>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('dm_token');
+    const dmUser = (() => { try { return JSON.parse(localStorage.getItem('dm_user')); } catch { return null; } })();
+
+    // Guard: must be admin
+    if (!token || !dmUser || !dmUser.is_admin) {
+      window.location.href = '/auth';
+    }
+
+    // Show admin name
+    const adminNameEl   = document.getElementById('adminName');
+    const adminAvatarEl = document.getElementById('adminAvatar');
+    adminNameEl.textContent = dmUser?.name || 'Admin';
+    if (dmUser?.avatar) {
+      adminAvatarEl.innerHTML = `<img src="${dmUser.avatar}" alt="" />`;
+    }
+
+    // ── API ─────────────────────────────────────────────────
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...(opts.headers || {}),
+        },
+      });
+      return res.json();
+    }
+
+    // ── Format ──────────────────────────────────────────────
+    function fmt(n) {
+      if (n === null || n === undefined || isNaN(n)) return '—';
+      return '$' + parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtDate(str) {
+      if (!str) return '—';
+      return new Date(str).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    function truncAddr(addr) {
+      if (!addr || addr.length < 12) return addr;
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
+    }
+
+    // ── Tabs ────────────────────────────────────────────────
+    function switchTab(name) {
+      document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab-${name}`).classList.add('active');
+      const idx = ['overview','users','deposits','withdrawals'].indexOf(name);
+      document.querySelectorAll('.tab-btn')[idx]?.classList.add('active');
+
+      if (name === 'users')       loadUsers();
+      if (name === 'deposits')    loadDeposits();
+      if (name === 'withdrawals') loadWithdrawals();
+    }
+
+    // ── Load stats ──────────────────────────────────────────
+    async function loadStats() {
+      try {
+        const data = await api('/api/admin/stats');
+        document.getElementById('statUsers').textContent    = data.totalUsers ?? '—';
+        document.getElementById('statAUM').textContent      = fmt(data.totalAUM);
+        document.getElementById('statGainPaid').textContent = fmt(data.totalGainPaid);
+        document.getElementById('statProfit').textContent   = fmt(data.platformProfit);
+        document.getElementById('statPending').textContent  = data.pendingWithdrawals ?? '—';
+
+        const pendCard = document.getElementById('pendingCard');
+        if (data.pendingWithdrawals > 0) {
+          pendCard.classList.add('alert-card');
+          document.getElementById('statPending').classList.add('gold');
+        } else {
+          pendCard.classList.remove('alert-card');
+          document.getElementById('statPending').classList.remove('gold');
+        }
+      } catch (e) {
+        console.error('loadStats:', e);
+      }
+    }
+
+    // ── Users ───────────────────────────────────────────────
+    async function loadUsers() {
+      const wrap = document.getElementById('usersTableWrap');
+      wrap.innerHTML = '<div class="empty-state">Loading...</div>';
+      try {
+        const data = await api('/api/admin/users');
+        const users = data.users || [];
+        if (!users.length) {
+          wrap.innerHTML = '<div class="empty-state">No users yet.</div>';
+          return;
+        }
+        wrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Provider</th>
+                <th>Tier</th>
+                <th>Deposited</th>
+                <th>Balance</th>
+                <th>Gain</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map(u => {
+                const gainPct = u.deposited_usd > 0
+                  ? ((u.total_gain_usd / u.deposited_usd) * 100).toFixed(1) + '%'
+                  : '0.0%';
+                const isAdmin = u.is_admin ? ' <span style="color:var(--gold);font-size:10px;">ADMIN</span>' : '';
+                return `<tr>
+                  <td>
+                    <div style="font-weight:500">${escHtml(u.name)}${isAdmin}</div>
+                    <div style="font-size:11px;color:var(--muted)">${escHtml(u.email || truncAddr(u.wallet_address) || '')}</div>
+                  </td>
+                  <td><span class="provider-badge">${u.auth_provider}</span></td>
+                  <td>
+                    <span class="status-badge ${u.tier === 'locked' ? 'status-pending' : 'status-confirmed'}">
+                      ${u.tier}${u.tier === 'locked' ? ' ' + u.lock_months + 'mo' : ''}
+                    </span>
+                  </td>
+                  <td>${fmt(u.deposited_usd)}</td>
+                  <td style="color:var(--green)">${fmt(u.visible_balance_usd)}</td>
+                  <td>${gainPct}</td>
+                  <td style="color:var(--muted)">${fmtDate(u.created_at)}</td>
+                  <td>
+                    <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;"
+                      onclick="openCredit(${u.id}, '${escHtml(u.name)}', ${u.visible_balance_usd || 0})">
+                      Credit
+                    </button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        wrap.innerHTML = `<div class="empty-state" style="color:var(--red)">Error: ${e.message}</div>`;
+      }
+    }
+
+    // ── Deposits ─────────────────────────────────────────────
+    async function loadDeposits() {
+      const wrap = document.getElementById('depositsTableWrap');
+      wrap.innerHTML = '<div class="empty-state">Loading...</div>';
+      try {
+        const data = await api('/api/admin/deposits');
+        const deps = data.deposits || [];
+        if (!deps.length) {
+          wrap.innerHTML = '<div class="empty-state">No deposits yet.</div>';
+          return;
+        }
+        wrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Token</th>
+                <th>Network</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${deps.map(d => `
+                <tr>
+                  <td>
+                    <div style="font-weight:500">${escHtml(d.user_name)}</div>
+                    <div style="font-size:11px;color:var(--muted)">${escHtml(d.user_email || '')}</div>
+                  </td>
+                  <td style="font-weight:600">${fmt(d.amount_usd)}</td>
+                  <td>${d.token || 'USDC'}</td>
+                  <td style="color:var(--muted);font-size:12px">${d.network || 'arbitrum'}</td>
+                  <td><span class="status-badge status-${d.status}">${d.status}</span></td>
+                  <td style="color:var(--muted);font-size:12px">${fmtDate(d.deposited_at)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        wrap.innerHTML = `<div class="empty-state" style="color:var(--red)">Error: ${e.message}</div>`;
+      }
+    }
+
+    // ── Withdrawals ───────────────────────────────────────────
+    async function loadWithdrawals(target = 'withdrawalsTableWrap') {
+      const wrap = document.getElementById(target);
+      if (!wrap) return;
+      wrap.innerHTML = '<div class="empty-state">Loading...</div>';
+      try {
+        const data = await api('/api/admin/withdrawals');
+        const wths = data.withdrawals || [];
+        if (!wths.length) {
+          wrap.innerHTML = '<div class="empty-state">No withdrawal requests yet.</div>';
+          return;
+        }
+        wrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Amount</th>
+                <th>To Address</th>
+                <th>Status</th>
+                <th>Requested</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${wths.map(w => `
+                <tr>
+                  <td>
+                    <div style="font-weight:500">${escHtml(w.user_name)}</div>
+                    <div style="font-size:11px;color:var(--muted)">${escHtml(w.user_email || '')}</div>
+                  </td>
+                  <td style="font-weight:600">${fmt(w.amount_usd)}</td>
+                  <td style="font-family:monospace;font-size:11px;color:var(--muted)">${truncAddr(w.to_address)}</td>
+                  <td><span class="status-badge status-${w.status}">${w.status}</span></td>
+                  <td style="color:var(--muted);font-size:12px">${fmtDate(w.requested_at)}</td>
+                  <td>
+                    ${w.status === 'pending' ? `
+                      <div style="display:flex;gap:6px;">
+                        <button class="btn btn-gold" style="padding:4px 10px;font-size:12px;"
+                          onclick="openApprove(${w.id}, '${escHtml(w.user_name)}', ${w.amount_usd})">
+                          Approve
+                        </button>
+                        <button class="btn btn-red" style="padding:4px 10px;font-size:12px;"
+                          onclick="openReject(${w.id}, '${escHtml(w.user_name)}')">
+                          Reject
+                        </button>
+                      </div>
+                    ` : `<span style="color:var(--muted);font-size:12px">${w.admin_note || '—'}</span>`}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        wrap.innerHTML = `<div class="empty-state" style="color:var(--red)">Error: ${e.message}</div>`;
+      }
+    }
+
+    // ── Approve ───────────────────────────────────────────────
+    let currentApproveId = null;
+
+    function openApprove(id, name, amount) {
+      currentApproveId = id;
+      document.getElementById('approveDesc').textContent =
+        `Approving $${parseFloat(amount).toFixed(2)} for ${name}. Enter tx hash after sending.`;
+      document.getElementById('approveTxHash').value = '';
+      document.getElementById('approveError').classList.remove('visible');
+      document.getElementById('approveSuccess').classList.remove('visible');
+      openModal('approveModal');
+    }
+
+    async function submitApprove() {
+      const txHash = document.getElementById('approveTxHash').value.trim();
+      if (!txHash) {
+        showModalAlert('approveError', 'Enter transaction hash');
+        return;
+      }
+      try {
+        const data = await api(`/api/admin/withdrawals/${currentApproveId}/approve`, {
+          method: 'POST',
+          body:   JSON.stringify({ tx_hash: txHash }),
+        });
+        if (data.error) { showModalAlert('approveError', data.error); return; }
+        showModalAlert('approveSuccess', 'Marked as sent!');
+        await loadStats();
+        await loadWithdrawals();
+        setTimeout(() => closeModal('approveModal'), 1500);
+      } catch (e) {
+        showModalAlert('approveError', e.message);
+      }
+    }
+
+    // ── Reject ────────────────────────────────────────────────
+    let currentRejectId = null;
+
+    function openReject(id, name) {
+      currentRejectId = id;
+      document.getElementById('rejectDesc').textContent =
+        `Rejecting withdrawal for ${name}. The balance will be refunded.`;
+      document.getElementById('rejectNote').value = '';
+      document.getElementById('rejectError').classList.remove('visible');
+      document.getElementById('rejectSuccess').classList.remove('visible');
+      openModal('rejectModal');
+    }
+
+    async function submitReject() {
+      const note = document.getElementById('rejectNote').value.trim();
+      try {
+        const data = await api(`/api/admin/withdrawals/${currentRejectId}/reject`, {
+          method: 'POST',
+          body:   JSON.stringify({ note: note || undefined }),
+        });
+        if (data.error) { showModalAlert('rejectError', data.error); return; }
+        showModalAlert('rejectSuccess', 'Withdrawal rejected and balance refunded.');
+        await loadStats();
+        await loadWithdrawals();
+        setTimeout(() => closeModal('rejectModal'), 1500);
+      } catch (e) {
+        showModalAlert('rejectError', e.message);
+      }
+    }
+
+    // ── Credit ────────────────────────────────────────────────
+    let currentCreditId = null;
+
+    function openCredit(id, name, currentBalance) {
+      currentCreditId = id;
+      document.getElementById('creditDesc').textContent =
+        `Adjusting balance for ${name}. Current: $${parseFloat(currentBalance).toFixed(2)}`;
+      document.getElementById('creditAmount').value = '';
+      document.getElementById('creditNote').value   = '';
+      document.getElementById('creditError').classList.remove('visible');
+      document.getElementById('creditSuccess').classList.remove('visible');
+      openModal('creditModal');
+    }
+
+    async function submitCredit() {
+      const amount = parseFloat(document.getElementById('creditAmount').value);
+      const note   = document.getElementById('creditNote').value.trim();
+      if (isNaN(amount)) {
+        showModalAlert('creditError', 'Enter a valid amount');
+        return;
+      }
+      try {
+        const data = await api(`/api/admin/users/${currentCreditId}/credit`, {
+          method: 'POST',
+          body:   JSON.stringify({ amount_usd: amount, note: note || undefined }),
+        });
+        if (data.error) { showModalAlert('creditError', data.error); return; }
+        showModalAlert('creditSuccess', `Balance adjusted by $${amount.toFixed(2)}`);
+        await loadStats();
+        await loadUsers();
+        setTimeout(() => closeModal('creditModal'), 1500);
+      } catch (e) {
+        showModalAlert('creditError', e.message);
+      }
+    }
+
+    // ── Sync gains ────────────────────────────────────────────
+    async function syncGains() {
+      const btn = document.querySelector('[onclick="syncGains()"]');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Syncing...';
+      try {
+        const data = await api('/api/admin/gains/sync', { method: 'POST' });
+        if (data.error) { alert('Sync failed: ' + data.error); }
+        else {
+          document.getElementById('lastSyncLabel').textContent =
+            'Last sync: ' + new Date(data.synced_at).toLocaleTimeString();
+          await loadStats();
+          await loadUsers();
+        }
+      } catch (e) {
+        alert('Sync error: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sync Gains';
+      }
+    }
+
+    // ── Scan deposits ─────────────────────────────────────────
+    async function scanDeposits() {
+      const btn = document.querySelector('[onclick="scanDeposits()"]');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Scanning...';
+      try {
+        const data = await api('/api/admin/deposits/scan', { method: 'POST' });
+        if (data.error) { alert('Scan failed: ' + data.error); }
+        else {
+          await loadDeposits();
+          await loadStats();
+        }
+      } catch (e) {
+        alert('Scan error: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Scan Deposits';
+      }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────
+    function showModalAlert(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function openModal(id)  { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+    });
+
+    function signOut() {
+      localStorage.removeItem('dm_token');
+      localStorage.removeItem('dm_user');
+      window.location.href = '/auth';
+    }
+
+    async function loadAll() {
+      await loadStats();
+      // Load the active tab's data too
+      const activeSection = document.querySelector('.tab-section.active');
+      if (activeSection) {
+        const id = activeSection.id.replace('tab-','');
+        if (id === 'users')       loadUsers();
+        if (id === 'deposits')    loadDeposits();
+        if (id === 'withdrawals') loadWithdrawals();
+        if (id === 'overview')    loadWithdrawals('recentWithdrawalsWrap');
+      }
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    (async () => {
+      await loadStats();
+      await loadWithdrawals('recentWithdrawalsWrap');
+    })();
+  </script>
+</body>
+</html>

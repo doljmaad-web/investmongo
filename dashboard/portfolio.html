@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio — DeFiMongo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #050810;
+      --surface:  #0d1117;
+      --surface2: #161b27;
+      --surface3: #1e2536;
+      --border:   rgba(255,255,255,0.08);
+      --blue:     #4f6ef7;
+      --blue-dim: rgba(79,110,247,0.12);
+      --green:    #4ade80;
+      --green-dim:rgba(74,222,128,0.1);
+      --gold:     #fbbf24;
+      --red:      #f87171;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 64px;
+      background: rgba(13,17,23,0.9);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      color: #fff;
+    }
+
+    .nav-logo-text {
+      font-weight: 700;
+      font-size: 18px;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 6px 12px;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .user-name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .btn-signout {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .btn-signout:hover { color: var(--red); border-color: var(--red); }
+
+    /* Main layout */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 24px;
+    }
+
+    .page-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: rgba(79,110,247,0.3); }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stat-value.positive { color: var(--green); }
+    .stat-value.negative { color: var(--red); }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Two-column layout */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Tier badge */
+    .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tier-flexible { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(79,110,247,0.3); }
+    .tier-locked   { background: rgba(251,191,36,0.1); color: var(--gold); border: 1px solid rgba(251,191,36,0.3); }
+
+    /* Deposit address */
+    .address-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .address-text {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-all;
+      flex: 1;
+    }
+
+    .btn-copy {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      white-space: nowrap;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .btn-copy:hover { color: var(--green); border-color: var(--green); }
+    .btn-copy.copied { color: var(--green); border-color: var(--green); }
+
+    .token-pills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .token-pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: none;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #3d5ce6; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-outline:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+    .btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-gold {
+      background: rgba(251,191,36,0.15);
+      border: 1px solid rgba(251,191,36,0.35);
+      color: var(--gold);
+    }
+
+    .btn-gold:hover { background: rgba(251,191,36,0.22); }
+
+    /* Transaction table */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-confirmed, .status-sent    { background: var(--green-dim); color: var(--green); }
+    .status-pending                    { background: rgba(251,191,36,0.12); color: var(--gold); }
+    .status-rejected                   { background: rgba(248,113,113,0.12); color: var(--red); }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(16px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--surface3);
+      color: var(--text);
+    }
+
+    /* Form elements */
+    .form-group { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-input:focus { border-color: var(--blue); }
+
+    .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .tier-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .tier-option {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tier-option:hover { border-color: rgba(79,110,247,0.4); }
+    .tier-option.selected { border-color: var(--blue); background: var(--blue-dim); }
+    .tier-option.selected.gold-tier { border-color: var(--gold); background: rgba(251,191,36,0.1); }
+
+    .tier-option-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .tier-option-rate {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .tier-option.selected .tier-option-rate { color: var(--blue); }
+    .tier-option.selected.gold-tier .tier-option-rate { color: var(--gold); }
+
+    /* Address display in modal */
+    .deposit-address-display {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .deposit-address-display .addr {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      word-break: break-all;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .info-box {
+      background: var(--blue-dim);
+      border: 1px solid rgba(79,110,247,0.2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #93c5fd;
+      margin-bottom: 16px;
+    }
+
+    .lock-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .lock-option {
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lock-option:hover { border-color: rgba(251,191,36,0.4); }
+    .lock-option.selected { border-color: var(--gold); background: rgba(251,191,36,0.1); }
+
+    .lock-option-months { font-size: 16px; font-weight: 700; }
+    .lock-option-rate   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .lock-option.selected .lock-option-rate { color: var(--gold); }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .alert.visible { display: block; }
+    .alert-error   { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: var(--green-dim); border: 1px solid rgba(74,222,128,0.25); color: var(--green); }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .grid-2    { grid-template-columns: 1fr; }
+      .navbar    { padding: 0 16px; }
+      .main      { padding: 24px 16px; }
+      .nav-link  { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-row   { grid-template-columns: 1fr; }
+      .stat-value  { font-size: 20px; }
+      .tier-options { grid-template-columns: 1fr; }
+      .lock-options { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">M</div>
+      <span class="nav-logo-text">DeFiMongo</span>
+    </a>
+    <div class="nav-right">
+      <a href="/" class="nav-link">AAT Terminal</a>
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar"></div>
+        <span class="user-name" id="userName">Loading...</span>
+      </div>
+      <button class="btn-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <div class="main">
+    <h1 class="page-title">My Portfolio</h1>
+    <p class="page-subtitle" id="pageSubtitle">Loading your investment data...</p>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Deposited</div>
+        <div class="stat-value" id="statDeposited">—</div>
+        <div class="stat-sub">USDT equivalent</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Current Balance</div>
+        <div class="stat-value positive" id="statBalance">—</div>
+        <div class="stat-sub">Including gains</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Gain</div>
+        <div class="stat-value" id="statGainUsd">—</div>
+        <div class="stat-sub" id="statGainPct">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Monthly Gain</div>
+        <div class="stat-value" id="statMonthlyGain">—</div>
+        <div class="stat-sub" id="statMonthlyLabel">—</div>
+      </div>
+    </div>
+
+    <!-- Tier + Deposit address -->
+    <div class="grid-2">
+
+      <!-- Tier card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Tier &amp; Lock</span>
+          <span id="tierBadge" class="tier-badge tier-flexible">Flexible</span>
+        </div>
+        <div style="margin-bottom:12px; font-size:14px; color:var(--muted); line-height:1.6;" id="tierDesc">
+          Loading tier info...
+        </div>
+        <button class="btn btn-gold" id="btnUpgradeTier" onclick="openDepositModal('locked')" style="display:none">
+          Upgrade to Locked
+        </button>
+      </div>
+
+      <!-- Deposit address card -->
+      <div class="card">
+        <div class="card-title">Your Deposit Address (Arbitrum)</div>
+        <div class="address-box">
+          <span class="address-text" id="depositAddr">Loading...</span>
+          <button class="btn-copy" id="btnCopyAddr" onclick="copyAddress()">Copy</button>
+        </div>
+        <div class="token-pills">
+          <span class="token-pill">ETH</span>
+          <span class="token-pill">USDC</span>
+          <span class="token-pill">USDT</span>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="openDepositModal('flexible')">Fund Account</button>
+          <button class="btn btn-outline" id="btnWithdraw" onclick="openWithdrawModal()">Request Withdrawal</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Transaction history -->
+    <div class="card">
+      <div class="card-title">
+        <span>Transaction History</span>
+        <button class="btn btn-outline" style="padding:6px 14px; font-size:13px;" onclick="loadHistory()">Refresh</button>
+      </div>
+      <div class="table-wrap" id="historyWrap">
+        <div class="empty-state">Loading transactions...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Deposit Modal ─────────────────────────────────── -->
+  <div class="modal-overlay" id="depositModal">
+    <div class="modal">
+      <div class="modal-title">
+        Fund Account
+        <button class="modal-close" onclick="closeModal('depositModal')">&#x2715;</button>
+      </div>
+
+      <div class="alert alert-error"   id="depositError"></div>
+      <div class="alert alert-success" id="depositSuccess"></div>
+
+      <!-- Tier selection tabs -->
+      <div class="tabs">
+        <button class="tab-btn" id="tabFlex"   onclick="selectTierTab('flexible')">Flexible</button>
+        <button class="tab-btn" id="tabLocked" onclick="selectTierTab('locked')">Locked</button>
+      </div>
+
+      <div id="flexibleInfo" class="info-box">
+        <strong>Flexible</strong> — 9%/month cap. Withdraw anytime.
+      </div>
+
+      <div id="lockedSection" style="display:none; margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--muted); margin-bottom:10px;">Choose lock period:</div>
+        <div class="lock-options">
+          <div class="lock-option" id="lock3"  onclick="selectLock(3)">
+            <div class="lock-option-months">3 mo</div>
+            <div class="lock-option-rate">10%/mo cap</div>
+          </div>
+          <div class="lock-option" id="lock6"  onclick="selectLock(6)">
+            <div class="lock-option-months">6 mo</div>
+            <div class="lock-option-rate">14%/mo cap</div>
+          </div>
+          <div class="lock-option" id="lock12" onclick="selectLock(12)">
+            <div class="lock-option-months">12 mo</div>
+            <div class="lock-option-rate">18%/mo cap</div>
+          </div>
+        </div>
+        <div class="info-box" style="margin-bottom:0;">
+          Locked funds earn a higher monthly cap. Withdrawals are disabled until the lock period expires.
+        </div>
+      </div>
+
+      <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Your deposit address (Arbitrum):</div>
+      <div class="deposit-address-display">
+        <div class="addr" id="modalDepositAddr">Loading...</div>
+        <button class="btn-copy" onclick="copyAddress()">Copy address</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (USD)</label>
+        <input class="form-input" type="number" id="depositAmount" placeholder="e.g. 100" min="1" step="0.01" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Token</label>
+        <select class="form-select" id="depositToken">
+          <option value="USDC">USDC</option>
+          <option value="USDT">USDT</option>
+          <option value="ETH">ETH</option>
+        </select>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:16px;">
+        <button class="btn btn-primary" style="flex:1" onclick="depositMetaMask()">
+          Connect MetaMask &amp; Deposit
+        </button>
+      </div>
+
+      <div style="text-align:center; font-size:12px; color:var(--muted); margin-bottom:16px;">— or —</div>
+
+      <div class="form-group">
+        <label class="form-label">Transaction hash (manual)</label>
+        <input class="form-input" type="text" id="depositTxHash" placeholder="0x..." />
+      </div>
+
+      <button class="btn btn-outline" style="width:100%;" onclick="confirmManualDeposit()">
+        I've sent manually (confirm with tx hash)
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Withdraw Modal ────────────────────────────────── -->
+  <div class="modal-overlay" id="withdrawModal">
+    <div class="modal">
+      <div class="modal-title">
+        Request Withdrawal
+        <button class="modal-close" onclick="closeModal('withdrawModal')">&#x2715;</button>
+      </div>
+
+      <div class="alert alert-error"   id="withdrawError"></div>
+      <div class="alert alert-success" id="withdrawSuccess"></div>
+
+      <div class="info-box" id="withdrawInfo" style="margin-bottom:20px;">
+        Available balance: <strong id="withdrawAvail">—</strong>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (USD)</label>
+        <input class="form-input" type="number" id="withdrawAmount" placeholder="e.g. 100" min="1" step="0.01" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Destination address (Arbitrum)</label>
+        <input class="form-input" type="text" id="withdrawAddress" placeholder="0x..." />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;" onclick="submitWithdrawal()">
+        Submit Withdrawal Request
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ── State ─────────────────────────────────────────────────
+    const token = localStorage.getItem('dm_token');
+    let   user  = null;
+    let   balance = null;
+    let   selectedDepositTier    = 'flexible';
+    let   selectedLockMonths     = 3;
+
+    // Guard: redirect if not logged in
+    if (!token) window.location.href = '/auth';
+
+    // ── API helper ────────────────────────────────────────────
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...(opts.headers || {}),
+        },
+      });
+      return res.json();
+    }
+
+    // ── Format helpers ────────────────────────────────────────
+    function fmt(n) {
+      if (n === null || n === undefined || isNaN(n)) return '—';
+      return '$' + parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtPct(n) {
+      if (n === null || n === undefined || isNaN(n)) return '—';
+      const v = parseFloat(n);
+      return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+    }
+
+    // ── Load portfolio data ───────────────────────────────────
+    async function loadPortfolio() {
+      try {
+        const data = await api('/api/auth/me');
+        if (data.error) { signOut(); return; }
+
+        user    = data.user;
+        balance = data.balance;
+
+        // Navbar
+        const nameEl   = document.getElementById('userName');
+        const avatarEl = document.getElementById('userAvatar');
+        nameEl.textContent = user.name || 'User';
+        if (user.avatar) {
+          avatarEl.innerHTML = `<img src="${user.avatar}" alt="" />`;
+        } else {
+          avatarEl.textContent = (user.name || 'U')[0].toUpperCase();
+        }
+
+        document.getElementById('pageSubtitle').textContent =
+          `Welcome back, ${user.name.split(' ')[0]}`;
+
+        // Stats
+        const dep  = balance.deposited_usd       || 0;
+        const bal  = balance.visible_balance_usd  || 0;
+        const gain = balance.total_gain_usd       || 0;
+        const monthly = balance.monthly_gain_usd  || 0;
+        const gainPct = dep > 0 ? ((gain / dep) * 100) : 0;
+
+        document.getElementById('statDeposited').textContent  = fmt(dep);
+        document.getElementById('statBalance').textContent    = fmt(bal);
+
+        const gainUsdEl = document.getElementById('statGainUsd');
+        gainUsdEl.textContent  = fmt(gain);
+        gainUsdEl.className    = `stat-value ${gain >= 0 ? 'positive' : 'negative'}`;
+
+        document.getElementById('statGainPct').textContent    = fmtPct(gainPct);
+        document.getElementById('statMonthlyGain').textContent = fmt(monthly);
+        document.getElementById('statMonthlyLabel').textContent = 'This month';
+
+        // Tier
+        renderTierInfo(user);
+
+        // Deposit address
+        const addrEls = [
+          document.getElementById('depositAddr'),
+          document.getElementById('modalDepositAddr'),
+        ];
+        const addr = user.deposit_address || 'Not assigned yet';
+        addrEls.forEach(el => { if (el) el.textContent = addr; });
+
+        // Withdraw button
+        const btnW = document.getElementById('btnWithdraw');
+        if (user.tier === 'locked' && user.lock_until) {
+          const lockDate = new Date(user.lock_until);
+          if (lockDate > new Date()) {
+            btnW.disabled = true;
+            btnW.title = `Locked until ${lockDate.toLocaleDateString()}`;
+          }
+        }
+
+      } catch (e) {
+        console.error('loadPortfolio error:', e);
+      }
+    }
+
+    function renderTierInfo(u) {
+      const badge  = document.getElementById('tierBadge');
+      const desc   = document.getElementById('tierDesc');
+      const btnUpg = document.getElementById('btnUpgradeTier');
+
+      const isLocked = u.tier === 'locked' && u.lock_until && new Date(u.lock_until) > new Date();
+
+      if (isLocked) {
+        badge.textContent  = 'Locked';
+        badge.className    = 'tier-badge tier-locked';
+        const until = new Date(u.lock_until).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+        desc.innerHTML = `
+          <strong>${u.tier_pct}%/month</strong> gain cap<br>
+          Locked for <strong>${u.lock_months} months</strong><br>
+          Unlocks: <strong>${until}</strong>
+        `;
+        btnUpg.style.display = 'none';
+      } else {
+        badge.textContent  = 'Flexible';
+        badge.className    = 'tier-badge tier-flexible';
+        desc.innerHTML = `
+          <strong>9%/month</strong> gain cap<br>
+          Withdraw anytime<br>
+          <em style="color:var(--muted)">Upgrade to locked for higher cap rates</em>
+        `;
+        btnUpg.style.display = 'inline-flex';
+      }
+    }
+
+    // ── Transaction history ───────────────────────────────────
+    async function loadHistory() {
+      const wrap = document.getElementById('historyWrap');
+      wrap.innerHTML = '<div class="empty-state">Loading...</div>';
+
+      try {
+        const data = await api('/api/portfolio/history');
+        const deps = data.deposits    || [];
+        const wths = data.withdrawals || [];
+
+        // Combine and sort by date desc
+        const rows = [
+          ...deps.map(d => ({ ...d, _type: 'deposit',    _date: d.deposited_at  })),
+          ...wths.map(w => ({ ...w, _type: 'withdrawal', _date: w.requested_at })),
+        ].sort((a, b) => new Date(b._date) - new Date(a._date));
+
+        if (rows.length === 0) {
+          wrap.innerHTML = '<div class="empty-state">No transactions yet. Fund your account to get started.</div>';
+          return;
+        }
+
+        wrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Token / Address</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td style="text-transform:capitalize; font-weight:500;">${r._type}</td>
+                  <td style="font-weight:600;">${fmt(r.amount_usd)}</td>
+                  <td style="font-family:monospace; font-size:12px; color:var(--muted);">
+                    ${r._type === 'deposit' ? (r.token || 'USDC') : truncAddr(r.to_address || '')}
+                  </td>
+                  <td>
+                    <span class="status-badge status-${(r.status||'').replace('_','-')}">
+                      ${r.status || 'pending'}
+                    </span>
+                  </td>
+                  <td style="color:var(--muted); font-size:13px;">
+                    ${formatDate(r._date)}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        wrap.innerHTML = `<div class="empty-state" style="color:var(--red);">Failed to load: ${e.message}</div>`;
+      }
+    }
+
+    function truncAddr(addr) {
+      if (!addr || addr.length < 12) return addr;
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
+    }
+
+    function formatDate(str) {
+      if (!str) return '—';
+      const d = new Date(str);
+      return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    }
+
+    // ── Deposit modal ─────────────────────────────────────────
+    function openDepositModal(defaultTier = 'flexible') {
+      selectedDepositTier = defaultTier;
+      selectedLockMonths  = 3;
+      selectTierTab(defaultTier);
+      document.getElementById('depositError').classList.remove('visible');
+      document.getElementById('depositSuccess').classList.remove('visible');
+      document.getElementById('depositAmount').value  = '';
+      document.getElementById('depositTxHash').value  = '';
+      openModal('depositModal');
+    }
+
+    function selectTierTab(tier) {
+      selectedDepositTier = tier;
+      document.getElementById('tabFlex').classList.toggle('active', tier === 'flexible');
+      document.getElementById('tabLocked').classList.toggle('active', tier === 'locked');
+      document.getElementById('flexibleInfo').style.display    = tier === 'flexible' ? 'block' : 'none';
+      document.getElementById('lockedSection').style.display   = tier === 'locked'   ? 'block' : 'none';
+
+      // Highlight first lock option
+      if (tier === 'locked') selectLock(selectedLockMonths || 3);
+    }
+
+    function selectLock(months) {
+      selectedLockMonths = months;
+      [3, 6, 12].forEach(m => {
+        const el = document.getElementById(`lock${m}`);
+        el.classList.toggle('selected', m === months);
+      });
+    }
+
+    // Deposit via MetaMask
+    async function depositMetaMask() {
+      if (!window.ethereum) {
+        showDepositError('MetaMask is not installed');
+        return;
+      }
+
+      const amount = parseFloat(document.getElementById('depositAmount').value);
+      const token_sel = document.getElementById('depositToken').value;
+
+      if (!amount || amount < 1) {
+        showDepositError('Enter a valid amount (min $1)');
+        return;
+      }
+
+      try {
+        // Request accounts
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const from = accounts[0];
+
+        // Switch to Arbitrum One (chainId 0xa4b1 = 42161)
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xa4b1' }],
+          });
+        } catch (switchErr) {
+          if (switchErr.code === 4902) {
+            // Add Arbitrum network
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId:          '0xa4b1',
+                chainName:        'Arbitrum One',
+                nativeCurrency:   { name: 'Ether', symbol: 'ETH', decimals: 18 },
+                rpcUrls:          ['https://arb1.arbitrum.io/rpc'],
+                blockExplorerUrls:['https://arbiscan.io'],
+              }],
+            });
+          } else throw switchErr;
+        }
+
+        const toAddress = user?.deposit_address;
+        if (!toAddress) {
+          showDepositError('Deposit address not assigned yet');
+          return;
+        }
+
+        let txHash;
+
+        if (token_sel === 'ETH') {
+          // Send ETH
+          // Estimate $1 = ~0.0004 ETH at $2500 — use actual amount/ethPrice
+          // For ETH, user enters USD amount; we need to know ETH price
+          // Just send a raw ETH transfer — amount in wei
+          // For simplicity, get current ETH price from our API
+          const priceRes  = await fetch('/api/spatial/price?coin=ETH');
+          const priceData = await priceRes.json();
+          const ethPrice  = priceData.price || 2500;
+          const ethAmt    = amount / ethPrice;
+          const weiAmt    = BigInt(Math.floor(ethAmt * 1e18));
+
+          txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from,
+              to:    toAddress,
+              value: '0x' + weiAmt.toString(16),
+            }],
+          });
+        } else {
+          // ERC-20 transfer (USDC or USDT, both 6 decimals on Arbitrum)
+          const contractAddr = token_sel === 'USDC'
+            ? '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
+            : '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9';
+
+          const decimals  = 6;
+          const rawAmount = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+
+          // ERC-20 transfer function selector + args
+          const to32  = toAddress.slice(2).padStart(64, '0');
+          const amt32 = rawAmount.toString(16).padStart(64, '0');
+          const data  = '0xa9059cbb' + to32 + amt32;
+
+          txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from,
+              to:   contractAddr,
+              data,
+            }],
+          });
+        }
+
+        // Record deposit
+        await confirmDepositWithHash(txHash, amount, token_sel);
+
+      } catch (e) {
+        if (e.code === 4001) {
+          showDepositError('Transaction was cancelled.');
+        } else {
+          showDepositError('MetaMask error: ' + (e.message || String(e)));
+        }
+      }
+    }
+
+    async function confirmManualDeposit() {
+      const amount  = parseFloat(document.getElementById('depositAmount').value);
+      const txHash  = document.getElementById('depositTxHash').value.trim();
+      const tok     = document.getElementById('depositToken').value;
+
+      if (!amount || amount < 1) { showDepositError('Enter a valid amount'); return; }
+
+      await confirmDepositWithHash(txHash || null, amount, tok);
+    }
+
+    async function confirmDepositWithHash(txHash, amount, tok) {
+      const payload = {
+        amount_usd:  amount,
+        token:       tok,
+        tx_hash:     txHash || undefined,
+        tier:        selectedDepositTier,
+        lock_months: selectedDepositTier === 'locked' ? selectedLockMonths : undefined,
+      };
+
+      try {
+        const data = await api('/api/portfolio/deposit', {
+          method: 'POST',
+          body:   JSON.stringify(payload),
+        });
+
+        if (data.error) { showDepositError(data.error); return; }
+
+        showDepositSuccess('Deposit confirmed! Balance updated.');
+        await loadPortfolio();
+        await loadHistory();
+        setTimeout(() => closeModal('depositModal'), 2000);
+      } catch (e) {
+        showDepositError('Request failed: ' + e.message);
+      }
+    }
+
+    function showDepositError(msg) {
+      const el = document.getElementById('depositError');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function showDepositSuccess(msg) {
+      const el = document.getElementById('depositSuccess');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    // ── Withdraw modal ────────────────────────────────────────
+    function openWithdrawModal() {
+      document.getElementById('withdrawError').classList.remove('visible');
+      document.getElementById('withdrawSuccess').classList.remove('visible');
+      document.getElementById('withdrawAmount').value  = '';
+      document.getElementById('withdrawAddress').value = '';
+
+      const avail = balance ? balance.visible_balance_usd : 0;
+      document.getElementById('withdrawAvail').textContent = fmt(avail);
+
+      openModal('withdrawModal');
+    }
+
+    async function submitWithdrawal() {
+      const amount  = parseFloat(document.getElementById('withdrawAmount').value);
+      const address = document.getElementById('withdrawAddress').value.trim();
+
+      if (!amount || amount < 1) {
+        showWithdrawError('Enter a valid amount'); return;
+      }
+      if (!address || !address.startsWith('0x')) {
+        showWithdrawError('Enter a valid destination address'); return;
+      }
+
+      try {
+        const data = await api('/api/portfolio/withdraw', {
+          method: 'POST',
+          body:   JSON.stringify({ amount_usd: amount, to_address: address }),
+        });
+
+        if (data.error) { showWithdrawError(data.error); return; }
+
+        document.getElementById('withdrawSuccess').textContent = data.message || 'Withdrawal requested!';
+        document.getElementById('withdrawSuccess').classList.add('visible');
+
+        await loadPortfolio();
+        await loadHistory();
+        setTimeout(() => closeModal('withdrawModal'), 2500);
+      } catch (e) {
+        showWithdrawError('Request failed: ' + e.message);
+      }
+    }
+
+    function showWithdrawError(msg) {
+      const el = document.getElementById('withdrawError');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    // ── Copy address ──────────────────────────────────────────
+    function copyAddress() {
+      const addr = user?.deposit_address;
+      if (!addr) return;
+      navigator.clipboard.writeText(addr).then(() => {
+        const btns = [document.getElementById('btnCopyAddr')];
+        btns.forEach(b => { if (b) { b.textContent = 'Copied!'; b.classList.add('copied'); } });
+        setTimeout(() => btns.forEach(b => { if (b) { b.textContent = 'Copy'; b.classList.remove('copied'); } }), 2000);
+      });
+    }
+
+    // ── Modal helpers ─────────────────────────────────────────
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    // Close on backdrop click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+    });
+
+    // ── Sign out ──────────────────────────────────────────────
+    function signOut() {
+      localStorage.removeItem('dm_token');
+      localStorage.removeItem('dm_user');
+      window.location.href = '/auth';
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    (async () => {
+      await loadPortfolio();
+      await loadHistory();
+    })();
+  </script>
+</body>
+</html>

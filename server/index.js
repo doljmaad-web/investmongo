@@ -7,6 +7,9 @@ import { fileURLToPath } from 'url';
 import cron              from 'node-cron';
 
 import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, setTradingAssetPct, removeTradingAsset, getTrendBias, setTrendBias } from './bot.js';
+import userRoutes  from './user-routes.js';
+import adminRoutes from './admin-routes.js';
+import { scanAllDeposits, syncUserGains } from './wallet-manager.js';
 
 process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] Unhandled rejection:', reason?.message || reason);
@@ -38,6 +41,8 @@ const wss       = new WebSocketServer({ server });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dashboard')));
+app.use(userRoutes);
+app.use(adminRoutes);
 
 // ============================================================
 // WEBSOCKET — broadcast to all connected dashboard clients
@@ -450,6 +455,11 @@ app.get('/api/x-feed', async (req, res) => {
   }
 });
 
+// Portfolio, admin and auth pages
+app.get('/portfolio', (req, res) => res.sendFile(path.join(__dirname, '../dashboard/portfolio.html')));
+app.get('/admin',     (req, res) => res.sendFile(path.join(__dirname, '../dashboard/admin.html')));
+app.get('/auth',      (req, res) => res.sendFile(path.join(__dirname, '../dashboard/auth.html')));
+
 // Serve dashboard for all other routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../dashboard/index.html'));
@@ -458,6 +468,12 @@ app.get('/', (req, res) => {
 // ============================================================
 // CRON JOBS
 // ============================================================
+
+// Scan deposits every 2 minutes
+cron.schedule('*/2 * * * *', () => scanAllDeposits().catch(console.error));
+
+// Sync user gains daily at 00:05
+cron.schedule('5 0 * * *', () => syncUserGains().catch(console.error));
 
 // Track B: Run indicator every minute (Precision v11 — 1m signals)
 cron.schedule('* * * * *', async () => {
