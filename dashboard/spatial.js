@@ -25,7 +25,7 @@
 
   let activeCoin     = 'BTC';
   let activeYear     = new Date().getFullYear();
-  let activeInterval = '3m';
+  let activeInterval = '30m';
   let tradingMap     = new Map(); // asset → deploy_pct  (only active assets)
   let capitalInfo    = { totalValue: 10000, available: 10000, deployed: 0 };
   let tradePopup     = null;     // null | { coin, selectedPct }
@@ -179,6 +179,8 @@
         url = `/api/spatial/candles?coin=${ticker}&interval=3m&bars=400`;
       } else if (activeInterval === '5m') {
         url = `/api/spatial/candles?coin=${ticker}&interval=5m&bars=400`;
+      } else if (activeInterval === '30m') {
+        url = `/api/spatial/candles?coin=${ticker}&interval=30m&bars=400`;
       } else if (activeInterval === '1h') {
         url = `/api/spatial/candles?coin=${ticker}&interval=1h&bars=400`;
       } else if (activeInterval === '4h') {
@@ -317,9 +319,14 @@
   }
 
   function runIndicatorScan() {
-    const rsiLen = 14, lookback = 10;
-    const rsiObMin=40, rsiObMax=85, rsiOsMin=18, rsiOsMax=60;
-    const minBars = rsiLen + lookback + 1;
+    // v11 parameters — must match indicator.js exactly
+    const rsiLen   = 14;
+    const rsiMemory = 20;  // RSI 50-level memory: 20 bars
+    const rsiObMin = 55, rsiObMax = 85;
+    const rsiOsMin = 18, rsiOsMax = 45;
+    const volMult  = 1.3; // volume spike threshold
+
+    const minBars = rsiLen + rsiMemory + 2;
     if (candles.length < minBars + 1) { precisionDots = []; return; }
 
     const closes = candles.map(c => c.close);
@@ -331,25 +338,34 @@
       const rsiPrev = rsiArr[i - 1];
       if (rsiNow === null || rsiPrev === null) continue;
 
-      // 50-level memory window: max/min RSI over last 10 bars including current
-      let rsiHigh10 = -Infinity, rsiLow10 = Infinity;
-      for (let k = i - lookback + 1; k <= i; k++) {
+      // RSI 50-level memory: max/min over last rsiMemory bars
+      let rsiHi = -Infinity, rsiLo = Infinity;
+      for (let k = i - rsiMemory + 1; k <= i; k++) {
         if (rsiArr[k] !== null) {
-          if (rsiArr[k] > rsiHigh10) rsiHigh10 = rsiArr[k];
-          if (rsiArr[k] < rsiLow10 ) rsiLow10  = rsiArr[k];
+          if (rsiArr[k] > rsiHi) rsiHi = rsiArr[k];
+          if (rsiArr[k] < rsiLo) rsiLo = rsiArr[k];
         }
       }
 
       const hookUp  = rsiNow > rsiPrev;
       const hookDown= rsiNow < rsiPrev;
-      const osZone  = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHigh10 < 50;
-      const obZone  = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLow10  > 50;
+      const osZone  = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHi < 50;
+      const obZone  = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLo > 50;
+
+      // Volume spike filter: current volume > volMult × 20-bar average
+      const volStart = Math.max(0, i - 20);
+      let volSum = 0, volCount = 0;
+      for (let v = volStart; v < i; v++) {
+        if (candles[v].volume) { volSum += candles[v].volume; volCount++; }
+      }
+      const avgVol   = volCount > 0 ? volSum / volCount : 0;
+      const volumeOk = !avgVol || (candles[i].volume || 0) >= avgVol * volMult;
 
       const { isDoji, isBullishEngulfing, isBearishEngulfing } = _getPatterns(candles.slice(i - 1, i + 1));
 
-      if (osZone && (isDoji || isBullishEngulfing) && hookUp) {
+      if (osZone && hookUp && volumeOk && (isDoji || isBullishEngulfing)) {
         dots.push({ index: i, type: 'yellow', price: candles[i].close, rsi: rsiNow });
-      } else if (obZone && (isDoji || isBearishEngulfing) && hookDown) {
+      } else if (obZone && hookDown && volumeOk && (isDoji || isBearishEngulfing)) {
         dots.push({ index: i, type: 'pink',   price: candles[i].close, rsi: rsiNow });
       }
     }
@@ -675,7 +691,7 @@
     const e = Math.min(candles.length,Math.ceil(viewEnd));
     ctx.fillStyle=rgba(C.white,.72); ctx.font='bold 10px Inter,"JetBrains Mono",monospace'; ctx.textAlign='center';
     const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const isIntraday = activeInterval === '1m' || activeInterval === '3m' || activeInterval === '5m' || activeInterval === '1h' || activeInterval === '4h';
+    const isIntraday = activeInterval === '1m' || activeInterval === '3m' || activeInterval === '5m' || activeInterval === '30m' || activeInterval === '1h' || activeInterval === '4h';
     if (isIntraday) {
       // Show HH:MM labels, avoid overlap by spacing
       const step = Math.max(1, Math.floor(span / 8));
@@ -1046,7 +1062,7 @@
     ctx.beginPath(); ctx.moveTo(0, PAD.top); ctx.lineTo(W, PAD.top); ctx.stroke();
 
     // ── Interval buttons (left) ──
-    const btnLabels = ['1m','3m','5m','1h','4h','1D','1W'];
+    const btnLabels = ['1m','3m','5m','30m','1h','4h','1D','1W'];
     const btnW=32, btnH=20, btnGap=4;
     let bx = PAD.left + 4;
     btnLabels.forEach(lbl => {

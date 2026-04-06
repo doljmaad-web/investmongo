@@ -1,14 +1,17 @@
 // ============================================================
-// PRECISION v9 INDICATOR — JavaScript port
-// Matches Pine Script "Precision Dynamic Historical v9" exactly
+// PRECISION v11 INDICATOR — JavaScript port
+// Matches Pine Script "Precision Dynamic Historical v11" exactly
 //
 // Signal logic:
-//   • yellow_dot (BUY):  RSI 18–60 (OS zone) + highest(RSI,10) < 50
+//   • yellow_dot (BUY):  RSI 18–45 (OS zone) + highest(RSI,20) < 50
 //                        + doji OR bullish engulfing + RSI hooking up
-//   • pink_dot (SELL):   RSI 40–85 (OB zone) + lowest(RSI,10) > 50
+//                        + volume > 1.3× 20-bar average
+//   • pink_dot (SELL):   RSI 55–85 (OB zone) + lowest(RSI,20) > 50
 //                        + doji OR bearish engulfing + RSI hooking down
+//                        + volume > 1.3× 20-bar average
 //
-// No MTF, no volume, no wick, no proximity filters (v9 is pure)
+// RSI 50-level memory: 20 bars  |  Volume filter: 1.3× active
+// No MTF, no wick, no proximity filters
 // SMA50/200 computed for trend context and chart ribbon only
 // ============================================================
 
@@ -102,37 +105,42 @@ export function getPatterns(candles) {
 
 // ============================================================
 // MAIN: detectSignals
-// Scans last `lookback` candles for yellow/pink dot conditions
-// matching Pine Script v9 exactly — no filters, no MTF
+// Scans last `scanWindow` candles for yellow/pink dot conditions
+// matching Pine Script v11 exactly.
 //
 // cfg options:
 //   rsiLen     — RSI period (default 14)
-//   rsiObMin/Max — OB zone bounds (default 40–85)
-//   rsiOsMin/Max — OS zone bounds (default 18–60)
+//   rsiObMin/Max — OB zone bounds (default 55–85)
+//   rsiOsMin/Max — OS zone bounds (default 18–45)
 //   sma50Len   — SMA short period (default 50)
 //   sma200Len  — SMA long period (default 200)
-//   lookback   — RSI 50-level memory + scan window (default 10)
+//   rsiMemory  — RSI 50-level memory window in bars (default 20)
+//   scanWindow — how many bars back to look for a fresh signal (default 3)
+//   volMult    — volume spike multiplier (default 1.3)
 // ============================================================
 export function detectSignals(candles, cfg = {}) {
   const {
-    rsiLen    = 14,
-    rsiObMin  = 40,
-    rsiObMax  = 85,
-    rsiOsMin  = 18,
-    rsiOsMax  = 60,
-    sma50Len  = 50,
-    sma200Len = 200,
-    lookback  = 10,
-    trendBias = 'neutral',  // 'neutral' | 'long' | 'short'
+    rsiLen     = 14,
+    rsiObMin   = 55,
+    rsiObMax   = 85,
+    rsiOsMin   = 18,
+    rsiOsMax   = 45,
+    sma50Len   = 50,
+    sma200Len  = 200,
+    rsiMemory  = 20,   // bars for highest/lowest RSI 50-level check
+    scanWindow = 3,    // bars back to look for a fresh signal
+    volMult    = 1.3,  // volume spike threshold
+    trendBias  = 'neutral',
   } = cfg;
 
   // Aggressive mode overrides — loosen the favoured direction's conditions
-  const effOsMax = trendBias === 'long'  ? 65 : rsiOsMax;   // Long mode: wider OS zone (18-65)
-  const effObMin = trendBias === 'short' ? 36 : rsiObMin;   // Short mode: wider OB zone (36-85)
-  const hiRsiCap = trendBias === 'long'  ? 52 : 50;         // Long mode: allow brief RSI touch of 50
-  const loRsiFlr = trendBias === 'short' ? 48 : 50;         // Short mode: allow brief RSI touch of 50
+  const effOsMax = trendBias === 'long'  ? 55 : rsiOsMax;   // Long mode: wider OS zone (18-55)
+  const effObMin = trendBias === 'short' ? 45 : rsiObMin;   // Short mode: wider OB zone (45-85)
+  const hiRsiCap = trendBias === 'long'  ? 52 : 50;
+  const loRsiFlr = trendBias === 'short' ? 48 : 50;
 
-  if (candles.length < sma50Len + lookback) {
+  const minBars = sma50Len + rsiMemory + 2;
+  if (candles.length < minBars) {
     return { signal: null, reason: 'insufficient_candles' };
   }
 
@@ -141,52 +149,59 @@ export function detectSignals(candles, cfg = {}) {
   const sma200 = candles.length >= sma200Len ? calcSMA(closes, sma200Len) : null;
   const cur    = candles.at(-1);
 
-  // Scan last `lookback` candles for a dot signal
-  for (let i = 0; i < lookback; i++) {
+  // Scan last `scanWindow` candles for a dot signal (newest first)
+  for (let i = 0; i < scanWindow; i++) {
     const slice       = candles.slice(0, candles.length - i);
     const sliceCloses = slice.map(c => c.close);
 
-    if (sliceCloses.length < rsiLen + lookback + 2) continue;
+    if (sliceCloses.length < rsiLen + rsiMemory + 2) continue;
 
-    // Build RSI history for this slice
-    const rsiHist = calcRSIHistory(sliceCloses, rsiLen, lookback + 2);
-    if (rsiHist.length < lookback + 1) continue;
+    // Build RSI history — need rsiMemory + 2 values
+    const rsiHist = calcRSIHistory(sliceCloses, rsiLen, rsiMemory + 2);
+    if (rsiHist.length < rsiMemory + 1) continue;
 
     const rsiNow  = rsiHist.at(-1);
     const rsiPrev = rsiHist.at(-2);
+    if (rsiNow === null || rsiPrev === null) continue;
 
     const hookUp   = rsiNow > rsiPrev;
     const hookDown = rsiNow < rsiPrev;
 
-    // 50-level memory: highest/lowest RSI over lookback window
-    const last  = rsiHist.slice(-lookback);
-    const hiRsi = Math.max(...last);
-    const loRsi = Math.min(...last);
+    // 50-level memory: highest/lowest RSI over last rsiMemory bars
+    const memWindow = rsiHist.slice(-rsiMemory);
+    const hiRsi = Math.max(...memWindow);
+    const loRsi = Math.min(...memWindow);
 
-    // OS zone: RSI in range AND RSI 50-memory check (loosened in Long Trend mode)
+    // OS zone check
     const osZone = rsiNow >= rsiOsMin && rsiNow <= effOsMax && hiRsi < hiRsiCap;
-
-    // OB zone: RSI in range AND RSI 50-memory check (loosened in Short Trend mode)
+    // OB zone check
     const obZone = rsiNow >= effObMin && rsiNow <= rsiObMax && loRsi > loRsiFlr;
+
+    // Volume spike filter: current bar volume > volMult × 20-bar average
+    const candleBar = slice.at(-1);
+    const volWindow = slice.slice(-21, -1);
+    const avgVol    = volWindow.length > 0
+      ? volWindow.reduce((s, c) => s + (c.volume || 0), 0) / volWindow.length
+      : 0;
+    const volumeOk  = !avgVol || (candleBar.volume || 0) >= avgVol * volMult;
 
     // Patterns for this slice
     const { isDoji, isBullishEngulfing, isBearishEngulfing } = getPatterns(slice);
 
-    // In directional modes, skip the non-favoured signal entirely
     const allowBuy  = trendBias !== 'short';
     const allowSell = trendBias !== 'long';
 
     // ── Yellow dot — BUY ─────────────────────────────────────
-    if (allowBuy && osZone && hookUp && (isDoji || isBullishEngulfing)) {
+    if (allowBuy && osZone && hookUp && volumeOk && (isDoji || isBullishEngulfing)) {
       const patternName = isBullishEngulfing ? 'bullish_engulfing' : 'doji';
-      console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} hiRSI=${hiRsi.toFixed(1)} pattern=${patternName}`);
+      console.log(`[INDICATOR] YELLOW DOT found ${i} candles ago — RSI=${rsiNow} hiRSI=${hiRsi.toFixed(1)} vol=${candleBar.volume?.toFixed(0)} avgVol=${avgVol?.toFixed(0)} pattern=${patternName}`);
       return {
         signal:   'BUY',
         type:     'yellow_dot',
         strength: 'normal',
         price:    cur.close,
-        low:      slice.at(-1).low,
-        high:     slice.at(-1).high,
+        low:      candleBar.low,
+        high:     candleBar.high,
         rsi:      rsiNow,
         sma50,
         sma200,
@@ -197,16 +212,16 @@ export function detectSignals(candles, cfg = {}) {
     }
 
     // ── Pink dot — SELL ──────────────────────────────────────
-    if (allowSell && obZone && hookDown && (isDoji || isBearishEngulfing)) {
+    if (allowSell && obZone && hookDown && volumeOk && (isDoji || isBearishEngulfing)) {
       const patternName = isBearishEngulfing ? 'bearish_engulfing' : 'doji';
-      console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} loRSI=${loRsi.toFixed(1)} pattern=${patternName}`);
+      console.log(`[INDICATOR] PINK DOT found ${i} candles ago — RSI=${rsiNow} loRSI=${loRsi.toFixed(1)} vol=${candleBar.volume?.toFixed(0)} avgVol=${avgVol?.toFixed(0)} pattern=${patternName}`);
       return {
         signal:   'SELL',
         type:     'pink_dot',
         strength: 'normal',
         price:    cur.close,
-        low:      slice.at(-1).low,
-        high:     slice.at(-1).high,
+        low:      candleBar.low,
+        high:     candleBar.high,
         rsi:      rsiNow,
         sma50,
         sma200,
@@ -218,6 +233,6 @@ export function detectSignals(candles, cfg = {}) {
   }
 
   const rsiNow = calcRSI(closes, rsiLen);
-  console.log(`[INDICATOR] No signal. RSI=${rsiNow} sma50=${sma50?.toFixed(0)}`);
+  console.log(`[INDICATOR] No signal. RSI=${rsiNow?.toFixed(1)} sma50=${sma50?.toFixed(0)}`);
   return { signal: null };
 }

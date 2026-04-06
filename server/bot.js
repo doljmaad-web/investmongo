@@ -26,9 +26,9 @@ import { db }                            from './database.js';
 // Dedup window:   30 min (one trade per direction per asset)
 // ============================================================
 
-const SIGNAL_WINDOW  = 2;               // act on signal within last 2 × 30m candles
+const SIGNAL_WINDOW  = 3;               // act on signal within last 3 × 30m candles (90 min)
 const SAFETY_SL_PCT  = 0.03;           // 3% safety stop-loss — last resort protection
-const DEDUP_MS       = 30 * 60 * 1000; // 30 min dedup — matches 30m candle cadence
+const DEDUP_MS       = 90 * 60 * 1000; // 90 min dedup — matches v11 3-bar cooldown (3 × 30m)
 
 // ── Admin trend bias ─────────────────────────────────────────
 // 'neutral' | 'long' | 'short' — set via dashboard admin buttons
