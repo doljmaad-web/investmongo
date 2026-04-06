@@ -58,7 +58,21 @@
     .nav-links { display: flex; gap: 2rem; list-style: none; }
     .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color .2s; }
     .nav-links a:hover { color: var(--text); }
-    .nav-ctas { display: flex; gap: 0.75rem; }
+    .nav-ctas { display: flex; align-items: center; gap: 0.75rem; }
+
+    /* LANGUAGE TOGGLE */
+    .lang-toggle {
+      display: flex; align-items: center; gap: 4px;
+      padding: 0.35rem 0.8rem; border-radius: 7px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      cursor: pointer; font-size: 0.8rem; font-weight: 700;
+      color: var(--muted); transition: all .2s;
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: .03em; user-select: none;
+    }
+    .lang-toggle:hover { border-color: var(--blue); color: var(--text); }
+    .lang-toggle .lt-active { color: var(--green); }
+    .lang-toggle .lt-sep { color: rgba(255,255,255,.2); margin: 0 2px; }
 
     /* BUTTONS */
     .btn {
@@ -129,7 +143,7 @@
     .hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
     .hero-deposit-note {
       font-size: 0.82rem; color: var(--muted);
-      display: flex; align-items: center; gap: 6px; margin-bottom: 3rem;
+      display: flex; align-items: center; gap: 6px; margin-bottom: 3rem; flex-wrap: wrap; justify-content: center;
     }
     .hero-deposit-note span { color: var(--text); font-weight: 500; }
     .hero-assets-row {
@@ -345,9 +359,7 @@
       overflow: hidden; display: flex; align-items: center; justify-content: center;
       position: relative;
     }
-    .asset-chart img {
-      width: 100%; height: 100%; object-fit: cover; display: block;
-    }
+    .asset-chart img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .asset-chart-placeholder {
       display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
       color: var(--muted); font-size: 0.75rem; text-align: center; padding: 1rem;
@@ -436,14 +448,19 @@
     <span class="logo-text">Defi<span>Mongo</span></span>
   </a>
   <ul class="nav-links">
-    <li><a href="#how-it-works">How It Works</a></li>
-    <li><a href="#strategies">Strategies</a></li>
-    <li><a href="#ai">AI Engine</a></li>
-    <li><a href="#assets">Assets</a></li>
+    <li><a href="#how-it-works" data-i18n="nav_how">How It Works</a></li>
+    <li><a href="#strategies" data-i18n="nav_strat">Strategies</a></li>
+    <li><a href="#ai" data-i18n="nav_ai">AI Engine</a></li>
+    <li><a href="#assets" data-i18n="nav_assets">Assets</a></li>
   </ul>
   <div class="nav-ctas">
-    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-ghost">Market Intelligence</a>
-    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary">AAT Terminal</a>
+    <button class="lang-toggle" onclick="toggleLang()" id="langBtn" title="Switch language">
+      <span class="lt-active" id="ltActive">EN</span>
+      <span class="lt-sep">|</span>
+      <span id="ltOther">МН</span>
+    </button>
+    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-ghost" data-i18n="nav_scanner">Market Intelligence</a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary" data-i18n="nav_aat">AAT Terminal</a>
   </div>
 </nav>
 
@@ -454,28 +471,28 @@
 
   <div class="hero-badge">
     <span class="badge-dot"></span>
-    Hyperliquid Agentic Trading — AI-Based Decisions — Live
+    <span data-i18n="hero_badge">Hyperliquid Agentic Trading — AI-Based Decisions — Live</span>
   </div>
 
-  <h1>
+  <h1 data-i18n-html="hero_h1">
     Maximize Returns &amp;<br />
     Lower Your <span class="accent-blue">Cost Basis</span><br />
     with <span class="accent-green">Automated Agentic Trading</span>
   </h1>
 
-  <p class="hero-sub">
+  <p class="hero-sub" data-i18n="hero_sub">
     Deposit your crypto assets and let DeFiMongo's Automated Agentic Trading engine grow them for you. Every decision is validated by Gemini AI — no emotion, no manual intervention, no missed entries.
   </p>
 
-  <p class="hero-tagline">Deposit &amp; Withdraw Anytime</p>
+  <p class="hero-tagline" data-i18n="hero_tagline">Deposit &amp; Withdraw Anytime</p>
 
   <div class="hero-ctas">
-    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary btn-xl">⚡ Start with AAT</a>
-    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-outline-green btn-xl">📡 Market Intelligence</a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary btn-xl" data-i18n="btn_aat">⚡ Start with AAT</a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-outline-green btn-xl" data-i18n="btn_scanner">📡 Market Intelligence</a>
   </div>
 
   <div class="hero-deposit-note">
-    Accepted deposits:&nbsp;
+    <span data-i18n="hero_accepted">Accepted deposits:</span>&nbsp;
     <span>USDT</span>&nbsp;·&nbsp;
     <span>BTC</span>&nbsp;·&nbsp;
     <span>ETH</span>&nbsp;·&nbsp;
@@ -484,7 +501,7 @@
   </div>
 
   <div class="hero-assets-row">
-    <strong>Trading on:</strong>
+    <strong data-i18n="hero_trading_on">Trading on:</strong>
     <span class="asset-chip">BTC</span>
     <span class="asset-chip">ETH</span>
     <span class="asset-chip">DOGE</span>
@@ -496,22 +513,22 @@
 <div class="deposit-strip fade-in">
   <div class="deposit-item">
     <span class="di-icon">💰</span>
-    <div><strong>Deposit Anytime</strong> <span>— USDT, BTC, ETH, USDC, SOL</span></div>
+    <div><strong data-i18n="strip_dep_title">Deposit Anytime</strong> <span data-i18n="strip_dep_sub">— USDT, BTC, ETH, USDC, SOL</span></div>
   </div>
   <div class="dep-divider"></div>
   <div class="deposit-item">
     <span class="di-icon">📤</span>
-    <div><strong>Withdraw Anytime</strong> <span>— No lock-up periods</span></div>
+    <div><strong data-i18n="strip_with_title">Withdraw Anytime</strong> <span data-i18n="strip_with_sub">— No lock-up periods</span></div>
   </div>
   <div class="dep-divider"></div>
   <div class="deposit-item">
     <span class="di-icon">🤖</span>
-    <div><strong>Fully Automated</strong> <span>— AI executes every trade</span></div>
+    <div><strong data-i18n="strip_auto_title">Fully Automated</strong> <span data-i18n="strip_auto_sub">— AI executes every trade</span></div>
   </div>
   <div class="dep-divider"></div>
   <div class="deposit-item">
     <span class="di-icon">🔗</span>
-    <div><strong>Hyperliquid Execution</strong> <span>— Institutional-grade infrastructure</span></div>
+    <div><strong data-i18n="strip_hl_title">Hyperliquid Execution</strong> <span data-i18n="strip_hl_sub">— Institutional-grade infrastructure</span></div>
   </div>
 </div>
 
@@ -519,65 +536,65 @@
 <div class="stats-bar fade-in">
   <div class="stat-item">
     <div class="stat-val">24/7</div>
-    <div class="stat-label">Autonomous Operation</div>
+    <div class="stat-label" data-i18n="stat_op">Autonomous Operation</div>
   </div>
   <div class="stat-item">
     <div class="stat-val">30m</div>
-    <div class="stat-label">Strategy Timeframe</div>
+    <div class="stat-label" data-i18n="stat_tf">Strategy Timeframe</div>
   </div>
   <div class="stat-item">
     <div class="stat-val">Gemini</div>
-    <div class="stat-label">AI Decision Engine</div>
+    <div class="stat-label" data-i18n="stat_ai">AI Decision Engine</div>
   </div>
   <div class="stat-item">
     <div class="stat-val">4</div>
-    <div class="stat-label">Active Markets</div>
+    <div class="stat-label" data-i18n="stat_mkt">Active Markets</div>
   </div>
   <div class="stat-item">
     <div class="stat-val">6:1</div>
-    <div class="stat-label">Risk/Reward Ratio</div>
+    <div class="stat-label" data-i18n="stat_rr">Risk/Reward Ratio</div>
   </div>
 </div>
 
 <!-- PLATFORM -->
 <section id="platform">
   <div class="center">
-    <div class="section-tag">Platform</div>
-    <h2>Two services. Built around your growth.</h2>
-    <p class="section-sub">DeFiMongo offers a fully automated asset growth service powered by Precision V9, alongside a dedicated market intelligence platform covering the full breadth of the crypto market.</p>
+    <div class="section-tag" data-i18n="plat_tag">Platform</div>
+    <h2 data-i18n="plat_h2">Two services. Built around your growth.</h2>
+    <p class="section-sub" data-i18n="plat_sub">DeFiMongo offers a fully automated asset growth service powered by Precision V9, alongside a dedicated market intelligence platform covering the full breadth of the crypto market.</p>
   </div>
 
   <div class="tools-grid fade-in">
     <div class="tool-card featured">
       <div class="tool-icon blue">⚡</div>
       <div>
-        <h3>Automated Agentic Trading</h3>
-        <div class="tool-sub">Core Service — AAT</div>
+        <h3 data-i18n="aat_h3">Automated Agentic Trading</h3>
+        <div class="tool-sub" data-i18n="aat_sub">Core Service — AAT</div>
       </div>
-      <p>Deposit your assets and our autonomous trading engine does the rest. The AAT system executes positions on Hyperliquid based on Precision V9 strategy signals, each pre-screened by Gemini AI for macro conditions, sentiment, and on-chain risk — before any capital is deployed.</p>
+      <p data-i18n="aat_p">Deposit your assets and our autonomous trading engine does the rest. The AAT system executes positions on Hyperliquid based on Precision V9 strategy signals, each pre-screened by Gemini AI for macro conditions, sentiment, and on-chain risk — before any capital is deployed.</p>
       <div class="tool-tags">
         <span class="chip">Hyperliquid</span>
         <span class="chip">Gemini AI</span>
-        <span class="chip">Smart Exits</span>
-        <span class="chip">Deposit &amp; Withdraw</span>
+        <span class="chip" data-i18n="chip_smart_exit">Smart Exits</span>
+        <span class="chip" data-i18n="chip_dep_with">Deposit &amp; Withdraw</span>
       </div>
-      <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary btn-lg">Open AAT Terminal →</a>
+      <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary btn-lg" data-i18n="btn_open_aat">Open AAT Terminal →</a>
     </div>
 
     <div class="tool-card">
       <div class="tool-icon green">📡</div>
       <div>
-        <h3>Crypto Scanner</h3>
-        <div class="tool-sub" style="color:var(--green)">Market Intelligence Platform</div>
+        <h3 data-i18n="scanner_h3">Crypto Scanner</h3>
+        <div class="tool-sub" style="color:var(--green)" data-i18n="scanner_sub">Market Intelligence Platform</div>
       </div>
-      <p>A fully dedicated market intelligence platform covering the entire crypto landscape. Access real-time price data, on-chain analytics, sentiment indicators, funding rates, whale tracking, and deep asset analysis across hundreds of markets — all in one place.</p>
+      <p data-i18n="scanner_p">A fully dedicated market intelligence platform covering the entire crypto landscape. Access real-time price data, on-chain analytics, sentiment indicators, funding rates, whale tracking, and deep asset analysis across hundreds of markets — all in one place.</p>
       <div class="tool-tags">
-        <span class="chip">Real-Time Data</span>
-        <span class="chip">On-Chain Analytics</span>
-        <span class="chip">Sentiment Tracking</span>
-        <span class="chip">Full Market Coverage</span>
+        <span class="chip" data-i18n="chip_realtime">Real-Time Data</span>
+        <span class="chip" data-i18n="chip_onchain">On-Chain Analytics</span>
+        <span class="chip" data-i18n="chip_sentiment">Sentiment Tracking</span>
+        <span class="chip" data-i18n="chip_coverage">Full Market Coverage</span>
       </div>
-      <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-outline-green btn-lg">Open Market Intelligence →</a>
+      <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-outline-green btn-lg" data-i18n="btn_open_scanner">Open Market Intelligence →</a>
     </div>
   </div>
 </section>
@@ -585,101 +602,101 @@
 <!-- HOW IT WORKS -->
 <section id="how-it-works" class="hiw fade-in">
   <div class="center">
-    <div class="section-tag">Process</div>
-    <h2>From deposit to compounding returns</h2>
-    <p class="section-sub">Four autonomous stages handle everything between depositing your assets and growing them — without any manual action on your part.</p>
+    <div class="section-tag" data-i18n="hiw_tag">Process</div>
+    <h2 data-i18n="hiw_h2">From deposit to compounding returns</h2>
+    <p class="section-sub" data-i18n="hiw_sub">Four autonomous stages handle everything between depositing your assets and growing them — without any manual action on your part.</p>
   </div>
 
   <div class="steps">
     <div class="step">
       <div class="step-num">01</div>
-      <h4>You Deposit</h4>
-      <p>Deposit USDT, BTC, ETH, USDC, or SOL. Your capital is allocated to the AAT engine. Withdraw at any time — no lock-up, no notice period required.</p>
+      <h4 data-i18n="step1_h">You Deposit</h4>
+      <p data-i18n="step1_p">Deposit USDT, BTC, ETH, USDC, or SOL. Your capital is allocated to the AAT engine. Withdraw at any time — no lock-up, no notice period required.</p>
       <div class="step-connector">→</div>
     </div>
     <div class="step">
       <div class="step-num">02</div>
-      <h4>Strategy Fires</h4>
-      <p>Precision V9 continuously scans BTC, ETH, DOGE, and HYPE on 30-minute candles, cross-referencing 2h trend bias. A confirmed entry signal triggers the validation pipeline.</p>
+      <h4 data-i18n="step2_h">Strategy Fires</h4>
+      <p data-i18n="step2_p">Precision V9 continuously scans BTC, ETH, DOGE, and HYPE on 30-minute candles, cross-referencing 2h trend bias. A confirmed entry signal triggers the validation pipeline.</p>
       <div class="step-connector">→</div>
     </div>
     <div class="step">
       <div class="step-num">03</div>
-      <h4>AI Validates</h4>
-      <p>Gemini AI performs a multi-factor pre-trade check — news sentiment, macro risk, whale positioning, funding rates — before authorising any execution. High-risk setups are rejected automatically.</p>
+      <h4 data-i18n="step3_h">AI Validates</h4>
+      <p data-i18n="step3_p">Gemini AI performs a multi-factor pre-trade check — news sentiment, macro risk, whale positioning, funding rates — before authorising any execution. High-risk setups are rejected automatically.</p>
       <div class="step-connector">→</div>
     </div>
     <div class="step">
       <div class="step-num">04</div>
-      <h4>Executes &amp; Protects</h4>
-      <p>The position opens on Hyperliquid with pre-calculated risk parameters. A smart exit engine monitors in real time — activating an ATR trailing stop once profit exceeds 0.8% and closing on reversal confirmation.</p>
+      <h4 data-i18n="step4_h">Executes &amp; Protects</h4>
+      <p data-i18n="step4_p">The position opens on Hyperliquid with pre-calculated risk parameters. A smart exit engine monitors in real time — activating an ATR trailing stop once profit exceeds 0.8% and closing on reversal confirmation.</p>
     </div>
   </div>
 </section>
 
 <!-- STRATEGIES -->
 <section id="strategies" class="fade-in">
-  <div class="section-tag">Edge</div>
-  <h2>Two execution strategies. One objective — growth.</h2>
-  <p class="section-sub">The AAT engine dynamically selects its execution mode based on trend alignment across timeframes, calibrating risk parameters to match market conditions precisely.</p>
+  <div class="section-tag" data-i18n="strat_tag">Edge</div>
+  <h2 data-i18n="strat_h2">Two execution strategies. One objective — growth.</h2>
+  <p class="section-sub" data-i18n="strat_sub">The AAT engine dynamically selects its execution mode based on trend alignment across timeframes, calibrating risk parameters to match market conditions precisely.</p>
 
   <div class="strategy-grid">
     <div class="strat-card">
-      <span class="strat-badge ct">Precision Scalp</span>
-      <h3>Counter-Trend Execution</h3>
-      <p>When the 30-minute signal opposes the 2h trend bias, the engine executes a tight mean-reversion scalp. A strict stop-loss minimises downside while the fixed 3% target captures the reversion bounce with a superior risk-to-reward ratio.</p>
+      <span class="strat-badge ct" data-i18n="ct_badge">Precision Scalp</span>
+      <h3 data-i18n="ct_h3">Counter-Trend Execution</h3>
+      <p data-i18n="ct_p">When the 30-minute signal opposes the 2h trend bias, the engine executes a tight mean-reversion scalp. A strict stop-loss minimises downside while the fixed 3% target captures the reversion bounce with a superior risk-to-reward ratio.</p>
       <div class="strat-params">
         <div class="param">
           <div class="param-val red">0.5%</div>
-          <div class="param-label">Stop Loss</div>
+          <div class="param-label" data-i18n="param_sl">Stop Loss</div>
         </div>
         <div class="param">
           <div class="param-val green">3.0%</div>
-          <div class="param-label">Take Profit</div>
+          <div class="param-label" data-i18n="param_tp">Take Profit</div>
         </div>
         <div class="param">
           <div class="param-val" style="color:var(--gold)">6 : 1</div>
-          <div class="param-label">Risk / Reward</div>
+          <div class="param-label" data-i18n="param_rr">Risk / Reward</div>
         </div>
       </div>
     </div>
 
     <div class="strat-card">
-      <span class="strat-badge wt">Momentum Ride</span>
-      <h3>With-Trend Execution</h3>
-      <p>When the 30-minute signal aligns with the 2h trend bias, the engine rides the momentum with a wider stop and a dynamic exit system. No fixed take-profit — instead the position is held until a reversal is confirmed or the ATR trailing stop is triggered.</p>
+      <span class="strat-badge wt" data-i18n="wt_badge">Momentum Ride</span>
+      <h3 data-i18n="wt_h3">With-Trend Execution</h3>
+      <p data-i18n="wt_p">When the 30-minute signal aligns with the 2h trend bias, the engine rides the momentum with a wider stop and a dynamic exit system. No fixed take-profit — instead the position is held until a reversal is confirmed or the ATR trailing stop is triggered.</p>
       <div class="strat-params">
         <div class="param">
           <div class="param-val red">1.5%</div>
-          <div class="param-label">Stop Loss</div>
+          <div class="param-label" data-i18n="param_sl">Stop Loss</div>
         </div>
         <div class="param">
-          <div class="param-val green">Dynamic</div>
-          <div class="param-label">Take Profit</div>
+          <div class="param-val green" data-i18n="param_dynamic">Dynamic</div>
+          <div class="param-label" data-i18n="param_tp">Take Profit</div>
         </div>
         <div class="param">
           <div class="param-val" style="color:var(--gold)">ATR</div>
-          <div class="param-label">Trailing Stop</div>
+          <div class="param-label" data-i18n="param_trail">Trailing Stop</div>
         </div>
       </div>
     </div>
 
     <div class="strat-card">
-      <span class="strat-badge se">Smart Exit Engine</span>
-      <h3>Profit Protection Layer</h3>
-      <p>On every with-trend position, four independent exit triggers operate in parallel — bearish or bullish engulfing patterns, an opposing 2h strategy signal within 3 candles, and an ATR(14)×1.5 trailing stop that activates once profit exceeds 0.8%.</p>
+      <span class="strat-badge se" data-i18n="se_badge">Smart Exit Engine</span>
+      <h3 data-i18n="se_h3">Profit Protection Layer</h3>
+      <p data-i18n="se_p">On every with-trend position, four independent exit triggers operate in parallel — bearish or bullish engulfing patterns, an opposing 2h strategy signal within 3 candles, and an ATR(14)×1.5 trailing stop that activates once profit exceeds 0.8%.</p>
       <div class="strat-params">
         <div class="param">
           <div class="param-val" style="color:var(--blue-lt)">4</div>
-          <div class="param-label">Exit Triggers</div>
+          <div class="param-label" data-i18n="param_exit_triggers">Exit Triggers</div>
         </div>
         <div class="param">
           <div class="param-val" style="color:var(--green)">0.8%</div>
-          <div class="param-label">Trail Activates</div>
+          <div class="param-label" data-i18n="param_trail_act">Trail Activates</div>
         </div>
         <div class="param">
           <div class="param-val" style="color:var(--gold)">1.5×</div>
-          <div class="param-label">ATR Multiple</div>
+          <div class="param-label" data-i18n="param_atr_mult">ATR Multiple</div>
         </div>
       </div>
     </div>
@@ -688,36 +705,36 @@
 
 <!-- AI SECTION -->
 <section id="ai" class="ai-section fade-in">
-  <div class="section-tag">Intelligence</div>
-  <h2>Every trade pre-screened by Gemini AI</h2>
-  <p class="section-sub">Before any capital is deployed, Gemini 2.5 Flash runs a real-time multi-factor risk assessment — filtering out high-risk entries that price action alone cannot detect.</p>
+  <div class="section-tag" data-i18n="ai_tag">Intelligence</div>
+  <h2 data-i18n="ai_h2">Every trade pre-screened by Gemini AI</h2>
+  <p class="section-sub" data-i18n="ai_sub">Before any capital is deployed, Gemini 2.5 Flash runs a real-time multi-factor risk assessment — filtering out high-risk entries that price action alone cannot detect.</p>
 
   <div class="ai-grid">
     <div class="ai-visual">
-      <div class="ai-visual-header">AI Pre-Trade Assessment — Live Example</div>
+      <div class="ai-visual-header" data-i18n="ai_panel_hdr">AI Pre-Trade Assessment — Live Example</div>
       <div class="ai-row">
-        <span class="ai-row-label">News Sentiment</span>
-        <span class="ai-pill pass">BULLISH</span>
+        <span class="ai-row-label" data-i18n="ai_news_lbl">News Sentiment</span>
+        <span class="ai-pill pass" data-i18n="ai_bullish">BULLISH</span>
       </div>
       <div class="ai-row">
-        <span class="ai-row-label">Macro Risk</span>
-        <span class="ai-pill pass">LOW</span>
+        <span class="ai-row-label" data-i18n="ai_macro_lbl">Macro Risk</span>
+        <span class="ai-pill pass" data-i18n="ai_low">LOW</span>
       </div>
       <div class="ai-row">
-        <span class="ai-row-label">Whale Activity</span>
-        <span class="ai-pill warn">MODERATE</span>
+        <span class="ai-row-label" data-i18n="ai_whale_lbl">Whale Activity</span>
+        <span class="ai-pill warn" data-i18n="ai_moderate">MODERATE</span>
       </div>
       <div class="ai-row">
-        <span class="ai-row-label">Funding Rate</span>
-        <span class="ai-pill pass">NEUTRAL</span>
+        <span class="ai-row-label" data-i18n="ai_fund_lbl">Funding Rate</span>
+        <span class="ai-pill pass" data-i18n="ai_neutral">NEUTRAL</span>
       </div>
       <div class="ai-row">
-        <span class="ai-row-label">On-Chain Flow</span>
-        <span class="ai-pill pass">NET INFLOW</span>
+        <span class="ai-row-label" data-i18n="ai_flow_lbl">On-Chain Flow</span>
+        <span class="ai-pill pass" data-i18n="ai_inflow">NET INFLOW</span>
       </div>
       <div class="ai-row" style="border-color:rgba(74,222,128,.22);background:rgba(74,222,128,.05)">
-        <span style="font-weight:600">Decision</span>
-        <span class="ai-pill pass" style="font-size:.8rem;padding:.28rem .85rem">✓ APPROVED — EXECUTE</span>
+        <span style="font-weight:600" data-i18n="ai_decision">Decision</span>
+        <span class="ai-pill pass" style="font-size:.8rem;padding:.28rem .85rem" data-i18n="ai_approved">✓ APPROVED — EXECUTE</span>
       </div>
     </div>
 
@@ -725,29 +742,29 @@
       <div class="ai-feat">
         <div class="ai-feat-icon">📰</div>
         <div>
-          <h4>News Sentiment Analysis</h4>
-          <p>Real-time aggregation across major financial and crypto news sources. Negative macro events are identified and used to filter trades before they are placed.</p>
+          <h4 data-i18n="ai_feat1_h">News Sentiment Analysis</h4>
+          <p data-i18n="ai_feat1_p">Real-time aggregation across major financial and crypto news sources. Negative macro events are identified and used to filter trades before they are placed.</p>
         </div>
       </div>
       <div class="ai-feat">
         <div class="ai-feat-icon">🐋</div>
         <div>
-          <h4>Whale Activity Detection</h4>
-          <p>Monitors large wallet movements and exchange inflows to identify institutional positioning that may invalidate a setup before the engine commits capital.</p>
+          <h4 data-i18n="ai_feat2_h">Whale Activity Detection</h4>
+          <p data-i18n="ai_feat2_p">Monitors large wallet movements and exchange inflows to identify institutional positioning that may invalidate a setup before the engine commits capital.</p>
         </div>
       </div>
       <div class="ai-feat">
         <div class="ai-feat-icon">📊</div>
         <div>
-          <h4>Funding Rate Assessment</h4>
-          <p>Evaluates perpetual futures funding rates across major exchanges — extreme funding imbalances are a leading reversal indicator the system does not ignore.</p>
+          <h4 data-i18n="ai_feat3_h">Funding Rate Assessment</h4>
+          <p data-i18n="ai_feat3_p">Evaluates perpetual futures funding rates across major exchanges — extreme funding imbalances are a leading reversal indicator the system does not ignore.</p>
         </div>
       </div>
       <div class="ai-feat">
         <div class="ai-feat-icon">🌍</div>
         <div>
-          <h4>Macro Risk Filter</h4>
-          <p>Assesses broader market conditions including Fed policy signals, DXY correlation, and systemic risk events that would otherwise invalidate a technically valid setup.</p>
+          <h4 data-i18n="ai_feat4_h">Macro Risk Filter</h4>
+          <p data-i18n="ai_feat4_p">Assesses broader market conditions including Fed policy signals, DXY correlation, and systemic risk events that would otherwise invalidate a technically valid setup.</p>
         </div>
       </div>
     </div>
@@ -757,24 +774,23 @@
 <!-- ASSETS -->
 <section id="assets" class="fade-in">
   <div class="center">
-    <div class="section-tag green">Coverage</div>
-    <h2>Four markets. Always active.</h2>
-    <p class="section-sub">The AAT engine scans all four assets every minute, around the clock — so no high-probability entry is ever missed regardless of time zone or market hours.</p>
+    <div class="section-tag green" data-i18n="assets_tag">Coverage</div>
+    <h2 data-i18n="assets_h2">Four markets. Always active.</h2>
+    <p class="section-sub" data-i18n="assets_sub">The AAT engine scans all four assets every minute, around the clock — so no high-probability entry is ever missed regardless of time zone or market hours.</p>
   </div>
 
   <div class="assets-grid">
-
     <div class="asset-card">
       <div class="asset-header">
         <div class="asset-symbol">BTC</div>
-        <div class="asset-name">Bitcoin</div>
-        <div class="asset-live"><span class="live-dot"></span> Active</div>
+        <div class="asset-name" data-i18n="asset_btc">Bitcoin</div>
+        <div class="asset-live"><span class="live-dot"></span> <span data-i18n="asset_active">Active</span></div>
       </div>
       <div class="asset-chart">
         <img src="images/btc.png" alt="BTC Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
         <div class="asset-chart-placeholder" style="display:none">
           <span class="ph-icon">📈</span>
-          <span>Precision V9 Strategy Chart</span>
+          <span data-i18n="asset_chart_lbl">Precision V9 Strategy Chart</span>
         </div>
       </div>
     </div>
@@ -782,14 +798,14 @@
     <div class="asset-card">
       <div class="asset-header">
         <div class="asset-symbol">ETH</div>
-        <div class="asset-name">Ethereum</div>
-        <div class="asset-live"><span class="live-dot"></span> Active</div>
+        <div class="asset-name" data-i18n="asset_eth">Ethereum</div>
+        <div class="asset-live"><span class="live-dot"></span> <span data-i18n="asset_active">Active</span></div>
       </div>
       <div class="asset-chart">
         <img src="images/eth.png" alt="ETH Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
         <div class="asset-chart-placeholder" style="display:none">
           <span class="ph-icon">📈</span>
-          <span>Precision V9 Strategy Chart</span>
+          <span data-i18n="asset_chart_lbl">Precision V9 Strategy Chart</span>
         </div>
       </div>
     </div>
@@ -797,14 +813,14 @@
     <div class="asset-card">
       <div class="asset-header">
         <div class="asset-symbol">DOGE</div>
-        <div class="asset-name">Dogecoin</div>
-        <div class="asset-live"><span class="live-dot"></span> Active</div>
+        <div class="asset-name" data-i18n="asset_doge">Dogecoin</div>
+        <div class="asset-live"><span class="live-dot"></span> <span data-i18n="asset_active">Active</span></div>
       </div>
       <div class="asset-chart">
         <img src="images/doge.png" alt="DOGE Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
         <div class="asset-chart-placeholder" style="display:none">
           <span class="ph-icon">📈</span>
-          <span>Precision V9 Strategy Chart</span>
+          <span data-i18n="asset_chart_lbl">Precision V9 Strategy Chart</span>
         </div>
       </div>
     </div>
@@ -812,30 +828,29 @@
     <div class="asset-card">
       <div class="asset-header">
         <div class="asset-symbol">HYPE</div>
-        <div class="asset-name">Hyperliquid</div>
-        <div class="asset-live"><span class="live-dot"></span> Active</div>
+        <div class="asset-name" data-i18n="asset_hype">Hyperliquid</div>
+        <div class="asset-live"><span class="live-dot"></span> <span data-i18n="asset_active">Active</span></div>
       </div>
       <div class="asset-chart">
         <img src="images/hype.png" alt="HYPE Precision V9 Strategy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
         <div class="asset-chart-placeholder" style="display:none">
           <span class="ph-icon">📈</span>
-          <span>Precision V9 Strategy Chart</span>
+          <span data-i18n="asset_chart_lbl">Precision V9 Strategy Chart</span>
         </div>
       </div>
     </div>
-
   </div>
 </section>
 
 <!-- CTA BAND -->
 <div class="cta-band fade-in">
-  <div class="section-tag gold" style="margin-bottom:1.2rem">Get Started</div>
-  <h2>Maximize Returns &amp; Lower Your Cost Basis</h2>
-  <p class="cta-sub">Deposit your assets today and let the AAT engine work around the clock to grow your portfolio. AI-validated decisions, institutional execution infrastructure, and full flexibility to withdraw at any time.</p>
-  <p class="cta-note">Deposit &amp; Withdraw Anytime — No Lock-up. No Minimums.</p>
+  <div class="section-tag gold" style="margin-bottom:1.2rem" data-i18n="cta_tag">Get Started</div>
+  <h2 data-i18n="cta_h2">Maximize Returns &amp; Lower Your Cost Basis</h2>
+  <p class="cta-sub" data-i18n="cta_sub">Deposit your assets today and let the AAT engine work around the clock to grow your portfolio. AI-validated decisions, institutional execution infrastructure, and full flexibility to withdraw at any time.</p>
+  <p class="cta-note" data-i18n="cta_note">Deposit &amp; Withdraw Anytime — No Lock-up. No Minimums.</p>
   <div class="cta-band-btns">
-    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary btn-xl">⚡ Start with AAT</a>
-    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-outline-green btn-xl">📡 Market Intelligence</a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=aat" class="btn btn-primary btn-xl" data-i18n="btn_aat">⚡ Start with AAT</a>
+    <a href="https://invest-mongo-bot-production.up.railway.app/auth?next=scanner" class="btn btn-outline-green btn-xl" data-i18n="btn_scanner">📡 Market Intelligence</a>
   </div>
 </div>
 
@@ -844,44 +859,371 @@
   <div class="footer-top">
     <div class="footer-brand">
       <span class="logo-text">Defi<span style="color:var(--green)">Mongo</span></span>
-      <p>Automated Agentic Trading powered by Precision V9 strategy execution and Gemini AI decision validation. Institutional-grade infrastructure, built for individual investors.</p>
+      <p data-i18n="footer_brand_p">Automated Agentic Trading powered by Precision V9 strategy execution and Gemini AI decision validation. Institutional-grade infrastructure, built for individual investors.</p>
     </div>
     <div class="footer-links">
-      <h5>Platform</h5>
+      <h5 data-i18n="footer_platform">Platform</h5>
       <ul>
-        <li><a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank">AAT Terminal</a></li>
-        <li><a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank">Market Intelligence</a></li>
+        <li><a href="https://invest-mongo-bot-production.up.railway.app/" target="_blank" data-i18n="nav_aat">AAT Terminal</a></li>
+        <li><a href="https://erikwonlife-glitch.github.io/DeFiMongo/" target="_blank" data-i18n="nav_scanner">Market Intelligence</a></li>
       </ul>
     </div>
     <div class="footer-links">
-      <h5>Strategy</h5>
+      <h5 data-i18n="footer_strategy">Strategy</h5>
       <ul>
-        <li><a href="#strategies">Precision Scalp</a></li>
-        <li><a href="#strategies">Momentum Ride</a></li>
-        <li><a href="#strategies">Smart Exit Engine</a></li>
+        <li><a href="#strategies" data-i18n="ct_badge">Precision Scalp</a></li>
+        <li><a href="#strategies" data-i18n="wt_badge">Momentum Ride</a></li>
+        <li><a href="#strategies" data-i18n="se_badge">Smart Exit Engine</a></li>
       </ul>
     </div>
     <div class="footer-links">
-      <h5>Learn</h5>
+      <h5 data-i18n="footer_learn">Learn</h5>
       <ul>
-        <li><a href="#how-it-works">How It Works</a></li>
-        <li><a href="#ai">AI Validation</a></li>
-        <li><a href="#assets">Covered Assets</a></li>
+        <li><a href="#how-it-works" data-i18n="nav_how">How It Works</a></li>
+        <li><a href="#ai" data-i18n="footer_ai_val">AI Validation</a></li>
+        <li><a href="#assets" data-i18n="footer_assets">Covered Assets</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
-    <span class="footer-copy">© 2026 DeFiMongo. All rights reserved.</span>
-    <p class="disclaimer">All trading involves risk. Past performance is not indicative of future results. DeFiMongo does not provide financial advice. Clients should assess their own risk tolerance before depositing assets.</p>
+    <span class="footer-copy" data-i18n="footer_copy">© 2026 DeFiMongo. All rights reserved.</span>
+    <p class="disclaimer" data-i18n="footer_disclaimer">All trading involves risk. Past performance is not indicative of future results. DeFiMongo does not provide financial advice. Clients should assess their own risk tolerance before depositing assets.</p>
   </div>
 </footer>
 
 <script>
-  const observer = new IntersectionObserver(
-    entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
-    { threshold: 0.1 }
-  );
-  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+// ── Translation dictionary ─────────────────────────────────
+const T = {
+  en: {
+    // Nav
+    nav_how:      'How It Works',
+    nav_strat:    'Strategies',
+    nav_ai:       'AI Engine',
+    nav_assets:   'Assets',
+    nav_scanner:  'Market Intelligence',
+    nav_aat:      'AAT Terminal',
+
+    // Hero
+    hero_badge:   'Hyperliquid Agentic Trading — AI-Based Decisions — Live',
+    hero_h1:      'Maximize Returns &amp;<br />Lower Your <span class="accent-blue">Cost Basis</span><br />with <span class="accent-green">Automated Agentic Trading</span>',
+    hero_sub:     "Deposit your crypto assets and let DeFiMongo's Automated Agentic Trading engine grow them for you. Every decision is validated by Gemini AI — no emotion, no manual intervention, no missed entries.",
+    hero_tagline: 'Deposit &amp; Withdraw Anytime',
+    btn_aat:      '⚡ Start with AAT',
+    btn_scanner:  '📡 Market Intelligence',
+    hero_accepted:'Accepted deposits:',
+    hero_trading_on: 'Trading on:',
+
+    // Deposit strip
+    strip_dep_title:  'Deposit Anytime',
+    strip_dep_sub:    '— USDT, BTC, ETH, USDC, SOL',
+    strip_with_title: 'Withdraw Anytime',
+    strip_with_sub:   '— No lock-up periods',
+    strip_auto_title: 'Fully Automated',
+    strip_auto_sub:   '— AI executes every trade',
+    strip_hl_title:   'Hyperliquid Execution',
+    strip_hl_sub:     '— Institutional-grade infrastructure',
+
+    // Stats
+    stat_op:  'Autonomous Operation',
+    stat_tf:  'Strategy Timeframe',
+    stat_ai:  'AI Decision Engine',
+    stat_mkt: 'Active Markets',
+    stat_rr:  'Risk/Reward Ratio',
+
+    // Platform
+    plat_tag: 'Platform',
+    plat_h2:  'Two services. Built around your growth.',
+    plat_sub: 'DeFiMongo offers a fully automated asset growth service powered by Precision V9, alongside a dedicated market intelligence platform covering the full breadth of the crypto market.',
+    aat_h3:   'Automated Agentic Trading',
+    aat_sub:  'Core Service — AAT',
+    aat_p:    'Deposit your assets and our autonomous trading engine does the rest. The AAT system executes positions on Hyperliquid based on Precision V9 strategy signals, each pre-screened by Gemini AI for macro conditions, sentiment, and on-chain risk — before any capital is deployed.',
+    chip_smart_exit:  'Smart Exits',
+    chip_dep_with:    'Deposit &amp; Withdraw',
+    btn_open_aat:     'Open AAT Terminal →',
+    scanner_h3:  'Crypto Scanner',
+    scanner_sub: 'Market Intelligence Platform',
+    scanner_p:   'A fully dedicated market intelligence platform covering the entire crypto landscape. Access real-time price data, on-chain analytics, sentiment indicators, funding rates, whale tracking, and deep asset analysis across hundreds of markets — all in one place.',
+    chip_realtime:  'Real-Time Data',
+    chip_onchain:   'On-Chain Analytics',
+    chip_sentiment: 'Sentiment Tracking',
+    chip_coverage:  'Full Market Coverage',
+    btn_open_scanner: 'Open Market Intelligence →',
+
+    // How it works
+    hiw_tag: 'Process',
+    hiw_h2:  'From deposit to compounding returns',
+    hiw_sub: 'Four autonomous stages handle everything between depositing your assets and growing them — without any manual action on your part.',
+    step1_h: 'You Deposit',
+    step1_p: 'Deposit USDT, BTC, ETH, USDC, or SOL. Your capital is allocated to the AAT engine. Withdraw at any time — no lock-up, no notice period required.',
+    step2_h: 'Strategy Fires',
+    step2_p: 'Precision V9 continuously scans BTC, ETH, DOGE, and HYPE on 30-minute candles, cross-referencing 2h trend bias. A confirmed entry signal triggers the validation pipeline.',
+    step3_h: 'AI Validates',
+    step3_p: 'Gemini AI performs a multi-factor pre-trade check — news sentiment, macro risk, whale positioning, funding rates — before authorising any execution. High-risk setups are rejected automatically.',
+    step4_h: 'Executes &amp; Protects',
+    step4_p: 'The position opens on Hyperliquid with pre-calculated risk parameters. A smart exit engine monitors in real time — activating an ATR trailing stop once profit exceeds 0.8% and closing on reversal confirmation.',
+
+    // Strategies
+    strat_tag: 'Edge',
+    strat_h2:  'Two execution strategies. One objective — growth.',
+    strat_sub: 'The AAT engine dynamically selects its execution mode based on trend alignment across timeframes, calibrating risk parameters to match market conditions precisely.',
+    ct_badge:  'Precision Scalp',
+    ct_h3:     'Counter-Trend Execution',
+    ct_p:      'When the 30-minute signal opposes the 2h trend bias, the engine executes a tight mean-reversion scalp. A strict stop-loss minimises downside while the fixed 3% target captures the reversion bounce with a superior risk-to-reward ratio.',
+    wt_badge:  'Momentum Ride',
+    wt_h3:     'With-Trend Execution',
+    wt_p:      'When the 30-minute signal aligns with the 2h trend bias, the engine rides the momentum with a wider stop and a dynamic exit system. No fixed take-profit — instead the position is held until a reversal is confirmed or the ATR trailing stop is triggered.',
+    se_badge:  'Smart Exit Engine',
+    se_h3:     'Profit Protection Layer',
+    se_p:      'On every with-trend position, four independent exit triggers operate in parallel — bearish or bullish engulfing patterns, an opposing 2h strategy signal within 3 candles, and an ATR(14)×1.5 trailing stop that activates once profit exceeds 0.8%.',
+    param_sl:           'Stop Loss',
+    param_tp:           'Take Profit',
+    param_rr:           'Risk / Reward',
+    param_dynamic:      'Dynamic',
+    param_trail:        'Trailing Stop',
+    param_exit_triggers:'Exit Triggers',
+    param_trail_act:    'Trail Activates',
+    param_atr_mult:     'ATR Multiple',
+
+    // AI
+    ai_tag:       'Intelligence',
+    ai_h2:        'Every trade pre-screened by Gemini AI',
+    ai_sub:       'Before any capital is deployed, Gemini 2.5 Flash runs a real-time multi-factor risk assessment — filtering out high-risk entries that price action alone cannot detect.',
+    ai_panel_hdr: 'AI Pre-Trade Assessment — Live Example',
+    ai_news_lbl:  'News Sentiment',
+    ai_bullish:   'BULLISH',
+    ai_macro_lbl: 'Macro Risk',
+    ai_low:       'LOW',
+    ai_whale_lbl: 'Whale Activity',
+    ai_moderate:  'MODERATE',
+    ai_fund_lbl:  'Funding Rate',
+    ai_neutral:   'NEUTRAL',
+    ai_flow_lbl:  'On-Chain Flow',
+    ai_inflow:    'NET INFLOW',
+    ai_decision:  'Decision',
+    ai_approved:  '✓ APPROVED — EXECUTE',
+    ai_feat1_h:   'News Sentiment Analysis',
+    ai_feat1_p:   'Real-time aggregation across major financial and crypto news sources. Negative macro events are identified and used to filter trades before they are placed.',
+    ai_feat2_h:   'Whale Activity Detection',
+    ai_feat2_p:   'Monitors large wallet movements and exchange inflows to identify institutional positioning that may invalidate a setup before the engine commits capital.',
+    ai_feat3_h:   'Funding Rate Assessment',
+    ai_feat3_p:   'Evaluates perpetual futures funding rates across major exchanges — extreme funding imbalances are a leading reversal indicator the system does not ignore.',
+    ai_feat4_h:   'Macro Risk Filter',
+    ai_feat4_p:   'Assesses broader market conditions including Fed policy signals, DXY correlation, and systemic risk events that would otherwise invalidate a technically valid setup.',
+
+    // Assets
+    assets_tag:    'Coverage',
+    assets_h2:     'Four markets. Always active.',
+    assets_sub:    'The AAT engine scans all four assets every minute, around the clock — so no high-probability entry is ever missed regardless of time zone or market hours.',
+    asset_btc:     'Bitcoin',
+    asset_eth:     'Ethereum',
+    asset_doge:    'Dogecoin',
+    asset_hype:    'Hyperliquid',
+    asset_active:  'Active',
+    asset_chart_lbl: 'Precision V9 Strategy Chart',
+
+    // CTA
+    cta_tag:  'Get Started',
+    cta_h2:   'Maximize Returns &amp; Lower Your Cost Basis',
+    cta_sub:  'Deposit your assets today and let the AAT engine work around the clock to grow your portfolio. AI-validated decisions, institutional execution infrastructure, and full flexibility to withdraw at any time.',
+    cta_note: 'Deposit &amp; Withdraw Anytime — No Lock-up. No Minimums.',
+
+    // Footer
+    footer_brand_p:  'Automated Agentic Trading powered by Precision V9 strategy execution and Gemini AI decision validation. Institutional-grade infrastructure, built for individual investors.',
+    footer_platform: 'Platform',
+    footer_strategy: 'Strategy',
+    footer_learn:    'Learn',
+    footer_ai_val:   'AI Validation',
+    footer_assets:   'Covered Assets',
+    footer_copy:     '© 2026 DeFiMongo. All rights reserved.',
+    footer_disclaimer: 'All trading involves risk. Past performance is not indicative of future results. DeFiMongo does not provide financial advice. Clients should assess their own risk tolerance before depositing assets.',
+  },
+
+  mn: {
+    // Nav
+    nav_how:      'Хэрхэн ажилдаг',
+    nav_strat:    'Стратегиуд',
+    nav_ai:       'AI Систем',
+    nav_assets:   'Хөрөнгүүд',
+    nav_scanner:  'Зах зээлийн мэдээлэл',
+    nav_aat:      'AAT Терминал',
+
+    // Hero
+    hero_badge:   'Hyperliquid Автомат Трейдинг — AI-д суурилсан шийдвэр — Шууд',
+    hero_h1:      'Өгөөжөө Нэмэгдүүлж,<br />Зардлын Суурийгаа <span class="accent-blue">Бууруулаарай</span><br /><span class="accent-green">Автомат Агент Трейдингаар</span>',
+    hero_sub:     'Криптo хөрөнгөө байршуулж, DeFiMongo-ийн Автомат Агент Трейдинг систем таны хөрөнгийг өсгөнө. Gemini AI бүх шийдвэрийг баталгаажуулдаг — сэтгэл хөдлөлгүй, гар оролцоогүй, орцоо алдалгүй.',
+    hero_tagline: 'Хэдийд ч байршуулж, татаж авах боломжтой',
+    btn_aat:      '⚡ AAT-ээр эхлэх',
+    btn_scanner:  '📡 Зах зээлийн мэдээлэл',
+    hero_accepted: 'Хүлээн авах валютууд:',
+    hero_trading_on: 'Арилжаалдаг зах зээл:',
+
+    // Deposit strip
+    strip_dep_title:  'Хэдийд ч байршуулах',
+    strip_dep_sub:    '— USDT, BTC, ETH, USDC, SOL',
+    strip_with_title: 'Хэдийд ч татан авах',
+    strip_with_sub:   '— Хугацааны хязгааргүй',
+    strip_auto_title: 'Бүрэн автомат',
+    strip_auto_sub:   '— AI бүх арилжааг гүйцэтгэнэ',
+    strip_hl_title:   'Hyperliquid Гүйцэтгэл',
+    strip_hl_sub:     '— Институцийн түвшний дэд бүтэц',
+
+    // Stats
+    stat_op:  'Автономоор ажилладаг',
+    stat_tf:  'Стратегийн хугацаа',
+    stat_ai:  'AI Шийдвэр Гаргах Систем',
+    stat_mkt: 'Идэвхтэй зах зээл',
+    stat_rr:  'Эрсдэл/Өгөөжийн харьцаа',
+
+    // Platform
+    plat_tag: 'Платформ',
+    plat_h2:  'Хоёр үйлчилгээ. Таны өсөлтийн төлөө.',
+    plat_sub: 'DeFiMongo нь Precision V9-д суурилсан бүрэн автомат хөрөнгийн өсөлтийн үйлчилгээ болон крипто зах зээлийн бүх хүрээг хамарсан мэдээллийн платформ санал болгодог.',
+    aat_h3:   'Автомат Агент Трейдинг',
+    aat_sub:  'Үндсэн үйлчилгээ — AAT',
+    aat_p:    'Хөрөнгөө байршуулаад манай автономит трейдинг систем бусдыг хийнэ. AAT систем нь Precision V9 стратегийн дохиолол дээр үндэслэн Hyperliquid дээр позиц нээдэг бөгөөд Gemini AI макро нөхцөл, мэдрэмж болон гинжин эрсдэлийг урьдчилан шалгасны дараа хөрөнгийг байрлуулдаг.',
+    chip_smart_exit:  'Ухаалаг Гарах',
+    chip_dep_with:    'Байршуулах &amp; Татах',
+    btn_open_aat:     'AAT Терминал нээх →',
+    scanner_h3:  'Крипто Сканнер',
+    scanner_sub: 'Зах зээлийн мэдээллийн платформ',
+    scanner_p:   'Крипто зах зээлийн бүх хүрээг хамарсан мэдээллийн платформ. Бодит цагийн үнийн мэдээлэл, гинжин шинжилгээ, мэдрэмжийн үзүүлэлт, санхүүжилтийн хувь, халим хяналт болон олон зуун зах зээлийн гүн шинжилгээ — нэг дороос авах боломжтой.',
+    chip_realtime:  'Бодит цагийн мэдээлэл',
+    chip_onchain:   'Гинжин шинжилгээ',
+    chip_sentiment: 'Мэдрэмжийн хяналт',
+    chip_coverage:  'Бүрэн зах зээлийн хамрах',
+    btn_open_scanner: 'Зах зээлийн мэдээлэл нээх →',
+
+    // How it works
+    hiw_tag: 'Үйл явц',
+    hiw_h2:  'Байршуулалтаас хуримтлагдах өгөөж хүртэл',
+    hiw_sub: 'Хөрөнгийг байршуулахаас өсгөх хүртэл дөрвөн автономит үе шат бүгдийг шийдвэрлэнэ — танаас ямар ч гар оролцоо шаарддаггүй.',
+    step1_h: 'Та байршуулна',
+    step1_p: 'USDT, BTC, ETH, USDC эсвэл SOL байршуулаарай. Таны хөрөнгийг AAT систем дээр хуваарилна. Хэдийд ч татаж авах боломжтой — хугацааны хязгааргүй, урьдчилсан мэдэгдэл шаарддаггүй.',
+    step2_h: 'Стратеги идэвхждэг',
+    step2_p: 'Precision V9 BTC, ETH, DOGE, HYPE-г 30 минутын свечи дээр 2 цагийн трендийн биас хамт тасралтгүй шалгадаг. Баталгаатай орох дохиолол баталгаажуулах дамжлагыг идэвхждэнэ.',
+    step3_h: 'AI баталгаажуулдаг',
+    step3_p: 'Gemini AI мэдээний мэдрэмж, макро эрсдэл, халимын байршил, санхүүжилтийн хувийг олон хүчин зүйлийн урьдчилсан арилжааны шалгалтаар гүйцэтгэдэг — өндөр эрсдэлтэй тохиргоог автоматаар татгалздаг.',
+    step4_h: 'Гүйцэтгэж хамгаалдаг',
+    step4_p: 'Позицийг Hyperliquid дээр урьдчилан тооцоолсон эрсдэлийн параметрүүдтэй нээнэ. Ухаалаг гарах систем бодит цагт хянадаг — ашиг 0.8%-ийг давсны дараа ATR дагалт зогсоох идэвхждэж, эргэлт батлагдсан үед хаадаг.',
+
+    // Strategies
+    strat_tag: 'Давуу тал',
+    strat_h2:  'Хоёр гүйцэтгэх стратеги. Нэг зорилго — өсөлт.',
+    strat_sub: 'AAT систем нь цагийн хүрээний трендийн нийцэл дээр үндэслэн гүйцэтгэх горимоо динамикаар сонгодог бөгөөд зах зээлийн нөхцөлд нийцэхүйц эрсдэлийн параметрүүдийг тохируулдаг.',
+    ct_badge:  'Precision Скальп',
+    ct_h3:     'Эсрэг чиглэлийн гүйцэтгэл',
+    ct_p:      '30 минутын дохиолол 2 цагийн трендийн биасд эсрэг байх үед систем хатуу дундаж эргэлтийн скальп хийдэг. Хатуу зогсоох хязгаар буурлыг багасгаж, 3%-ийн тогтмол зорилго эргэлтийн уналтыг давуу эрсдэл/өгөөжийн харьцаатайгаар авдаг.',
+    wt_badge:  'Моментум Дагалт',
+    wt_h3:     'Трендийн дагуу гүйцэтгэл',
+    wt_p:      '30 минутын дохиолол 2 цагийн трендийн биастай нийцэх үед систем моментумыг өргөн зогсоо болон динамик гарах системтэйгээр дагадаг. Тогтмол ашиг авах хэмжээ байхгүй — харин эргэлт батлагдсан эсвэл ATR дагалт зогсоох дохиогдсон үед позицийг барина.',
+    se_badge:  'Ухаалаг Гарах Систем',
+    se_h3:     'Ашгийн Хамгаалалтын Давхарга',
+    se_p:      'Трендийн дагуу бүх позицид дөрвөн бие даасан гарах дохиолол зэрэг ажилладаг — баавар эсвэл буга залгих хэв маяг, 3 свечийн дотор эсрэг 2 цагийн стратегийн дохиолол, ашиг 0.8%-ийг давсны дараа идэвхждэх ATR(14)×1.5 дагалт зогсоох.',
+    param_sl:           'Зогсоох хязгаар',
+    param_tp:           'Ашиг авах',
+    param_rr:           'Эрсдэл / Өгөөж',
+    param_dynamic:      'Динамик',
+    param_trail:        'Дагалт зогсоох',
+    param_exit_triggers:'Гарах дохиоллын тоо',
+    param_trail_act:    'Дагалт идэвхждэх',
+    param_atr_mult:     'ATR үржвэр',
+
+    // AI
+    ai_tag:       'Оюун ухаан',
+    ai_h2:        'Бүх арилжааг Gemini AI-аар урьдчилан шүүдэг',
+    ai_sub:       'Ямар ч хөрөнгийг байрлуулахаас өмнө Gemini 2.5 Flash бодит цагийн олон хүчин зүйлийн эрсдэлийн үнэлгээ хийдэг — үнийн хөдөлгөөн дангаараа илрүүлж чадахгүй өндөр эрсдэлтэй орцуудыг шүүж гаргадаг.',
+    ai_panel_hdr: 'AI Арилжааны өмнөх үнэлгээ — Шууд жишээ',
+    ai_news_lbl:  'Мэдээний мэдрэмж',
+    ai_bullish:   'ӨСӨЛТТЭЙ',
+    ai_macro_lbl: 'Макро эрсдэл',
+    ai_low:       'БАГ',
+    ai_whale_lbl: 'Халимын идэвхи',
+    ai_moderate:  'ДУНД',
+    ai_fund_lbl:  'Санхүүжилтийн хувь',
+    ai_neutral:   'СААРМАГ',
+    ai_flow_lbl:  'Гинжний урсгал',
+    ai_inflow:    'ЦЭВЭР ОРЛОГО',
+    ai_decision:  'Шийдвэр',
+    ai_approved:  '✓ ЗӨВШӨӨРӨГДСӨН — ГҮЙЦЭТГЭХ',
+    ai_feat1_h:   'Мэдээний мэдрэмжийн шинжилгээ',
+    ai_feat1_p:   'Томоохон санхүүгийн болон крипто мэдээллийн эх сурвалжуудаас бодит цагт нэгтгэдэг. Сөрөг макро үйл явдлуудыг илрүүлж, байрлуулахаас өмнө арилжааг шүүхэд ашигладаг.',
+    ai_feat2_h:   'Халимын идэвхийг илрүүлэх',
+    ai_feat2_p:   'Тохиргоог хүчингүй болгохын өмнө хөрөнгийн хаягийн хөдөлгөөн болон биржийн орлогыг хянаж институцийн байршлыг илрүүлдэг.',
+    ai_feat3_h:   'Санхүүжилтийн хувийн үнэлгээ',
+    ai_feat3_p:   'Томоохон биржүүдийн мөнхийн фьючерсийн санхүүжилтийн хувийг үнэлдэг — экстрем санхүүжилтийн тэнцвэргүй байдал нь систем үл тоомсорлохгүй тэргүүлэгч эргэлтийн үзүүлэлт юм.',
+    ai_feat4_h:   'Макро эрсдэлийн шүүлтүүр',
+    ai_feat4_p:   'Техникийн хувьд хүчинтэй тохиргоог хүчингүй болгох FRС-ийн бодлогын дохио, DXY корреляци болон системийн эрсдэлийн үйл явдлуудыг оролцуулсан өргөн зах зээлийн нөхцөлийг үнэлдэг.',
+
+    // Assets
+    assets_tag:    'Хамрах хүрээ',
+    assets_h2:     'Дөрвөн зах зээл. Үргэлж идэвхтэй.',
+    assets_sub:    'AAT систем дөрвөн хөрөнгийг минут тутам тасралтгүй шалгадаг — цагийн бүс эсвэл зах зээлийн цагаас үл хамааран өндөр магадлалтай орц хэзээ ч алдагдахгүй.',
+    asset_btc:     'Биткойн',
+    asset_eth:     'Этериум',
+    asset_doge:    'Догекойн',
+    asset_hype:    'Хайперликвид',
+    asset_active:  'Идэвхтэй',
+    asset_chart_lbl: 'Precision V9 Стратегийн График',
+
+    // CTA
+    cta_tag:  'Эхлэх',
+    cta_h2:   'Өгөөжөө Нэмэгдүүлж, Зардлын Суурийгаа Бууруулаарай',
+    cta_sub:  'Хөрөнгөө өнөөдөр байршуулаад AAT систем тасралтгүй таны багцыг өсгөнө. AI баталгаажуулсан шийдвэр, институцийн гүйцэтгэлийн дэд бүтэц, хэдийд ч татаж авах бүрэн уян хатан байдал.',
+    cta_note: 'Хэдийд ч байршуулж, татаж авах — Хугацааны хязгааргүй. Доод хэмжээгүй.',
+
+    // Footer
+    footer_brand_p:  'Precision V9 стратегийн гүйцэтгэл болон Gemini AI шийдвэрийн баталгаажуулалтаар тэтгэгдсэн Автомат Агент Трейдинг. Хувь хөрөнгө оруулагчдад зориулан бүтээсэн институцийн түвшний дэд бүтэц.',
+    footer_platform: 'Платформ',
+    footer_strategy: 'Стратеги',
+    footer_learn:    'Суралцах',
+    footer_ai_val:   'AI Баталгаажуулалт',
+    footer_assets:   'Хамрах хөрөнгүүд',
+    footer_copy:     '© 2026 DeFiMongo. Бүх эрх хуулиар хамгаалагдсан.',
+    footer_disclaimer: 'Бүх арилжаа эрсдэлтэй. Өнгөрсөн үр дүн нь ирээдүйн үр дүнг баталгаажуулахгүй. DeFiMongo нь санхүүгийн зөвлөгөө өгдөггүй. Үйлчлүүлэгчид хөрөнгөө байршуулахаасаа өмнө өөрийн эрсдэлийн хүлцлийг үнэлж тогтоох хэрэгтэй.',
+  }
+};
+
+// ── Language engine ────────────────────────────────────────
+let lang = localStorage.getItem('dm_lang') || 'en';
+
+function applyLang(l) {
+  lang = l;
+  localStorage.setItem('dm_lang', l);
+  const d = T[l];
+
+  // Update all text nodes
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (d[key] !== undefined) el.textContent = d[key];
+  });
+
+  // Update elements with HTML content (h1, etc.)
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const key = el.dataset.i18nHtml;
+    if (d[key] !== undefined) el.innerHTML = d[key];
+  });
+
+  // Update toggle button
+  document.getElementById('ltActive').textContent = l === 'en' ? 'EN' : 'МН';
+  document.getElementById('ltOther').textContent  = l === 'en' ? 'МН' : 'EN';
+
+  // Update html lang attribute
+  document.documentElement.lang = l === 'mn' ? 'mn' : 'en';
+}
+
+function toggleLang() {
+  applyLang(lang === 'en' ? 'mn' : 'en');
+}
+
+// Init on load
+applyLang(lang);
+
+// ── Scroll animations ──────────────────────────────────────
+const observer = new IntersectionObserver(
+  entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+  { threshold: 0.1 }
+);
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 </script>
 </body>
 </html>
