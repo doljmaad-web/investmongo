@@ -354,16 +354,19 @@
       localStorage.setItem('dm_user',  JSON.stringify(user));
     }
 
-    const NEXT_DESTINATIONS = {
-      aat:     '/',
-      scanner: 'https://erikwonlife-glitch.github.io/DeFiMongo/',
-    };
-
     function getNextDestination(user) {
       const next = new URLSearchParams(window.location.search).get('next')
                 || sessionStorage.getItem('dm_next');
       sessionStorage.removeItem('dm_next');
-      if (next && NEXT_DESTINATIONS[next]) return NEXT_DESTINATIONS[next];
+      if (next === 'aat') return '/';
+      if (next === 'scanner') {
+        // Pass member session to DeFiMongo via URL hash (cross-origin, can't share localStorage)
+        const payload = btoa(JSON.stringify({
+          n:  user.name || user.display_name || 'Member',
+          ts: Date.now(),
+        }));
+        return `https://erikwonlife-glitch.github.io/DeFiMongo/#dm=${payload}`;
+      }
       if (user.is_admin) return '/admin';
       return '/portfolio';
     }
