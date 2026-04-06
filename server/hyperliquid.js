@@ -63,6 +63,27 @@ export async function getFundingRate(coin) {
   }
 }
 
+// Full market data for screener — funding, OI, prices for all HL perps
+export async function getMarketData() {
+  const data = await hlPost({ type: 'metaAndAssetCtxs' });
+  const meta  = data[0]?.universe || [];
+  const ctx   = data[1] || [];
+  return meta.map((a, i) => {
+    const c       = ctx[i] || {};
+    const markPx  = parseFloat(c.markPx  || 0);
+    const prevPx  = parseFloat(c.prevDayPx || 0);
+    const oi      = parseFloat(c.openInterest || 0);
+    return {
+      asset:       a.name,
+      markPx,
+      change24h:   prevPx > 0 ? +((markPx - prevPx) / prevPx * 100).toFixed(2) : 0,
+      funding8h:   +(parseFloat(c.funding || 0) * 8 * 100).toFixed(4), // % per 8 h
+      openInterest: +(oi * markPx).toFixed(0),                          // USD notional
+      dayVolume:   +(parseFloat(c.dayNtlVlm || 0)).toFixed(0),
+    };
+  }).filter(a => a.markPx > 0);
+}
+
 // LIVE TRADING STUB — only logs, does not execute
 // Uncomment and implement when ready to go live
 export async function executeTrade(signal, decision) {

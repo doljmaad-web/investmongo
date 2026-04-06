@@ -31,7 +31,8 @@ process.on('SIGTERM', () => {
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
 import { getPortfolioStats, getAvailableCapital, closeTradeById } from './paper-trading.js';
-import { getCurrentPrices, fetchCandles } from './hyperliquid.js';
+import { getCurrentPrices, fetchCandles, getMarketData } from './hyperliquid.js';
+import { calcRSI } from './indicator.js';
 import { db }                          from './database.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -469,10 +470,111 @@ app.get('/api/x-feed', async (req, res) => {
   }
 });
 
+// ============================================================
+// MARKET SCREENER API
+// ============================================================
+let screenerCache = { data: null, at: 0 };
+const SCREENER_TTL = 60_000;
+
+app.get('/api/screener/market', async (req, res) => {
+  try {
+    if (screenerCache.data && Date.now() - screenerCache.at < SCREENER_TTL) {
+      return res.json(screenerCache.data);
+    }
+
+    const trackedRows  = getTradingAssets();
+    const trackedNames = trackedRows.map(r => r.asset);
+
+    const marketData = await getMarketData();
+
+    // Compute RSI for each tracked asset (30m candles, parallel)
+    const rsiMap = {};
+    await Promise.all(trackedNames.map(async (asset) => {
+      try {
+        const candles = await fetchCandles(asset, '30m', 60);
+        if (candles && candles.length >= 20) {
+          const closes = candles.map(c => c.close);
+          rsiMap[asset] = calcRSI(closes, 14);
+        }
+      } catch (_) {}
+    }));
+
+    // Open positions
+    const openTrades = db.prepare(
+      `SELECT asset, direction FROM trades WHERE status='OPEN' AND mode='PAPER'`
+    ).all();
+    const positionMap = {};
+    for (const t of openTrades) positionMap[t.asset] = t.direction;
+
+    // Build tracked section with full data
+    const tracked = trackedNames.map(name => {
+      const m = marketData.find(a => a.asset === name) || {};
+      return { asset: name, ...m, rsi: rsiMap[name] ?? null, position: positionMap[name] ?? null };
+    });
+
+    // Top 30 by OI for the full funding/OI table
+    const topByOI = [...marketData]
+      .sort((a, b) => b.openInterest - a.openInterest)
+      .slice(0, 30);
+
+    const result = { tracked, topByOI, updatedAt: Date.now() };
+    screenerCache = { data: result, at: Date.now() };
+    res.json(result);
+  } catch (err) {
+    console.error('[SCREENER]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/screener/performance', (req, res) => {
+  try {
+    const overall = db.prepare(`
+      SELECT
+        COUNT(*)                                                AS total,
+        SUM(CASE WHEN pnl_usd > 0 THEN 1 ELSE 0 END)          AS wins,
+        SUM(CASE WHEN pnl_usd <= 0 THEN 1 ELSE 0 END)          AS losses,
+        ROUND(SUM(pnl_usd),  2)                                AS total_pnl,
+        ROUND(AVG(pnl_pct),  2)                                AS avg_pnl_pct,
+        ROUND(MAX(pnl_pct),  2)                                AS best_pct,
+        ROUND(MIN(pnl_pct),  2)                                AS worst_pct,
+        ROUND(AVG(CASE WHEN pnl_usd > 0 THEN pnl_pct END), 2) AS avg_win_pct,
+        ROUND(AVG(CASE WHEN pnl_usd <= 0 THEN pnl_pct END), 2) AS avg_loss_pct
+      FROM trades WHERE status='CLOSED' AND mode='PAPER'
+    `).get();
+
+    const byAsset = db.prepare(`
+      SELECT asset,
+        COUNT(*)                                              AS total,
+        SUM(CASE WHEN pnl_usd > 0 THEN 1 ELSE 0 END)        AS wins,
+        ROUND(SUM(pnl_usd), 2)                               AS pnl,
+        ROUND(AVG(pnl_pct), 2)                               AS avg_pct
+      FROM trades WHERE status='CLOSED' AND mode='PAPER'
+      GROUP BY asset ORDER BY pnl DESC
+    `).all();
+
+    const recent = db.prepare(`
+      SELECT asset, direction, entry_price, exit_price, pnl_usd, pnl_pct, opened_at, closed_at
+      FROM trades WHERE status='CLOSED' AND mode='PAPER'
+      ORDER BY closed_at DESC LIMIT 15
+    `).all();
+
+    const open = db.prepare(`
+      SELECT asset, direction, entry_price, stop_loss, pnl_usd, pnl_pct, opened_at
+      FROM trades WHERE status='OPEN' AND mode='PAPER'
+      ORDER BY opened_at DESC
+    `).all();
+
+    res.json({ overall, byAsset, recent, open });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Portfolio, admin and auth pages
 app.get('/portfolio', (req, res) => res.sendFile(path.join(__dirname, '../dashboard/portfolio.html')));
 app.get('/admin',     (req, res) => res.sendFile(path.join(__dirname, '../dashboard/admin.html')));
 app.get('/auth',      (req, res) => res.sendFile(path.join(__dirname, '../dashboard/auth.html')));
+app.get('/screener',  (req, res) => res.sendFile(path.join(__dirname, '../dashboard/screener.html')));
 
 // Serve dashboard for all other routes
 app.get('/', (req, res) => {

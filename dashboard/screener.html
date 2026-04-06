@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Screener — INVEST MONGO</title>
+  <style>
+    :root {
+      --bg:         #0a0c0f;
+      --panel:      #111318;
+      --panel2:     #13161c;
+      --border:     #1e2229;
+      --border2:    #252a33;
+      --text:       #e0e4ec;
+      --muted:      #6b7280;
+      --green:      #4ade80;
+      --red:        #f87171;
+      --yellow:     #fbbf24;
+      --blue:       #60a5fa;
+      --purple:     #a78bfa;
+      --amber:      #fb923c;
+      --cyan:       #22d3ee;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    /* ── TOP BAR ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 52px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 16px;
+    }
+    .tb-left  { display: flex; align-items: center; gap: 14px; }
+    .tb-right { display: flex; align-items: center; gap: 12px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); text-decoration: none;
+      border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px;
+      transition: all 0.2s;
+    }
+    .back-btn:hover { color: var(--green); border-color: var(--green); }
+    .tb-title {
+      font-size: 13px; font-weight: 700; letter-spacing: 2px;
+      color: var(--text); text-transform: uppercase;
+    }
+    .tb-title span { color: var(--blue); }
+    #last-update {
+      font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
+    }
+    .refresh-btn {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.8px;
+      color: var(--blue); background: rgba(96,165,250,0.08);
+      border: 1px solid rgba(96,165,250,0.35); border-radius: 4px;
+      padding: 4px 10px; cursor: pointer; transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: rgba(96,165,250,0.18); }
+    .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .auto-label { font-size: 10px; color: var(--muted); }
+
+    /* ── PAGE BODY ── */
+    #page { padding: 20px; display: flex; flex-direction: column; gap: 20px; max-width: 1600px; margin: 0 auto; }
+
+    /* ── SECTION ── */
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel2);
+    }
+    .section-header h2 {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text);
+    }
+    .section-header h2 span { color: var(--blue); }
+    .section-sub { font-size: 10px; color: var(--muted); }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 8px 12px;
+      font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--muted);
+      text-align: left; border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    thead th.r { text-align: right; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    td {
+      padding: 9px 12px;
+      font-size: 12px; white-space: nowrap;
+    }
+    td.r { text-align: right; }
+    .asset-name { font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+    .price { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+    .pos  { color: var(--green); }
+    .neg  { color: var(--red); }
+    .neut { color: var(--muted); }
+
+    /* Funding rate color coding */
+    .fund-high-pos { color: #f87171; font-weight: 600; } /* longs paying a lot */
+    .fund-low-pos  { color: #fb923c; }
+    .fund-neut     { color: var(--muted); }
+    .fund-neg      { color: #4ade80; } /* shorts paying — unusual, good for longs */
+
+    /* RSI badge */
+    .rsi-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 44px; height: 20px; border-radius: 4px;
+      font-size: 11px; font-weight: 700;
+    }
+    .rsi-os { background: rgba(74,222,128,0.15); color: var(--green); }
+    .rsi-ob { background: rgba(248,113,113,0.15); color: var(--red); }
+    .rsi-mid { background: rgba(107,114,128,0.15); color: var(--muted); }
+
+    /* Position badge */
+    .pos-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+    }
+    .pos-long  { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+    .pos-short { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
+    .pos-none  { color: var(--muted); font-size: 10px; }
+
+    /* ── PERFORMANCE GRID ── */
+    .perf-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .perf-left  { padding: 16px; border-right: 1px solid var(--border); }
+    .perf-right { padding: 16px; }
+
+    .stat-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .stat-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 20px; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* ── OPEN TRADES DOTS ── */
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+      display: inline-block; margin-right: 5px;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── SKELETON LOADER ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--panel2) 25%, var(--border) 50%, var(--panel2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 3px; height: 14px; display: inline-block;
+    }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    .empty-row td { color: var(--muted); text-align: center; padding: 24px; font-size: 11px; }
+
+    /* responsive */
+    @media (max-width: 900px) {
+      .stat-cards { grid-template-columns: repeat(2, 1fr); }
+      .perf-grid  { grid-template-columns: 1fr; }
+      .perf-left  { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    @media (max-width: 600px) {
+      #topbar { padding: 0 12px; }
+      #page   { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="tb-left">
+    <a href="/" class="back-btn">← Terminal</a>
+    <div class="tb-title">📊 <span>Market</span> Screener</div>
+  </div>
+  <div class="tb-right">
+    <span id="last-update" class="auto-label">—</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadAll()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      Refresh
+    </button>
+    <span class="auto-label" id="countdown">Auto-refresh in 60s</span>
+  </div>
+</div>
+
+<div id="page">
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 1: MARKET SCREENER — TRACKED ASSETS
+  ═══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Market <span>Screener</span> — Tracked Assets</h2>
+      <span class="section-sub">Price · Funding · OI · RSI 30m · Live Position</span>
+    </div>
+    <div class="table-wrap">
+      <table id="tracked-table">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th class="r">Price</th>
+            <th class="r">24h %</th>
+            <th class="r">Funding 8h</th>
+            <th class="r">Open Interest</th>
+            <th class="r">24h Volume</th>
+            <th class="r">RSI 30m</th>
+            <th class="r">Position</th>
+          </tr>
+        </thead>
+        <tbody id="tracked-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 2: FUNDING RATES + OI — ALL HL ASSETS
+  ═══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Funding Rates &amp; Open Interest — <span>Top 30 by OI</span></h2>
+      <span class="section-sub">All Hyperliquid perpetuals · sorted by Open Interest</span>
+    </div>
+    <div class="table-wrap">
+      <table id="funding-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Asset</th>
+            <th class="r">Price</th>
+            <th class="r">24h %</th>
+            <th class="r">Funding 8h</th>
+            <th class="r">Funding Ann.</th>
+            <th class="r">Open Interest</th>
+            <th class="r">24h Volume</th>
+          </tr>
+        </thead>
+        <tbody id="funding-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SECTION 3: SIGNAL PERFORMANCE ANALYTICS
+  ═══════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Signal <span>Performance</span> Analytics</h2>
+      <span class="section-sub">All paper trades from inception · live DB query</span>
+    </div>
+
+    <!-- Stat Cards -->
+    <div style="padding:16px;border-bottom:1px solid var(--border);">
+      <div class="stat-cards" id="stat-cards">
+        <div class="stat-card"><div class="stat-label">Total Trades</div><div class="stat-value" id="sc-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-value" id="sc-wr">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total PnL</div><div class="stat-value" id="sc-pnl">—</div></div>
+        <div class="stat-card"><div class="stat-label">Avg PnL / Trade</div><div class="stat-value" id="sc-avg">—</div></div>
+        <div class="stat-card"><div class="stat-label">Best Trade</div><div class="stat-value" id="sc-best">—</div></div>
+        <div class="stat-card"><div class="stat-label">Worst Trade</div><div class="stat-value" id="sc-worst">—</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Win</div><div class="stat-value" id="sc-avgwin">—</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Loss</div><div class="stat-value" id="sc-avgloss">—</div></div>
+      </div>
+    </div>
+
+    <div class="perf-grid">
+      <!-- By Asset -->
+      <div class="perf-left">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">By Asset</div>
+        <table id="by-asset-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th class="r">Trades</th>
+              <th class="r">Wins</th>
+              <th class="r">Win %</th>
+              <th class="r">Total PnL</th>
+              <th class="r">Avg %</th>
+            </tr>
+          </thead>
+          <tbody id="by-asset-body">
+            <tr class="empty-row"><td colspan="6">No closed trades yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Open Trades -->
+      <div class="perf-right">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">
+          <span class="live-dot"></span>Open Positions
+        </div>
+        <table id="open-trades-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th class="r">Dir</th>
+              <th class="r">Entry</th>
+              <th class="r">SL</th>
+              <th class="r">Unrealized PnL</th>
+              <th class="r">Open Since</th>
+            </tr>
+          </thead>
+          <tbody id="open-trades-body">
+            <tr class="empty-row"><td colspan="6">No open trades</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Closed Trades -->
+    <div style="border-top:1px solid var(--border);padding:16px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Recent Closed Trades</div>
+      <div class="table-wrap">
+        <table id="recent-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th class="r">Direction</th>
+              <th class="r">Entry</th>
+              <th class="r">Exit</th>
+              <th class="r">PnL $</th>
+              <th class="r">PnL %</th>
+              <th class="r">Closed At</th>
+            </tr>
+          </thead>
+          <tbody id="recent-body">
+            <tr class="empty-row"><td colspan="7">No closed trades yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ── Formatters ────────────────────────────────────────────────
+function fmtPrice(p) {
+  if (!p && p !== 0) return '—';
+  if (p >= 10000)  return '$' + p.toLocaleString('en-US', {minimumFractionDigits:1, maximumFractionDigits:1});
+  if (p >= 1000)   return '$' + p.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (p >= 100)    return '$' + p.toFixed(3);
+  if (p >= 1)      return '$' + p.toFixed(4);
+  return '$' + p.toFixed(6);
+}
+function fmtM(n) {
+  if (n == null) return '—';
+  if (n >= 1e9)  return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return '$' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3)  return '$' + (n/1e3).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+function fmtPct(p, decimals = 2) {
+  if (p == null) return '—';
+  const s = (p > 0 ? '+' : '') + p.toFixed(decimals) + '%';
+  return s;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function fmtAgo(d) {
+  if (!d) return '—';
+  const ms = Date.now() - new Date(d).getTime();
+  const m = Math.floor(ms/60000);
+  if (m < 60)  return m + 'm ago';
+  const h = Math.floor(m/60);
+  if (h < 24)  return h + 'h ago';
+  return Math.floor(h/24) + 'd ago';
+}
+function pctClass(v)     { return v > 0 ? 'pos' : v < 0 ? 'neg' : 'neut'; }
+function fundClass(f8h) {
+  if (f8h > 0.08) return 'fund-high-pos';
+  if (f8h > 0.02) return 'fund-low-pos';
+  if (f8h < 0)    return 'fund-neg';
+  return 'fund-neut';
+}
+function rsiClass(rsi)   {
+  if (rsi == null) return 'rsi-mid';
+  if (rsi <= 60)   return 'rsi-os';
+  if (rsi >= 40)   return 'rsi-ob';
+  return 'rsi-mid';
+}
+
+// ── Render market screener (tracked assets) ───────────────────
+function renderTracked(rows) {
+  const tbody = document.getElementById('tracked-body');
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No tracked assets</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const rsiVal  = r.rsi != null ? r.rsi.toFixed(1) : '—';
+    const rsiCls  = r.rsi != null ? rsiClass(r.rsi) : 'rsi-mid';
+    const posBadge = r.position === 'LONG'
+      ? `<span class="pos-badge pos-long">▲ LONG</span>`
+      : r.position === 'SHORT'
+        ? `<span class="pos-badge pos-short">▼ SHORT</span>`
+        : `<span class="pos-none">—</span>`;
+    return `<tr>
+      <td><span class="asset-name">${r.asset}</span></td>
+      <td class="r price">${fmtPrice(r.markPx)}</td>
+      <td class="r ${pctClass(r.change24h)}">${fmtPct(r.change24h)}</td>
+      <td class="r ${fundClass(r.funding8h)}">${fmtPct(r.funding8h, 4)}</td>
+      <td class="r">${fmtM(r.openInterest)}</td>
+      <td class="r ${pctClass(0)}" style="color:var(--muted)">${fmtM(r.dayVolume)}</td>
+      <td class="r"><span class="rsi-badge ${rsiCls}">${rsiVal}</span></td>
+      <td class="r">${posBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Render funding + OI table ─────────────────────────────────
+function renderFunding(rows) {
+  const tbody = document.getElementById('funding-body');
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No data</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => {
+    const fundAnn = +(r.funding8h * 3 * 365).toFixed(1); // 3 × 8h periods/day × 365
+    return `<tr>
+      <td style="color:var(--muted);font-size:11px;">${i+1}</td>
+      <td><span class="asset-name">${r.asset}</span></td>
+      <td class="r price">${fmtPrice(r.markPx)}</td>
+      <td class="r ${pctClass(r.change24h)}">${fmtPct(r.change24h)}</td>
+      <td class="r ${fundClass(r.funding8h)}">${fmtPct(r.funding8h, 4)}</td>
+      <td class="r ${fundClass(r.funding8h)}">${fmtPct(fundAnn, 1)}</td>
+      <td class="r">${fmtM(r.openInterest)}</td>
+      <td class="r" style="color:var(--muted)">${fmtM(r.dayVolume)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Render performance ────────────────────────────────────────
+function renderPerformance(data) {
+  const o = data.overall || {};
+  const total = o.total || 0;
+  const winRate = total > 0 ? ((o.wins / total) * 100).toFixed(1) : '0.0';
+  const pnl = o.total_pnl || 0;
+  const avg = o.avg_pnl_pct || 0;
+
+  setText('sc-total', total || 0);
+  setTextColor('sc-wr',    winRate + '%',  parseFloat(winRate) >= 50 ? 'var(--green)' : 'var(--red)');
+  setTextColor('sc-pnl',   (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2), pnl >= 0 ? 'var(--green)' : 'var(--red)');
+  setTextColor('sc-avg',   (avg >= 0 ? '+' : '') + avg.toFixed(2) + '%', avg >= 0 ? 'var(--green)' : 'var(--red)');
+  setTextColor('sc-best',  o.best_pct != null ? '+' + o.best_pct + '%' : '—', 'var(--green)');
+  setTextColor('sc-worst', o.worst_pct != null ? o.worst_pct + '%' : '—', 'var(--red)');
+  setTextColor('sc-avgwin',  o.avg_win_pct  != null ? '+' + o.avg_win_pct  + '%' : '—', 'var(--green)');
+  setTextColor('sc-avgloss', o.avg_loss_pct != null ?  o.avg_loss_pct + '%' : '—', 'var(--red)');
+
+  // By asset
+  const byAssetBody = document.getElementById('by-asset-body');
+  if (data.byAsset && data.byAsset.length) {
+    byAssetBody.innerHTML = data.byAsset.map(r => {
+      const wr = r.total > 0 ? ((r.wins / r.total) * 100).toFixed(0) : '0';
+      return `<tr>
+        <td class="asset-name">${r.asset}</td>
+        <td class="r">${r.total}</td>
+        <td class="r ${r.wins > r.total - r.wins ? 'pos' : 'neg'}">${r.wins}</td>
+        <td class="r ${parseFloat(wr) >= 50 ? 'pos' : 'neg'}">${wr}%</td>
+        <td class="r ${r.pnl >= 0 ? 'pos' : 'neg'}">${r.pnl >= 0 ? '+$' : '-$'}${Math.abs(r.pnl).toFixed(2)}</td>
+        <td class="r ${r.avg_pct >= 0 ? 'pos' : 'neg'}">${(r.avg_pct >= 0 ? '+' : '') + r.avg_pct}%</td>
+      </tr>`;
+    }).join('');
+  } else {
+    byAssetBody.innerHTML = '<tr class="empty-row"><td colspan="6">No closed trades yet</td></tr>';
+  }
+
+  // Open trades
+  const openBody = document.getElementById('open-trades-body');
+  if (data.open && data.open.length) {
+    openBody.innerHTML = data.open.map(t => `<tr>
+      <td class="asset-name">${t.asset}</td>
+      <td class="r ${t.direction === 'LONG' ? 'pos' : 'neg'}">${t.direction}</td>
+      <td class="r price">${fmtPrice(t.entry_price)}</td>
+      <td class="r" style="color:var(--red)">${fmtPrice(t.stop_loss)}</td>
+      <td class="r ${(t.pnl_usd||0) >= 0 ? 'pos' : 'neg'}">${(t.pnl_usd||0) >= 0 ? '+$' : '-$'}${Math.abs(t.pnl_usd||0).toFixed(2)}</td>
+      <td class="r" style="color:var(--muted)">${fmtAgo(t.opened_at)}</td>
+    </tr>`).join('');
+  } else {
+    openBody.innerHTML = '<tr class="empty-row"><td colspan="6">No open trades</td></tr>';
+  }
+
+  // Recent closed trades
+  const recentBody = document.getElementById('recent-body');
+  if (data.recent && data.recent.length) {
+    recentBody.innerHTML = data.recent.map(t => `<tr>
+      <td class="asset-name">${t.asset}</td>
+      <td class="r ${t.direction === 'LONG' ? 'pos' : 'neg'}">${t.direction}</td>
+      <td class="r price">${fmtPrice(t.entry_price)}</td>
+      <td class="r price">${fmtPrice(t.exit_price)}</td>
+      <td class="r ${(t.pnl_usd||0) >= 0 ? 'pos' : 'neg'}">${(t.pnl_usd||0) >= 0 ? '+$' : '-$'}${Math.abs(t.pnl_usd||0).toFixed(2)}</td>
+      <td class="r ${(t.pnl_pct||0) >= 0 ? 'pos' : 'neg'}">${(t.pnl_pct||0) >= 0 ? '+' : ''}${(t.pnl_pct||0).toFixed(2)}%</td>
+      <td class="r" style="color:var(--muted)">${fmtDate(t.closed_at)}</td>
+    </tr>`).join('');
+  } else {
+    recentBody.innerHTML = '<tr class="empty-row"><td colspan="7">No closed trades yet</td></tr>';
+  }
+}
+
+function setText(id, val) {
+  document.getElementById(id).textContent = val;
+}
+function setTextColor(id, val, color) {
+  const el = document.getElementById(id);
+  el.textContent = val;
+  el.style.color = color;
+}
+
+// ── Load all data ─────────────────────────────────────────────
+let refreshTimer = null;
+let countdown = 60;
+
+async function loadAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  countdown = 60;
+
+  try {
+    const [marketRes, perfRes] = await Promise.all([
+      fetch('/api/screener/market').then(r => r.json()),
+      fetch('/api/screener/performance').then(r => r.json()),
+    ]);
+
+    renderTracked(marketRes.tracked || []);
+    renderFunding(marketRes.topByOI || []);
+    renderPerformance(perfRes);
+
+    const ts = new Date(marketRes.updatedAt || Date.now());
+    document.getElementById('last-update').textContent =
+      'Updated ' + ts.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  } catch (err) {
+    console.error('Screener load error:', err);
+  }
+
+  btn.classList.remove('spinning');
+}
+
+// Auto-refresh countdown
+setInterval(() => {
+  countdown--;
+  document.getElementById('countdown').textContent = `Auto-refresh in ${countdown}s`;
+  if (countdown <= 0) {
+    countdown = 60;
+    loadAll();
+  }
+}, 1000);
+
+loadAll();
+</script>
+</body>
+</html>
