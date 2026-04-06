@@ -310,27 +310,29 @@
     const cur = slice[slice.length - 1];
     const prv = slice[slice.length - 2];
     const bodySize = Math.abs(cur.open - cur.close);
-    const range = cur.high - cur.low;
+    const range    = cur.high - cur.low;
+    const prvBody  = Math.abs(prv.open - prv.close);
     return {
-      isDoji: range > 0 && bodySize <= range * 0.1,
-      isBullishEngulfing: cur.close > cur.open && cur.open < prv.close && cur.close > prv.open && bodySize > Math.abs(prv.open - prv.close),
-      isBearishEngulfing: cur.close < cur.open && cur.open > prv.close && cur.close < prv.open && bodySize > Math.abs(prv.open - prv.close),
+      // Matches Pine Script exactly — no current candle direction requirement
+      isDoji:              range > 0 && bodySize <= range * 0.1,
+      isBullishEngulfing:  cur.close > prv.open && cur.open < prv.close && bodySize > prvBody,
+      isBearishEngulfing:  cur.close < prv.open && cur.open > prv.close && bodySize > prvBody,
     };
   }
 
   function runIndicatorScan() {
-    // v11 parameters — must match indicator.js exactly
-    const rsiLen   = 14;
-    const rsiMemory = 20;  // RSI 50-level memory: 20 bars
-    const rsiObMin = 55, rsiObMax = 85;
-    const rsiOsMin = 18, rsiOsMax = 45;
-    const volMult  = 1.3; // volume spike threshold
+    // Exact match to Pine Script "Precision Dynamic Historical v9"
+    // rsi_ob_min=40, rsi_ob_max=85, rsi_os_min=18, rsi_os_max=60, lookback_50=10
+    const rsiLen    = 14;
+    const lookback  = 10;    // Pine Script: lookback_50
+    const rsiObMin  = 40, rsiObMax = 85;
+    const rsiOsMin  = 18, rsiOsMax = 60;
 
-    const minBars = rsiLen + rsiMemory + 2;
+    const minBars = rsiLen + lookback + 1;
     if (candles.length < minBars + 1) { precisionDots = []; return; }
 
     const closes = candles.map(c => c.close);
-    const rsiArr = _buildRSIArr(closes, rsiLen); // O(n) — computed once for all bars
+    const rsiArr = _buildRSIArr(closes, rsiLen); // O(n) single-pass Wilder RSI
 
     const dots = [];
     for (let i = minBars; i < candles.length; i++) {
@@ -338,35 +340,31 @@
       const rsiPrev = rsiArr[i - 1];
       if (rsiNow === null || rsiPrev === null) continue;
 
-      // RSI 50-level memory: max/min over last rsiMemory bars
-      let rsiHi = -Infinity, rsiLo = Infinity;
-      for (let k = i - rsiMemory + 1; k <= i; k++) {
+      // ta.highest(rsi, lookback_50) and ta.lowest(rsi, lookback_50)
+      let hiRsi = -Infinity, loRsi = Infinity;
+      for (let k = i - lookback + 1; k <= i; k++) {
         if (rsiArr[k] !== null) {
-          if (rsiArr[k] > rsiHi) rsiHi = rsiArr[k];
-          if (rsiArr[k] < rsiLo) rsiLo = rsiArr[k];
+          if (rsiArr[k] > hiRsi) hiRsi = rsiArr[k];
+          if (rsiArr[k] < loRsi) loRsi = rsiArr[k];
         }
       }
 
       const hookUp  = rsiNow > rsiPrev;
       const hookDown= rsiNow < rsiPrev;
-      const osZone  = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && rsiHi < 50;
-      const obZone  = rsiNow >= rsiObMin && rsiNow <= rsiObMax && rsiLo > 50;
 
-      // Volume spike filter: current volume > volMult × 20-bar average
-      const volStart = Math.max(0, i - 20);
-      let volSum = 0, volCount = 0;
-      for (let v = volStart; v < i; v++) {
-        if (candles[v].volume) { volSum += candles[v].volume; volCount++; }
-      }
-      const avgVol   = volCount > 0 ? volSum / volCount : 0;
-      const volumeOk = !avgVol || (candles[i].volume || 0) >= avgVol * volMult;
+      // os_zone = rsi >= os_min AND rsi <= os_max AND ta.highest(rsi, 10) < 50
+      const osZone = rsiNow >= rsiOsMin && rsiNow <= rsiOsMax && hiRsi < 50;
+      // ob_zone = rsi >= ob_min AND rsi <= ob_max AND ta.lowest(rsi, 10) > 50
+      const obZone = rsiNow >= rsiObMin && rsiNow <= rsiObMax && loRsi > 50;
 
       const { isDoji, isBullishEngulfing, isBearishEngulfing } = _getPatterns(candles.slice(i - 1, i + 1));
 
-      if (osZone && hookUp && volumeOk && (isDoji || isBullishEngulfing)) {
-        dots.push({ index: i, type: 'yellow', price: candles[i].close, rsi: rsiNow });
-      } else if (obZone && hookDown && volumeOk && (isDoji || isBearishEngulfing)) {
-        dots.push({ index: i, type: 'pink',   price: candles[i].close, rsi: rsiNow });
+      // Yellow dot: os_zone AND (doji OR bullish_engulfing) AND hook_up
+      if (osZone && hookUp && (isDoji || isBullishEngulfing)) {
+        dots.push({ index: i, type: 'yellow', price: candles[i].low,  rsi: rsiNow });
+      // Pink dot: ob_zone AND (doji OR bearish_engulfing) AND hook_down
+      } else if (obZone && hookDown && (isDoji || isBearishEngulfing)) {
+        dots.push({ index: i, type: 'pink',   price: candles[i].high, rsi: rsiNow });
       }
     }
     precisionDots = dots;
