@@ -115,6 +115,16 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   const direction = signal.signal === 'BUY' ? 'LONG' : 'SHORT';
 
+  // Enforce admin trend bias
+  if (trendBias === 'long' && direction === 'SHORT') {
+    console.log(`[BOT] Trend bias=LONG — SHORT signal suppressed for ${signal.asset}`);
+    return null;
+  }
+  if (trendBias === 'short' && direction === 'LONG') {
+    console.log(`[BOT] Trend bias=SHORT — LONG signal suppressed for ${signal.asset}`);
+    return null;
+  }
+
   // Skip if we already have an open position in the same direction
   const existing = db.prepare(
     `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`

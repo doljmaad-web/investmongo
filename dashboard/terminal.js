@@ -47,7 +47,23 @@ let chartCtx = null;
 // ============================================================
 let currentTrendBias = 'neutral';
 
+function getAdminToken() {
+  return localStorage.getItem('dm_token') || null;
+}
+
+function isAdmin() {
+  try {
+    const u = JSON.parse(localStorage.getItem('dm_user'));
+    return !!(u && u.is_admin);
+  } catch { return false; }
+}
+
 async function loadTrendBias() {
+  // Only show trend control section if logged-in admin
+  if (isAdmin()) {
+    const section = document.getElementById('trend-bias-section');
+    if (section) section.style.display = '';
+  }
   try {
     const r = await fetch('/api/trend-bias');
     const d = await r.json();
@@ -56,10 +72,15 @@ async function loadTrendBias() {
 }
 
 async function setTrendBias(bias) {
+  const token = getAdminToken();
+  if (!token) return;
   try {
     await fetch('/api/trend-bias', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({ bias }),
     });
     applyTrendBias(bias);

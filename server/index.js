@@ -9,6 +9,7 @@ import cron              from 'node-cron';
 import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, setTradingAssetPct, removeTradingAsset, getTrendBias, setTrendBias } from './bot.js';
 import userRoutes  from './user-routes.js';
 import adminRoutes from './admin-routes.js';
+import { adminMiddleware } from './auth.js';
 import { scanAllDeposits, syncUserGains } from './wallet-manager.js';
 
 process.on('unhandledRejection', (reason) => {
@@ -226,7 +227,7 @@ app.get('/api/trend-bias', (req, res) => {
   res.json({ bias: getTrendBias() });
 });
 
-app.post('/api/trend-bias', (req, res) => {
+app.post('/api/trend-bias', adminMiddleware, (req, res) => {
   const { bias } = req.body;
   if (!['neutral','long','short'].includes(bias)) return res.status(400).json({ error: 'invalid bias' });
   setTrendBias(bias);
