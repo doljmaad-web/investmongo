@@ -678,7 +678,7 @@ function drawChart() {
 // ============================================================
 function updateClock() {
   const el = document.getElementById('clock');
-  if (el) el.textContent = new Date().toLocaleTimeString();
+  if (el) el.textContent = new Date().toLocaleTimeString('mn-MN', { timeZone: 'Asia/Ulaanbaatar', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 }
 
 // ============================================================
