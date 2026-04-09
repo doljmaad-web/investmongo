@@ -333,6 +333,28 @@ html, body {
 .pos-dir.long  { background: var(--green-mid); color: var(--green); }
 .pos-dir.short { background: var(--red-mid);   color: var(--red);   }
 
+.pos-close-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255,59,59,0.45);
+  color: var(--red);
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .3px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pos-close-btn:hover:not(:disabled) {
+  background: rgba(255,59,59,0.15);
+  border-color: var(--red);
+}
+.pos-close-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .pos-pnl {
   font-size: 16px; font-weight: bold; margin-bottom: 4px;
 }

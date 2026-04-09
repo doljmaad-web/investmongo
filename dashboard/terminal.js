@@ -465,10 +465,11 @@ function buildPositionCard(t) {
   const dirClass = t.direction === 'LONG' ? 'long' : 'short';
   const pnlPct   = t.pnl_pct ? ` (${t.pnl_pct > 0 ? '+' : ''}${t.pnl_pct.toFixed(1)}%)` : '';
   return `
-    <div class="position-card">
+    <div class="position-card" id="pos-card-${t.id}">
       <div class="pos-header">
         <span class="pos-asset">${escHtml(t.asset)}</span>
         <span class="pos-dir ${dirClass}">${t.direction}</span>
+        <button class="pos-close-btn" onclick="closePosition(${t.id}, this)" title="Close this position">✕ Close</button>
       </div>
       <div class="pos-pnl ${isPos ? 'pos' : 'neg'}">${fmtUSD(t.pnl_usd, true)}${pnlPct}</div>
       <div class="pos-details">
@@ -478,6 +479,22 @@ function buildPositionCard(t) {
         <span>TP: <b style="color:var(--green)">${fmtPrice(t.take_profit)}</b></span>
       </div>
     </div>`;
+}
+
+async function closePosition(tradeId, btn) {
+  if (!confirm(`Close position #${tradeId} at market price?`)) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res  = await fetch(`/api/trades/close/${tradeId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    await refreshPortfolio();
+  } catch (e) {
+    alert('❌ Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '✕ Close';
+  }
 }
 
 // ============================================================

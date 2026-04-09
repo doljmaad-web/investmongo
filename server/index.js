@@ -130,6 +130,30 @@ app.get('/api/trades', (req, res) => {
   res.json({ open, closed });
 });
 
+// POST /api/trades/close/:id  → admin: close a single open paper position by trade ID
+app.post('/api/trades/close/:id', async (req, res) => {
+  try {
+    const tradeId = parseInt(req.params.id, 10);
+    if (isNaN(tradeId)) return res.status(400).json({ error: 'Invalid trade ID' });
+
+    const trade = db.prepare(`SELECT * FROM trades WHERE id=? AND status='OPEN' AND mode='PAPER'`).get(tradeId);
+    if (!trade) return res.status(404).json({ error: 'Trade not found or already closed' });
+
+    const { getCurrentPrices } = await import('./hyperliquid.js');
+    const prices = await getCurrentPrices([trade.asset]);
+    const exitPrice = prices[trade.asset];
+    if (!exitPrice) return res.status(503).json({ error: `No price available for ${trade.asset}` });
+
+    closeTradeById(trade.id, exitPrice);
+    console.log(`[ADMIN] Force-closed trade #${trade.id} ${trade.asset} ${trade.direction} @ $${exitPrice}`);
+    broadcast({ type: 'portfolio_update' });
+    res.json({ closed: 1, tradeId: trade.id, exitPrice });
+  } catch (e) {
+    console.error('[ADMIN] close-by-id error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/trades/close-all  → admin: close every open paper position at current market price
 app.post('/api/trades/close-all', async (req, res) => {
   try {
