@@ -329,6 +329,7 @@ html, body {
 .pos-asset { font-size: 13px; font-weight: bold; color: #fff; }
 .pos-dir {
   font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 3px;
+  margin-left: 10px;
 }
 .pos-dir.long  { background: var(--green-mid); color: var(--green); }
 .pos-dir.short { background: var(--red-mid);   color: var(--red);   }
