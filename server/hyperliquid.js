@@ -1,6 +1,11 @@
 // Hyperliquid public API — no auth needed for market data
 const HL_URL = 'https://api.hyperliquid.xyz/info';
 
+// Internal ticker → Hyperliquid ticker mapping
+const HL_COIN_MAP = {
+  GOLD: 'XAU',
+};
+
 async function hlPost(body, timeout = 10000) {
   const res = await fetch(HL_URL, {
     method: 'POST',
@@ -18,10 +23,11 @@ const INTERVAL_MS = {
 };
 
 export async function fetchCandles(coin, interval = '1h', bars = 250) {
+  const hlCoin = HL_COIN_MAP[coin] || coin;
   try {
     const endTime   = Date.now();
     const startTime = endTime - bars * (INTERVAL_MS[interval] || 3600000);
-    const data = await hlPost({ type:'candleSnapshot', req:{ coin, interval, startTime, endTime } }, 8000);
+    const data = await hlPost({ type:'candleSnapshot', req:{ coin: hlCoin, interval, startTime, endTime } }, 8000);
     return data.map(c => ({
       time:   c.t,
       open:   parseFloat(c.o),

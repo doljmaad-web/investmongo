@@ -415,43 +415,47 @@ function parseItems(xml, handle) {
   return items;
 }
 
+// Two RSS providers — tg.i-c-a.su primary, rsshub.app fallback
+const RSS_PROVIDERS = [
+  (channel) => `https://tg.i-c-a.su/rss/${channel}`,
+  (channel) => `https://rsshub.app/telegram/channel/${channel}`,
+];
+
+async function fetchChannelWithFallback(channel, handle) {
+  for (const makeUrl of RSS_PROVIDERS) {
+    try {
+      const url = makeUrl(channel);
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(6000),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        },
+      });
+      if (res.status === 403 || res.status === 429) continue; // try next provider
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const xml = await res.text();
+      const items = parseItems(xml, handle);
+      if (items.length > 0) return items;
+    } catch (e) {
+      // try next provider
+    }
+  }
+  return [];
+}
+
 async function fetchXFeed() {
   const now = Date.now();
 
-  // Serve stale cache during active rate-limit window (20 min)
-  if (xFeedCache.items.length > 0 && xFeedCache.rateLimited && now - xFeedCache.cached_at < 20 * 60 * 1000) {
-    console.log('[X-FEED] Serving stale cache during rate limit window');
+  // Serve stale cache if fresh enough
+  if (xFeedCache.items.length > 0 && now - xFeedCache.cached_at < X_CACHE_TTL) {
     return xFeedCache.items;
   }
 
   try {
     const rawResults = await Promise.allSettled(
-      X_MIRROR_SOURCES.map(async ({ channel, handle }) => {
-        const url = `https://tg.i-c-a.su/rss/${channel}`;
-        const res = await fetch(url, {
-          signal: AbortSignal.timeout(6000),
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-          },
-        });
-        if (res.status === 403) return { status: 403 };
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const xml = await res.text();
-        return parseItems(xml, handle);
-      })
+      X_MIRROR_SOURCES.map(({ channel, handle }) => fetchChannelWithFallback(channel, handle))
     );
-
-    // Detect rate limiting
-    const isRateLimited = rawResults.some(r =>
-      r.status === 'fulfilled' && r.value?.status === 403
-    );
-    if (isRateLimited) {
-      xFeedCache.rateLimited = true;
-      console.log('[X-FEED] 403 detected — rate limited for ~15 min');
-      return xFeedCache.items;
-    }
-    xFeedCache.rateLimited = false;
 
     const all = rawResults
       .filter(r => r.status === 'fulfilled' && Array.isArray(r.value))
@@ -459,9 +463,16 @@ async function fetchXFeed() {
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 30);
 
-    xFeedCache.items     = all;
-    xFeedCache.cached_at = Date.now();
-    return all;
+    if (all.length > 0) {
+      xFeedCache.items     = all;
+      xFeedCache.cached_at = Date.now();
+      xFeedCache.rateLimited = false;
+      console.log(`[X-FEED] Fetched ${all.length} posts`);
+    } else {
+      console.warn('[X-FEED] All providers returned empty — serving stale cache');
+    }
+
+    return xFeedCache.items;
   } catch (err) {
     console.error('[X-FEED] fetchXFeed error:', err.message);
     return xFeedCache.items;

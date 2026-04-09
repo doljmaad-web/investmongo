@@ -214,43 +214,40 @@ async function fetchGlassnode() {
 }
 
 // ============================================================
-// MACRO EVENTS — Finnhub economic calendar (free tier)
-// Set FINNHUB_API_KEY in .env to enable
-// Returns the next high-impact event within 7 days, or null
+// MACRO EVENTS — ForexFactory weekly calendar (free, no key)
+// Returns the next high-impact USD event within 7 days, or null
 // ============================================================
 async function fetchNextMacroEvent() {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) return null;
-
   const now = Date.now();
   if (macroEvent !== undefined && now - lastMacroFetch < MACRO_TTL) {
     return macroEvent;
   }
 
   try {
-    const from = new Date().toISOString().split('T')[0];
-    const to   = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const url  = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${apiKey}`;
-    const res  = await fetch(url);
+    const res = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json', {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    const events = (data.economicCalendar || [])
-      .filter(e => e.impact === 'high' || e.impact === '3')
-      .map(e => ({ ...e, _ms: new Date(e.time).getTime() }))
+    const HIGH_IMPACT = ['High', 'high', '3'];
+    const events = (Array.isArray(data) ? data : [])
+      .filter(e => HIGH_IMPACT.includes(e.impact) && (e.country === 'USD' || e.currency === 'USD'))
+      .map(e => ({ ...e, _ms: new Date(e.date).getTime() }))
       .filter(e => e._ms > now)
       .sort((a, b) => a._ms - b._ms);
 
     macroEvent = events.length > 0 ? {
-      event:     events[0].event,
-      time:      events[0].time,
-      country:   events[0].country,
+      event:     events[0].title || events[0].name || events[0].event,
+      time:      events[0].date,
+      country:   'USD',
       impact:    'high',
       hoursAway: Math.round((events[0]._ms - now) / (1000 * 60 * 60)),
     } : null;
 
     lastMacroFetch = now;
-    console.log(`[NEWS] Next macro event: ${macroEvent?.event || 'none'}`);
+    console.log(`[NEWS] Next macro event: ${macroEvent?.event || 'none'} (ForexFactory)`);
     return macroEvent;
   } catch (e) {
     console.warn('[NEWS] Macro calendar fetch failed:', e.message);
