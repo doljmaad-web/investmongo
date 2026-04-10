@@ -933,6 +933,16 @@
       font-size:14px; font-weight:800; color:#60a5fa;
       text-shadow: 0 0 14px rgba(96,165,250,0.7);
     }
+    .pool-yearly {
+      font-size: 18px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow:
+        0 0 12px rgba(255,255,255,0.9),
+        0 0 28px rgba(255,255,255,0.5),
+        0 0 50px rgba(255,255,255,0.2);
+      letter-spacing: -0.5px;
+    }
     .pool-stat-label { font-size:8px; color:#f59e0b; text-transform:uppercase; letter-spacing:1px; margin-top:2px; font-weight:600; }
 
     .pool-bar-wrap { height:3px; background:rgba(255,255,255,0.07); border-radius:2px; overflow:hidden; margin-bottom:12px; }
@@ -1134,7 +1144,7 @@
           <div class="pool-stats">
             <div class="pool-stat"><div class="pool-stat-val" id="liq-tvl">—</div><div class="pool-stat-label">TVL</div></div>
             <div class="pool-stat"><div class="pool-stat-val" id="liq-inv">—</div><div class="pool-stat-label">Investors</div></div>
-            <div class="pool-stat"><div class="pool-stat-val" id="liq-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+            <div class="pool-stat"><div class="pool-stat-val pool-yearly" id="liq-perf">36%</div><div class="pool-stat-label">1 Year Return</div></div>
           </div>
           <div class="pool-bar-wrap"><div class="pool-bar" id="liq-bar" style="width:0%"></div></div>
           <div class="pool-lp-footer">
@@ -1182,7 +1192,7 @@
           <div class="pool-stats">
             <div class="pool-stat"><div class="pool-stat-val" id="grow-tvl">—</div><div class="pool-stat-label">TVL</div></div>
             <div class="pool-stat"><div class="pool-stat-val" id="grow-inv">—</div><div class="pool-stat-label">Investors</div></div>
-            <div class="pool-stat"><div class="pool-stat-val" id="grow-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+            <div class="pool-stat"><div class="pool-stat-val pool-yearly" id="grow-perf">60%</div><div class="pool-stat-label">1 Year Return</div></div>
           </div>
           <div class="pool-bar-wrap"><div class="pool-bar" id="grow-bar" style="width:0%"></div></div>
           <div class="pool-lp-footer">
@@ -1230,7 +1240,7 @@
           <div class="pool-stats">
             <div class="pool-stat"><div class="pool-stat-val" id="pro-tvl">—</div><div class="pool-stat-label">TVL</div></div>
             <div class="pool-stat"><div class="pool-stat-val" id="pro-inv">—</div><div class="pool-stat-label">Investors</div></div>
-            <div class="pool-stat"><div class="pool-stat-val" id="pro-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+            <div class="pool-stat"><div class="pool-stat-val pool-yearly" id="pro-perf">96%</div><div class="pool-stat-label">1 Year Return</div></div>
           </div>
           <div class="pool-bar-wrap"><div class="pool-bar" id="pro-bar" style="width:0%"></div></div>
           <div class="pool-lp-footer">
@@ -1278,7 +1288,7 @@
           <div class="pool-stats">
             <div class="pool-stat"><div class="pool-stat-val" id="vault-tvl">—</div><div class="pool-stat-label">TVL</div></div>
             <div class="pool-stat"><div class="pool-stat-val" id="vault-inv">—</div><div class="pool-stat-label">Investors</div></div>
-            <div class="pool-stat"><div class="pool-stat-val" id="vault-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+            <div class="pool-stat"><div class="pool-stat-val pool-yearly" id="vault-perf">168%</div><div class="pool-stat-label">1 Year Return</div></div>
           </div>
           <div class="pool-bar-wrap"><div class="pool-bar" id="vault-bar" style="width:0%"></div></div>
           <div class="pool-lp-footer">
@@ -1955,7 +1965,7 @@
 
           document.getElementById(`${id}-tvl`).textContent  = fmtTvl(tvl);
           document.getElementById(`${id}-inv`).textContent  = inv;
-          document.getElementById(`${id}-perf`).textContent = (bot >= 0 ? '+' : '') + bot.toFixed(1) + '%';
+          // yearly return is fixed per pool — do not overwrite with bot %
           document.getElementById(`${id}-bar`).style.width  = Math.min((bot / cap) * 100, 100) + '%';
 
           // LP footer
