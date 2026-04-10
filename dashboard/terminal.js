@@ -633,7 +633,6 @@ function drawChart() {
 
   let points = state.snapshots
     .map(s => ({ value: s.total_value, time: new Date(s.snapshot_at) }))
-    .filter(p => p.time.getTime() >= cutoff)
     .sort((a, b) => a.time - b.time);
 
   if (points.length === 0) {

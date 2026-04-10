@@ -240,10 +240,12 @@ html, body {
 /* ====== CENTER PANEL ====== */
 #chart-periods {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow: visible;
 }
 .period-btn {
   background: transparent;

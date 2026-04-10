@@ -159,7 +159,7 @@ export function getPortfolioStats() {
   };
 }
 
-function snapshotPortfolio() {
+export function snapshotPortfolio() {
   const stats = getPortfolioStats();
   db.prepare(`
     INSERT INTO portfolio_snapshots

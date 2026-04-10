@@ -31,7 +31,7 @@ process.on('SIGTERM', () => {
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
-import { getPortfolioStats, getAvailableCapital, closeTradeById } from './paper-trading.js';
+import { getPortfolioStats, getAvailableCapital, closeTradeById, snapshotPortfolio } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData } from './hyperliquid.js';
 import { calcRSI } from './indicator.js';
 import { db }                          from './database.js';
@@ -193,10 +193,15 @@ app.get('/api/news', async (req, res) => {
 
 app.get('/api/snapshots', (req, res) => {
   const period = req.query.period || '1d';
-  const limits = { '30m': 40, '1h': 60, '4h': 100, '1d': 288, '7d': 500, '30d': 500, '90d': 500, '180d': 500, '365d': 500 };
+  const periodMs = {
+    '30m': 30*60*1000, '1h': 60*60*1000, '4h': 4*60*60*1000,
+    '1d': 24*60*60*1000, '7d': 7*24*60*60*1000, '30d': 30*24*60*60*1000,
+    '90d': 90*24*60*60*1000, '180d': 180*24*60*60*1000, '365d': 365*24*60*60*1000,
+  };
+  const cutoff = new Date(Date.now() - (periodMs[period] || periodMs['1d'])).toISOString();
   const rows = db.prepare(
-    'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT ?'
-  ).all(limits[period] || 288).reverse();
+    'SELECT total_value, snapshot_at FROM portfolio_snapshots WHERE snapshot_at >= ? ORDER BY snapshot_at ASC'
+  ).all(cutoff);
   res.json({ snapshots: rows });
 });
 
@@ -644,6 +649,11 @@ cron.schedule('*/10 * * * *', async () => {
   } catch (err) {
     console.error('[CRON] News error:', err.message);
   }
+});
+
+// Portfolio snapshot every 5 minutes — ensures short-period chart views (30m, 1h) always have data
+cron.schedule('*/5 * * * *', () => {
+  try { snapshotPortfolio(); } catch (e) { /* silent */ }
 });
 
 // Update open trade P&L every 60 seconds
