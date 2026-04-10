@@ -271,6 +271,10 @@ db.exec(`
   );
 `);
 
+// Community profile migrations
+try { db.exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''`); } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN handle TEXT UNIQUE`); } catch (_) {}
+
 // Migrations — safe to run on every boot
 try { db.exec(`ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'flexible'`); } catch (_) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN tier_pct REAL DEFAULT 9`); } catch (_) {}

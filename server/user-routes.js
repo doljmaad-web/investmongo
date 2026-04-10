@@ -325,6 +325,8 @@ router.get('/api/auth/me', authMiddleware, (req, res) => {
         name:            user.name,
         email:           user.email,
         avatar:          user.avatar,
+        bio:             user.bio || '',
+        handle:          user.handle || '',
         wallet_address:  user.wallet_address,
         is_admin:        !!user.is_admin,
         tier:            user.tier,
@@ -340,6 +342,35 @@ router.get('/api/auth/me', authMiddleware, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// PUT /api/auth/profile — update bio and handle
+router.put('/api/auth/profile', authMiddleware, (req, res) => {
+  try {
+    const { bio, handle } = req.body;
+    if (handle !== undefined) {
+      const clean = handle.trim().replace(/[^a-zA-Z0-9_]/g, '').toLowerCase().slice(0, 30);
+      const taken = db.prepare(`SELECT id FROM users WHERE handle=? AND id!=?`).get(clean, req.user.id);
+      if (taken) return res.status(409).json({ error: 'Handle already taken' });
+      db.prepare(`UPDATE users SET handle=? WHERE id=?`).run(clean || null, req.user.id);
+    }
+    if (bio !== undefined) {
+      db.prepare(`UPDATE users SET bio=? WHERE id=?`).run(bio.trim().slice(0, 200), req.user.id);
+    }
+    const user = db.prepare(`SELECT id,name,avatar,bio,handle,is_admin FROM users WHERE id=?`).get(req.user.id);
+    res.json(user);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/auth/avatar — upload avatar as base64
+router.post('/api/auth/avatar', authMiddleware, (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar || !avatar.startsWith('data:image/')) return res.status(400).json({ error: 'Invalid image' });
+    if (avatar.length > 300000) return res.status(400).json({ error: 'Image too large (max ~200KB)' });
+    db.prepare(`UPDATE users SET avatar=? WHERE id=?`).run(avatar, req.user.id);
+    res.json({ ok: true, avatar });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Pool stats (public) ───────────────────────────────────────

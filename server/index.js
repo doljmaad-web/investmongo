@@ -628,22 +628,26 @@ app.get('/api/community/posts', (req, res) => {
     const me = token ? verifyJWT(token) : null;
     const meId = me?.id || null;
 
-    const posts = db.prepare(`
-      SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin
+    const stmtPosts = db.prepare(`
+      SELECT p.*, u.name AS author_name, u.avatar AS author_avatar,
+             u.is_admin AS author_is_admin, u.handle AS author_handle
       FROM community_posts p
       JOIN users u ON u.id = p.user_id
-      ORDER BY p.created_at DESC
-      LIMIT 100
-    `).all();
+      ORDER BY p.created_at DESC LIMIT 100
+    `);
+    const stmtLiked    = db.prepare(`SELECT 1 AS hit FROM community_likes WHERE post_id=? AND user_id=?`);
+    const stmtComments = db.prepare(`
+      SELECT c.id, c.content, c.created_at, u.name AS author_name,
+             u.avatar AS author_avatar, u.handle AS author_handle
+      FROM community_comments c JOIN users u ON u.id = c.user_id
+      WHERE c.post_id=? ORDER BY c.created_at ASC
+    `);
 
+    const posts  = stmtPosts.all();
     const result = posts.map(post => ({
       ...post,
-      liked: meId ? !!db.prepare(`SELECT 1 FROM community_likes WHERE post_id=? AND user_id=?`).get(post.id, meId) : false,
-      comments: db.prepare(`
-        SELECT c.*, u.name AS author_name, u.avatar AS author_avatar
-        FROM community_comments c JOIN users u ON u.id = c.user_id
-        WHERE c.post_id=? ORDER BY c.created_at ASC
-      `).all(post.id),
+      liked:    meId ? !!stmtLiked.get(post.id, meId) : false,
+      comments: stmtComments.all(post.id),
     }));
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }

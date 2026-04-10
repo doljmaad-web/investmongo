@@ -9,273 +9,429 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:         #080912;
-      --surface:    rgba(255,255,255,0.04);
-      --surface2:   rgba(255,255,255,0.06);
-      --surface3:   rgba(255,255,255,0.08);
-      --border:     rgba(255,255,255,0.08);
-      --border-hi:  rgba(255,255,255,0.14);
+      --bg:         #000;
+      --surface:    #0e0e0e;
+      --surface2:   #161616;
+      --surface3:   #1e1e1e;
+      --border:     #2f3336;
       --teal:       #00d4b4;
-      --teal-dim:   rgba(0,212,180,0.12);
       --purple:     #7c5cfc;
-      --purple-dim: rgba(124,92,252,0.12);
       --green:      #4ade80;
       --gold:       #fbbf24;
-      --red:        #f87171;
-      --text:       #e8eaf2;
-      --muted:      #6b7a99;
-      --radius:     14px;
+      --red:        #f4212e;
+      --blue:       #1d9bf0;
+      --text:       #e7e9ea;
+      --muted:      #71767b;
+      --radius:     16px;
     }
+    body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Space Grotesk', sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    body::before {
-      content: '';
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 10% 5%,  rgba(124,92,252,0.13) 0%, transparent 60%),
-        radial-gradient(ellipse 70% 50% at 90% 10%,  rgba(0,212,180,0.09) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 40% at 50% 95%,  rgba(124,92,252,0.07) 0%, transparent 55%);
-    }
-
-    .navbar, .main { position: relative; z-index: 1; }
-
-    /* ── Navbar ── */
-    .navbar {
+    /* ── Top nav bar ── */
+    .topnav {
+      position: sticky; top: 0; z-index: 200;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 32px; height: 64px;
-      background: rgba(8,9,18,0.85);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      backdrop-filter: blur(20px);
-      position: sticky; top: 0; z-index: 100;
+      padding: 0 20px; height: 53px;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
     }
-    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-    .nav-logo-icon { width: 36px; height: 36px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 14px rgba(124,92,252,0.35); }
-    .nav-logo-icon img { width: 100%; height: 100%; object-fit: contain; }
-    .nav-logo-text {
-      font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 15px;
-      letter-spacing: 2px; text-transform: uppercase;
+    .topnav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .topnav-logo img { width: 30px; height: 30px; border-radius: 6px; }
+    .topnav-logo span {
+      font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 13px; letter-spacing: 1.5px;
       background: linear-gradient(90deg, var(--purple), var(--teal));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .nav-right { display: flex; align-items: center; gap: 12px; }
-    .nav-link {
-      display: inline-flex; align-items: center; gap: 6px;
-      text-decoration: none; font-size: 13px; font-weight: 600;
-      padding: 7px 16px; border-radius: 8px; border: 1px solid; transition: all 0.18s;
+    .topnav-links { display: flex; gap: 8px; }
+    .topnav-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 13px; font-weight: 600;
+      text-decoration: none; cursor: pointer; transition: all 0.15s; font-family: 'Space Grotesk', sans-serif;
     }
-    .nav-link.blue { color: #a78bfa; border-color: rgba(124,92,252,0.35); background: rgba(124,92,252,0.08); }
-    .nav-link.blue:hover { background: rgba(124,92,252,0.16); border-color: var(--purple); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(124,92,252,0.3); }
-    .nav-link.green { color: var(--teal); border-color: rgba(0,212,180,0.35); background: rgba(0,212,180,0.07); }
-    .nav-link.green:hover { background: rgba(0,212,180,0.15); border-color: var(--teal); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(0,212,180,0.25); }
-    .nav-link.amber { color: var(--gold); border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.07); }
-    .nav-link.amber:hover { background: rgba(251,191,36,0.15); border-color: var(--gold); color: #fff; transform: translateY(-1px); }
-    .user-chip {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 14px; border-radius: 10px;
-      background: var(--surface2); border: 1px solid var(--border);
-      font-size: 13px; font-weight: 600; color: var(--text);
-    }
-    .user-chip img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
-    .user-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .topnav-btn:hover { background: var(--surface2); color: var(--text); border-color: #555; }
+    .topnav-btn.active { background: var(--purple); color: #fff; border-color: var(--purple); }
 
-    /* ── Layout ── */
-    .main {
-      max-width: 720px; margin: 0 auto; padding: 32px 20px 80px;
+    /* ── 3-column layout ── */
+    .layout {
+      display: flex; max-width: 1200px; margin: 0 auto;
+      min-height: calc(100vh - 53px);
     }
 
-    /* ── Page header ── */
-    .page-header { margin-bottom: 28px; }
-    .page-title {
-      font-family: 'Orbitron', sans-serif; font-weight: 900;
-      font-size: 26px; letter-spacing: 1px;
-      background: linear-gradient(90deg, var(--purple), var(--teal));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      margin-bottom: 6px;
+    /* ── LEFT SIDEBAR ── */
+    .sidebar-left {
+      width: 280px; flex-shrink: 0;
+      padding: 20px 16px;
+      border-right: 1px solid var(--border);
+      position: sticky; top: 53px; height: calc(100vh - 53px);
+      overflow-y: auto;
     }
-    .page-sub { color: var(--muted); font-size: 14px; }
 
-    /* ── Compose box ── */
-    .compose-card {
-      background: var(--surface); border: 1px solid var(--border-hi);
-      border-radius: var(--radius); padding: 20px; margin-bottom: 24px;
-    }
-    .compose-row { display: flex; gap: 12px; align-items: flex-start; }
-    .compose-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface3); display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .compose-right { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-    .compose-textarea {
-      width: 100%; min-height: 80px; resize: vertical;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 10px; padding: 12px 14px;
-      color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 14px;
-      outline: none; transition: border-color 0.18s;
-    }
-    .compose-textarea:focus { border-color: var(--purple); }
-    .compose-textarea::placeholder { color: var(--muted); }
-    .compose-footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .ticker-input {
-      flex: 1; min-width: 100px; max-width: 160px;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px 12px;
-      color: var(--gold); font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600;
-      outline: none; text-transform: uppercase; transition: border-color 0.18s;
-    }
-    .ticker-input:focus { border-color: var(--gold); }
-    .ticker-input::placeholder { color: var(--muted); font-weight: 400; text-transform: none; }
-    .post-btn {
-      margin-left: auto;
-      background: linear-gradient(135deg, var(--purple), var(--teal));
-      border: none; border-radius: 8px; padding: 9px 22px;
-      color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700;
-      cursor: pointer; transition: all 0.18s; letter-spacing: 0.3px;
-    }
-    .post-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(124,92,252,0.4); }
-    .post-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .login-prompt {
-      text-align: center; padding: 18px; color: var(--muted); font-size: 14px;
-    }
-    .login-prompt a { color: var(--purple); text-decoration: none; font-weight: 600; }
-    .login-prompt a:hover { color: var(--teal); }
-
-    /* ── Feed ── */
-    #feed { display: flex; flex-direction: column; gap: 16px; }
-
-    .post-card {
+    .profile-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 18px 20px;
-      transition: border-color 0.18s;
+      border-radius: var(--radius); overflow: hidden;
     }
-    .post-card:hover { border-color: var(--border-hi); }
-
-    .post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .post-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--surface3); flex-shrink: 0; }
-    .post-meta { flex: 1; }
-    .post-author { font-size: 14px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
-    .admin-badge { font-size: 10px; background: linear-gradient(90deg,var(--purple),var(--teal)); color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: 700; letter-spacing: 0.5px; }
-    .post-time { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .post-ticker {
-      font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px;
-      background: rgba(251,191,36,0.12); color: var(--gold); border: 1px solid rgba(251,191,36,0.2);
-      margin-left: auto; flex-shrink: 0;
+    .profile-banner {
+      height: 70px;
+      background: linear-gradient(135deg, rgba(124,92,252,0.5), rgba(0,212,180,0.3));
     }
-    .post-delete {
-      background: none; border: none; color: var(--muted); cursor: pointer;
-      font-size: 16px; padding: 2px 6px; border-radius: 4px; transition: color 0.15s;
+    .profile-avatar-wrap {
+      position: relative; margin: -32px 0 0 16px; display: inline-block;
     }
-    .post-delete:hover { color: var(--red); }
+    .profile-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid var(--bg); object-fit: cover; background: var(--surface3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; overflow: hidden;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .avatar-upload-btn {
+      position: absolute; bottom: 0; right: 0;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--purple); border: 2px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 11px; transition: all 0.15s;
+    }
+    .avatar-upload-btn:hover { background: var(--teal); transform: scale(1.1); }
+    #avatar-file-input { display: none; }
 
-    .post-content { font-size: 15px; line-height: 1.65; color: var(--text); margin-bottom: 14px; white-space: pre-wrap; word-break: break-word; }
+    .profile-info { padding: 10px 16px 16px; }
+    .profile-name { font-size: 16px; font-weight: 700; color: var(--text); }
+    .profile-handle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .profile-bio { font-size: 13px; color: var(--text); margin: 10px 0; line-height: 1.5; opacity: 0.85; }
 
-    .post-actions { display: flex; align-items: center; gap: 20px; }
-    .action-btn {
-      display: flex; align-items: center; gap: 5px;
+    .profile-stats { display: flex; gap: 16px; margin: 10px 0; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 15px; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 11px; color: var(--muted); }
+
+    .edit-profile-btn {
+      width: 100%; margin-top: 12px;
+      padding: 8px; border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent; color: var(--text);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; transition: all 0.15s;
+    }
+    .edit-profile-btn:hover { background: var(--surface2); border-color: #555; }
+
+    /* Edit profile form */
+    .edit-form { display: none; padding: 14px 16px; border-top: 1px solid var(--border); }
+    .edit-form.open { display: block; }
+    .edit-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .edit-input, .edit-textarea {
+      width: 100%; padding: 9px 12px; border-radius: 8px;
+      background: var(--surface3); border: 1px solid var(--border);
+      color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 13px;
+      outline: none; transition: border-color 0.15s; margin-bottom: 10px;
+    }
+    .edit-input:focus, .edit-textarea:focus { border-color: var(--purple); }
+    .edit-textarea { resize: vertical; min-height: 60px; }
+    .edit-save-btn {
+      width: 100%; padding: 8px; border-radius: 20px;
+      background: var(--purple); border: none; color: #fff;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; transition: all 0.15s;
+    }
+    .edit-save-btn:hover { background: #6d4fe0; }
+
+    /* Guest profile */
+    .guest-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; text-align: center;
+    }
+    .guest-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .guest-card p { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    .signin-btn {
+      display: block; width: 100%; padding: 10px;
+      border-radius: 20px; background: var(--purple); border: none;
+      color: #fff; font-size: 14px; font-weight: 700;
+      text-decoration: none; text-align: center; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; transition: all 0.15s;
+    }
+    .signin-btn:hover { background: #6d4fe0; }
+
+    /* Nav items in sidebar */
+    .sidebar-nav { margin-top: 16px; display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-nav-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 12px; border-radius: 30px;
+      color: var(--text); text-decoration: none; font-size: 16px; font-weight: 500;
+      transition: all 0.15s; cursor: pointer;
+    }
+    .sidebar-nav-item:hover { background: var(--surface2); }
+    .sidebar-nav-item .icon { font-size: 20px; width: 24px; text-align: center; }
+
+    /* ── MAIN FEED ── */
+    .feed-main {
+      flex: 1; min-width: 0;
+      border-right: 1px solid var(--border);
+    }
+    .feed-header {
+      position: sticky; top: 53px; z-index: 100;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+    }
+    .feed-header h2 { font-size: 18px; font-weight: 800; }
+
+    /* Compose */
+    .compose-box {
+      padding: 12px 16px 0; border-bottom: 1px solid var(--border);
+    }
+    .compose-inner { display: flex; gap: 12px; }
+    .compose-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface3); overflow: hidden; }
+    .compose-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .compose-right { flex: 1; }
+    .compose-textarea {
+      width: 100%; min-height: 56px; max-height: 200px;
+      background: transparent; border: none; resize: none;
+      color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 18px;
+      outline: none; padding: 10px 0; line-height: 1.4;
+    }
+    .compose-textarea::placeholder { color: var(--muted); }
+    .compose-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0 12px; border-top: 1px solid var(--border); margin-top: 4px;
+    }
+    .compose-tools { display: flex; gap: 4px; }
+    .ticker-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 12px;
+    }
+    .ticker-pill input {
+      background: none; border: none; outline: none;
+      color: var(--gold); font-size: 13px; font-weight: 700; width: 80px;
+      font-family: 'Space Grotesk', sans-serif; text-transform: uppercase;
+    }
+    .ticker-pill input::placeholder { color: var(--muted); font-weight: 400; text-transform: none; }
+    .compose-post-btn {
+      background: var(--blue); border: none; border-radius: 20px;
+      padding: 8px 20px; color: #fff; font-size: 14px; font-weight: 800;
+      cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.15s;
+    }
+    .compose-post-btn:hover { background: #1a8cd8; }
+    .compose-post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Guest compose prompt */
+    .guest-compose {
+      padding: 20px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .guest-compose p { color: var(--muted); font-size: 14px; }
+    .guest-compose a {
+      flex-shrink: 0; padding: 8px 18px; border-radius: 20px;
+      background: var(--blue); color: #fff; font-weight: 700; font-size: 13px;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .guest-compose a:hover { background: #1a8cd8; }
+
+    /* Feed posts */
+    #posts-feed { }
+
+    .post-item {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      transition: background 0.1s; cursor: default;
+    }
+    .post-item:hover { background: rgba(255,255,255,0.02); }
+    .post-row { display: flex; gap: 12px; }
+    .post-user-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface3); overflow: hidden; cursor: pointer; }
+    .post-user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .post-body { flex: 1; min-width: 0; }
+    .post-header-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+    .post-author-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .post-author-handle { font-size: 13px; color: var(--muted); }
+    .post-dot { color: var(--muted); font-size: 13px; }
+    .post-time { font-size: 13px; color: var(--muted); }
+    .admin-badge { font-size: 10px; background: linear-gradient(90deg,var(--purple),var(--teal)); color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+    .post-ticker-tag { font-size: 12px; color: var(--blue); font-weight: 700; cursor: pointer; }
+    .post-ticker-tag:hover { text-decoration: underline; }
+    .post-delete-btn { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color 0.15s; }
+    .post-delete-btn:hover { color: var(--red); }
+    .post-text { font-size: 15px; line-height: 1.6; color: var(--text); white-space: pre-wrap; word-break: break-word; margin-bottom: 10px; }
+    .post-actions-row { display: flex; gap: 28px; }
+    .post-action {
+      display: flex; align-items: center; gap: 6px;
       background: none; border: none; cursor: pointer;
-      font-size: 13px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; font-weight: 600;
-      padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
+      font-size: 13px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+      padding: 4px 6px; border-radius: 20px; transition: all 0.15s;
     }
-    .action-btn:hover { color: var(--text); background: var(--surface2); }
-    .action-btn.liked { color: var(--red); }
-    .action-btn.liked:hover { color: var(--red); }
-    .action-btn .icon { font-size: 15px; }
+    .post-action:hover { color: var(--blue); background: rgba(29,155,240,0.1); }
+    .post-action.liked { color: var(--red); }
+    .post-action.liked:hover { background: rgba(244,33,46,0.1); }
+    .post-action .icon { font-size: 16px; }
 
-    /* ── Comments ── */
-    .comments-section { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; display: none; }
-    .comments-section.open { display: block; }
-
-    .comment-item { display: flex; gap: 10px; margin-bottom: 12px; }
-    .comment-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--surface3); flex-shrink: 0; }
+    /* Comments */
+    .comments-wrap { margin-top: 10px; display: none; }
+    .comments-wrap.open { display: block; }
+    .comment-row { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+    .comment-av { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface3); overflow: hidden; }
+    .comment-av img { width: 100%; height: 100%; object-fit: cover; }
     .comment-body { flex: 1; }
-    .comment-author { font-size: 12px; font-weight: 700; color: var(--text); }
-    .comment-text { font-size: 13px; color: rgba(232,234,242,0.85); line-height: 1.5; margin-top: 2px; word-break: break-word; }
-    .comment-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-    .comment-input-row { display: flex; gap: 8px; margin-top: 10px; }
+    .comment-meta { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+    .comment-meta strong { color: var(--text); font-size: 13px; }
+    .comment-text { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+    .comment-input-row { display: flex; gap: 10px; padding: 10px 0 4px; border-top: 1px solid var(--border); align-items: center; }
+    .comment-input-av { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; background: var(--surface3); overflow: hidden; }
+    .comment-input-av img { width: 100%; height: 100%; object-fit: cover; }
     .comment-input {
       flex: 1; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px 12px;
-      color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 13px;
-      outline: none; transition: border-color 0.18s;
+      border-radius: 20px; padding: 8px 14px;
+      color: var(--text); font-size: 13px; font-family: 'Space Grotesk', sans-serif;
+      outline: none; transition: border-color 0.15s;
     }
-    .comment-input:focus { border-color: var(--purple); }
+    .comment-input:focus { border-color: var(--blue); }
     .comment-input::placeholder { color: var(--muted); }
-    .comment-submit {
-      background: var(--purple); border: none; border-radius: 8px;
-      padding: 8px 14px; color: #fff; font-size: 13px; font-weight: 700;
-      cursor: pointer; transition: all 0.15s; font-family: 'Space Grotesk', sans-serif;
+    .comment-send { background: var(--blue); border: none; border-radius: 20px; padding: 7px 14px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
+    .comment-send:hover { background: #1a8cd8; }
+
+    /* Empty + loader */
+    .feed-empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+    .feed-empty .big-icon { font-size: 48px; margin-bottom: 14px; }
+    .feed-empty h3 { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .feed-loader { padding: 40px; text-align: center; color: var(--muted); }
+
+    /* ── RIGHT SIDEBAR ── */
+    .sidebar-right {
+      width: 340px; flex-shrink: 0;
+      padding: 16px;
     }
-    .comment-submit:hover { background: var(--teal); }
-
-    /* ── Empty state ── */
-    .empty-state {
-      text-align: center; padding: 60px 20px; color: var(--muted);
+    .widget {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
     }
-    .empty-state .icon { font-size: 48px; margin-bottom: 14px; }
-    .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+    .widget-title { font-size: 18px; font-weight: 800; margin-bottom: 14px; }
+    .trend-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .trend-row:last-child { border-bottom: none; }
+    .trend-row:hover .trend-name { color: var(--blue); }
+    .trend-label { font-size: 11px; color: var(--muted); }
+    .trend-name { font-size: 14px; font-weight: 700; margin: 2px 0; transition: color 0.15s; }
+    .trend-count { font-size: 12px; color: var(--muted); }
 
-    /* ── Loader ── */
-    .loader { text-align: center; padding: 40px; color: var(--muted); }
-
-    @media (max-width: 600px) {
-      .navbar { padding: 0 16px; }
-      .nav-link { display: none; }
-      .main { padding: 20px 14px 60px; }
+    /* ── Responsive ── */
+    @media (max-width: 1100px) { .sidebar-right { display: none; } }
+    @media (max-width: 700px) {
+      .sidebar-left { display: none; }
+      .topnav-links .topnav-btn:not(.active) { display: none; }
     }
   </style>
 </head>
 <body>
 
-<nav class="navbar">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-icon"><img src="/logo.png" alt="DeFiMongo" /></div>
-    <span class="nav-logo-text">DeFiMongo</span>
+<!-- Top nav -->
+<nav class="topnav">
+  <a href="/" class="topnav-logo">
+    <img src="/logo.png" alt="DeFiMongo" />
+    <span>DeFiMongo</span>
   </a>
-  <div class="nav-right">
-    <a href="/" class="nav-link blue">⚡ Terminal</a>
-    <a href="/portfolio" class="nav-link green">💼 Portfolio</a>
-    <div class="user-chip" id="user-chip" style="display:none">
-      <span class="dot"></span>
-      <img id="chip-avatar" src="" alt="" style="display:none" />
-      <span id="chip-name">—</span>
-    </div>
-    <a href="/auth" class="nav-link amber" id="login-btn">🔑 Sign In</a>
+  <div class="topnav-links">
+    <a href="/" class="topnav-btn">⚡ Terminal</a>
+    <a href="/portfolio" class="topnav-btn">💼 Portfolio</a>
+    <a href="/community" class="topnav-btn active">🌐 Community</a>
   </div>
 </nav>
 
-<div class="main">
-  <div class="page-header">
-    <div class="page-title">Community</div>
-    <div class="page-sub">Mongolian traders worldwide — share ideas, signals, and insights</div>
-  </div>
+<div class="layout">
 
-  <!-- Compose box -->
-  <div class="compose-card" id="compose-card">
-    <div id="compose-logged-in" style="display:none">
-      <div class="compose-row">
-        <div class="compose-avatar" id="compose-avatar">👤</div>
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar-left">
+
+    <!-- Signed-in profile card -->
+    <div id="profile-card" class="profile-card" style="display:none">
+      <div class="profile-banner"></div>
+      <div style="padding:0 12px 0;">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profile-avatar-el">👤</div>
+          <div class="avatar-upload-btn" title="Upload photo" onclick="document.getElementById('avatar-file-input').click()">📷</div>
+          <input type="file" id="avatar-file-input" accept="image/*" onchange="handleAvatarUpload(event)" />
+        </div>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-name">—</div>
+        <div class="profile-handle" id="profile-handle">@—</div>
+        <div class="profile-bio" id="profile-bio" style="display:none"></div>
+        <div class="profile-stats">
+          <div class="stat"><div class="stat-num" id="profile-posts">0</div><div class="stat-label">Posts</div></div>
+        </div>
+        <button class="edit-profile-btn" onclick="toggleEditForm()">Edit Profile</button>
+      </div>
+      <div class="edit-form" id="edit-form">
+        <div class="edit-label">Handle</div>
+        <input class="edit-input" id="edit-handle" placeholder="yourhandle" maxlength="30" />
+        <div class="edit-label">Bio</div>
+        <textarea class="edit-textarea" id="edit-bio" placeholder="Tell your story…" maxlength="200"></textarea>
+        <button class="edit-save-btn" onclick="saveProfile()">Save</button>
+      </div>
+    </div>
+
+    <!-- Guest card -->
+    <div id="guest-card" class="guest-card" style="display:none">
+      <h3>Join DeFiMongo Community</h3>
+      <p>Sign in to post, like, comment and connect with Mongolian traders worldwide.</p>
+      <a href="/auth" class="signin-btn">Sign In</a>
+    </div>
+
+    <!-- Sidebar nav links -->
+    <nav class="sidebar-nav">
+      <a href="/" class="sidebar-nav-item"><span class="icon">⚡</span> Terminal</a>
+      <a href="/portfolio" class="sidebar-nav-item"><span class="icon">💼</span> Portfolio</a>
+      <a href="/screener" class="sidebar-nav-item"><span class="icon">📊</span> Screener</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN FEED -->
+  <main class="feed-main">
+    <div class="feed-header"><h2>Community Feed</h2></div>
+
+    <!-- Compose (signed in) -->
+    <div id="compose-box" class="compose-box" style="display:none">
+      <div class="compose-inner">
+        <div class="compose-avatar" id="compose-av"><img id="compose-av-img" src="" alt="" style="display:none" /><span id="compose-av-letter" style="font-size:18px;display:flex;align-items:center;justify-content:center;height:100%;"></span></div>
         <div class="compose-right">
-          <textarea class="compose-textarea" id="compose-text" placeholder="Share your thoughts, trade idea, or market insight…" maxlength="1000"></textarea>
-          <div class="compose-footer">
-            <input class="ticker-input" id="compose-ticker" type="text" placeholder="# Ticker (optional)" maxlength="12" />
-            <button class="post-btn" id="post-btn" onclick="submitPost()">Post</button>
+          <textarea class="compose-textarea" id="compose-text" placeholder="What's on your mind?" maxlength="1000"></textarea>
+          <div class="compose-toolbar">
+            <div class="compose-tools">
+              <div class="ticker-pill">
+                <span style="color:var(--gold);font-size:13px;">#</span>
+                <input id="compose-ticker" placeholder="Ticker (BTC, ETH…)" maxlength="12" />
+              </div>
+            </div>
+            <button class="compose-post-btn" id="post-btn" onclick="submitPost()">Post</button>
           </div>
         </div>
       </div>
     </div>
-    <div id="compose-guest" class="login-prompt">
-      <a href="/auth">Sign in</a> to post and interact with the community
-    </div>
-  </div>
 
-  <!-- Feed -->
-  <div id="feed"><div class="loader">Loading posts…</div></div>
+    <!-- Guest compose prompt -->
+    <div id="guest-compose" class="guest-compose" style="display:none">
+      <p>Sign in to share your thoughts with the community</p>
+      <a href="/auth">Sign In</a>
+    </div>
+
+    <div id="posts-feed"><div class="feed-loader">Loading…</div></div>
+  </main>
+
+  <!-- RIGHT SIDEBAR -->
+  <aside class="sidebar-right">
+    <div class="widget">
+      <div class="widget-title">Trending Tickers</div>
+      <div id="trending-list">
+        <div class="trend-row"><div><div class="trend-label">Crypto</div><div class="trend-name">#BTC</div></div></div>
+        <div class="trend-row"><div><div class="trend-label">Crypto</div><div class="trend-name">#ETH</div></div></div>
+        <div class="trend-row"><div><div class="trend-label">Crypto</div><div class="trend-name">#DOGE</div></div></div>
+        <div class="trend-row"><div><div class="trend-label">Commodity</div><div class="trend-name">#GOLD</div></div></div>
+        <div class="trend-row"><div><div class="trend-label">DeFi</div><div class="trend-name">#HYPE</div></div></div>
+      </div>
+    </div>
+    <div class="widget" style="font-size:12px;color:var(--muted);line-height:1.8;">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">About</div>
+      DeFiMongo Community — Mongolian traders worldwide sharing ideas and insights.
+      <br/><br/>
+      <a href="/" style="color:var(--blue);text-decoration:none;">Terminal</a> ·
+      <a href="/portfolio" style="color:var(--blue);text-decoration:none;">Portfolio</a>
+    </div>
+  </aside>
+
 </div>
 
 <script>
@@ -283,121 +439,210 @@ const TOKEN_KEY = 'defimongo_token';
 const token = localStorage.getItem(TOKEN_KEY);
 let sessionUser = null;
 
-// ── Auth ──
-async function loadUser() {
-  if (!token) return;
-  try {
-    const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
-    if (!r.ok) return;
-    sessionUser = await r.json();
-    document.getElementById('user-chip').style.display = 'flex';
-    document.getElementById('login-btn').style.display = 'none';
-    document.getElementById('chip-name').textContent = sessionUser.name;
-    if (sessionUser.avatar) {
-      const img = document.getElementById('chip-avatar');
-      img.src = sessionUser.avatar; img.style.display = 'block';
-    }
-    document.getElementById('compose-logged-in').style.display = 'block';
-    document.getElementById('compose-guest').style.display = 'none';
-    // Set compose avatar
-    const av = document.getElementById('compose-avatar');
-    if (sessionUser.avatar) av.innerHTML = `<img src="${sessionUser.avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />`;
-    else av.textContent = sessionUser.name?.[0]?.toUpperCase() || '👤';
-  } catch {}
-}
-
-// ── Time formatting ──
-function timeAgo(dateStr) {
-  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'Z');
-  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (diff < 60)  return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
-
-// ── Avatar HTML ──
-function avatarHtml(url, name, size = 40) {
-  if (url) return `<img class="post-avatar" src="${url}" style="width:${size}px;height:${size}px" alt="${esc(name)}" />`;
-  return `<div class="post-avatar" style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size*0.4)}px;background:var(--surface3);border-radius:50%">${esc(name?.[0]?.toUpperCase() || '?')}</div>`;
-}
-
+// ── Helpers ──────────────────────────────────────────────────
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'Z');
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (isNaN(diff) || diff < 0) return 'just now';
+  if (diff < 60)  return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff/60)}m`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+function avatarHtml(url, name, size=42, cls='post-user-avatar') {
+  const initial = (name||'?')[0].toUpperCase();
+  if (url) return `<div class="${cls}" style="width:${size}px;height:${size}px"><img src="${esc(url)}" alt="${esc(name)}" /></div>`;
+  return `<div class="${cls}" style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size*0.4)}px;font-weight:700;color:var(--muted)">${initial}</div>`;
+}
 
-// ── Render posts ──
-function renderPosts(posts) {
-  const feed = document.getElementById('feed');
-  if (!posts.length) {
-    feed.innerHTML = `<div class="empty-state"><div class="icon">💬</div><h3>No posts yet</h3><p>Be the first to share something with the community</p></div>`;
+// ── Auth ─────────────────────────────────────────────────────
+async function loadUser() {
+  if (!token) {
+    document.getElementById('guest-card').style.display = 'block';
+    document.getElementById('guest-compose').style.display = 'flex';
     return;
   }
-  feed.innerHTML = posts.map(p => buildPostCard(p)).join('');
+  try {
+    const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) throw new Error('auth failed');
+    const data = await r.json();
+    sessionUser = data.user;               // ← fixed: /api/auth/me returns {user, balance}
+    renderProfileSidebar();
+    document.getElementById('profile-card').style.display = 'block';
+    document.getElementById('compose-box').style.display = 'block';
+  } catch {
+    document.getElementById('guest-card').style.display = 'block';
+    document.getElementById('guest-compose').style.display = 'flex';
+  }
 }
 
-function buildPostCard(p) {
-  const canDelete = sessionUser && (sessionUser.id === p.user_id || sessionUser.is_admin);
-  const commentsHtml = p.comments.map(c => `
-    <div class="comment-item">
-      ${avatarHtml(c.author_avatar, c.author_name, 28)}
-      <div class="comment-body">
-        <div class="comment-author">${esc(c.author_name)}</div>
-        <div class="comment-text">${esc(c.content)}</div>
-        <div class="comment-time">${timeAgo(c.created_at)}</div>
-      </div>
-    </div>`).join('');
+function renderProfileSidebar() {
+  const u = sessionUser;
+  // Avatar
+  const avEl = document.getElementById('profile-avatar-el');
+  if (u.avatar) avEl.innerHTML = `<img src="${esc(u.avatar)}" />`;
+  else avEl.textContent = (u.name||'?')[0].toUpperCase();
 
-  return `
-  <div class="post-card" id="post-${p.id}">
-    <div class="post-header">
-      ${avatarHtml(p.author_avatar, p.author_name, 40)}
-      <div class="post-meta">
-        <div class="post-author">
-          ${esc(p.author_name)}
-          ${p.author_is_admin ? '<span class="admin-badge">ADMIN</span>' : ''}
-        </div>
-        <div class="post-time">${timeAgo(p.created_at)}</div>
-      </div>
-      ${p.ticker ? `<span class="post-ticker">#${esc(p.ticker)}</span>` : ''}
-      ${canDelete ? `<button class="post-delete" onclick="deletePost(${p.id})" title="Delete post">✕</button>` : ''}
-    </div>
-    <div class="post-content">${esc(p.content)}</div>
-    <div class="post-actions">
-      <button class="action-btn ${p.liked ? 'liked' : ''}" id="like-btn-${p.id}" onclick="toggleLike(${p.id})">
-        <span class="icon">${p.liked ? '❤️' : '🤍'}</span>
-        <span id="like-count-${p.id}">${p.likes_count}</span>
-      </button>
-      <button class="action-btn" onclick="toggleComments(${p.id})">
-        <span class="icon">💬</span>
-        <span id="comment-count-${p.id}">${p.comments_count}</span>
-      </button>
-    </div>
-    <div class="comments-section" id="comments-${p.id}">
-      <div id="comments-list-${p.id}">${commentsHtml}</div>
-      ${sessionUser ? `
-      <div class="comment-input-row">
-        <input class="comment-input" id="comment-input-${p.id}" placeholder="Write a comment…" maxlength="500" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${p.id})}" />
-        <button class="comment-submit" onclick="submitComment(${p.id})">Send</button>
-      </div>` : `<div style="font-size:13px;color:var(--muted);padding:8px 0"><a href="/auth" style="color:var(--purple)">Sign in</a> to comment</div>`}
-    </div>
-  </div>`;
+  document.getElementById('profile-name').textContent = u.name || '—';
+  document.getElementById('profile-handle').textContent = u.handle ? `@${u.handle}` : `@${(u.name||'user').toLowerCase().replace(/\s+/g,'_')}`;
+
+  const bioEl = document.getElementById('profile-bio');
+  if (u.bio) { bioEl.textContent = u.bio; bioEl.style.display = 'block'; }
+
+  // Pre-fill edit form
+  document.getElementById('edit-handle').value = u.handle || '';
+  document.getElementById('edit-bio').value    = u.bio    || '';
+
+  // Compose avatar
+  const avImg = document.getElementById('compose-av-img');
+  const avLetter = document.getElementById('compose-av-letter');
+  if (u.avatar) { avImg.src = u.avatar; avImg.style.display = 'block'; avLetter.style.display = 'none'; }
+  else { avLetter.textContent = (u.name||'?')[0].toUpperCase(); avImg.style.display = 'none'; avLetter.style.display = 'flex'; }
 }
 
-// ── Load feed ──
+// ── Avatar upload ─────────────────────────────────────────────
+function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const size = 200; canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Center-crop
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+      try {
+        const r = await fetch('/api/auth/avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ avatar: base64 }),
+        });
+        if (!r.ok) { alert('Upload failed'); return; }
+        sessionUser.avatar = base64;
+        renderProfileSidebar();
+      } catch { alert('Upload failed'); }
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Edit profile ──────────────────────────────────────────────
+function toggleEditForm() {
+  document.getElementById('edit-form').classList.toggle('open');
+}
+async function saveProfile() {
+  const handle = document.getElementById('edit-handle').value.trim();
+  const bio    = document.getElementById('edit-bio').value.trim();
+  try {
+    const r = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ handle, bio }),
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.error || 'Failed'); return; }
+    const updated = await r.json();
+    sessionUser.handle = updated.handle;
+    sessionUser.bio    = updated.bio;
+    renderProfileSidebar();
+    document.getElementById('edit-form').classList.remove('open');
+  } catch { alert('Failed to save profile'); }
+}
+
+// ── Load feed ─────────────────────────────────────────────────
 async function loadFeed() {
   try {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const r = await fetch('/api/community/posts', { headers });
-    if (!r.ok) throw new Error('Failed');
+    if (!r.ok) throw new Error('feed error');
     const posts = await r.json();
-    renderPosts(posts);
-  } catch {
-    document.getElementById('feed').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><h3>Could not load posts</h3></div>`;
+    renderFeed(posts);
+
+    // Update post count
+    if (sessionUser) {
+      const mine = posts.filter(p => p.user_id === sessionUser.id).length;
+      document.getElementById('profile-posts').textContent = mine;
+    }
+  } catch (err) {
+    document.getElementById('posts-feed').innerHTML = `<div class="feed-empty"><div class="big-icon">⚠️</div><h3>Could not load posts</h3><p>${esc(err.message)}</p></div>`;
   }
 }
 
-// ── Submit post ──
+function renderFeed(posts) {
+  const feed = document.getElementById('posts-feed');
+  if (!posts.length) {
+    feed.innerHTML = `<div class="feed-empty"><div class="big-icon">💬</div><h3>No posts yet</h3><p>Be the first to post in the community</p></div>`;
+    return;
+  }
+  feed.innerHTML = posts.map(buildPostHtml).join('');
+}
+
+function buildPostHtml(p) {
+  const canDelete = sessionUser && (sessionUser.id === p.user_id || sessionUser.is_admin);
+  const handle = p.author_handle ? `@${p.author_handle}` : `@${(p.author_name||'user').toLowerCase().replace(/\s+/g,'_')}`;
+  const commentsHtml = p.comments.map(c => {
+    const ch = c.author_handle ? `@${c.author_handle}` : '';
+    return `<div class="comment-row">
+      ${avatarHtml(c.author_avatar, c.author_name, 32, 'comment-av')}
+      <div class="comment-body">
+        <div class="comment-meta"><strong>${esc(c.author_name)}</strong> ${ch ? `<span style="color:var(--muted)">${esc(ch)}</span> · ` : ''}${timeAgo(c.created_at)}</div>
+        <div class="comment-text">${esc(c.content)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const commentInputHtml = sessionUser
+    ? `<div class="comment-input-row">
+        ${avatarHtml(sessionUser.avatar, sessionUser.name, 32, 'comment-input-av')}
+        <input class="comment-input" id="ci-${p.id}" placeholder="Post your reply" maxlength="500"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitComment(${p.id})}" />
+        <button class="comment-send" onclick="submitComment(${p.id})">Reply</button>
+      </div>`
+    : `<div style="padding:10px 0;font-size:13px;color:var(--muted)"><a href="/auth" style="color:var(--blue)">Sign in</a> to reply</div>`;
+
+  return `<div class="post-item" id="post-${p.id}">
+    <div class="post-row">
+      ${avatarHtml(p.author_avatar, p.author_name, 42, 'post-user-avatar')}
+      <div class="post-body">
+        <div class="post-header-row">
+          <span class="post-author-name">${esc(p.author_name)}</span>
+          ${p.author_is_admin ? '<span class="admin-badge">ADMIN</span>' : ''}
+          <span class="post-author-handle">${esc(handle)}</span>
+          <span class="post-dot">·</span>
+          <span class="post-time">${timeAgo(p.created_at)}</span>
+          ${p.ticker ? `<span class="post-ticker-tag">#${esc(p.ticker)}</span>` : ''}
+          ${canDelete ? `<button class="post-delete-btn" onclick="deletePost(${p.id})" title="Delete">✕</button>` : ''}
+        </div>
+        <div class="post-text">${esc(p.content)}</div>
+        <div class="post-actions-row">
+          <button class="post-action${p.liked?' liked':''}" id="like-${p.id}" onclick="toggleLike(${p.id})">
+            <span class="icon">${p.liked?'❤️':'🤍'}</span>
+            <span id="lc-${p.id}">${p.likes_count||0}</span>
+          </button>
+          <button class="post-action" onclick="toggleComments(${p.id})">
+            <span class="icon">💬</span>
+            <span id="cc-${p.id}">${p.comments_count||0}</span>
+          </button>
+        </div>
+        <div class="comments-wrap" id="cw-${p.id}">
+          <div id="cl-${p.id}">${commentsHtml}</div>
+          ${commentInputHtml}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Submit post ───────────────────────────────────────────────
 async function submitPost() {
   const content = document.getElementById('compose-text').value.trim();
   const ticker  = document.getElementById('compose-ticker').value.trim().toUpperCase();
@@ -410,49 +655,47 @@ async function submitPost() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ content, ticker: ticker || null }),
     });
-    if (!r.ok) throw new Error('Failed');
+    if (!r.ok) throw new Error((await r.json()).error || 'Failed');
     document.getElementById('compose-text').value = '';
     document.getElementById('compose-ticker').value = '';
     await loadFeed();
-  } catch { alert('Failed to post. Please try again.'); }
+  } catch (err) { alert(err.message); }
   btn.disabled = false; btn.textContent = 'Post';
 }
 
-// ── Toggle like ──
+// ── Toggle like ───────────────────────────────────────────────
 async function toggleLike(postId) {
   if (!sessionUser) { window.location.href = '/auth'; return; }
   try {
-    const r = await fetch(`/api/community/posts/${postId}/like`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const r = await fetch(`/api/community/posts/${postId}/like`, { method:'POST', headers:{ Authorization:`Bearer ${token}` } });
     if (!r.ok) return;
     const { liked, likes_count } = await r.json();
-    const btn = document.getElementById(`like-btn-${postId}`);
-    const countEl = document.getElementById(`like-count-${postId}`);
-    btn.className = `action-btn ${liked ? 'liked' : ''}`;
-    btn.querySelector('.icon').textContent = liked ? '❤️' : '🤍';
-    countEl.textContent = likes_count;
+    const btn = document.getElementById(`like-${postId}`);
+    if (btn) {
+      btn.className = `post-action${liked?' liked':''}`;
+      btn.querySelector('.icon').textContent = liked ? '❤️' : '🤍';
+      document.getElementById(`lc-${postId}`).textContent = likes_count;
+    }
   } catch {}
 }
 
-// ── Toggle comments ──
+// ── Toggle comments ───────────────────────────────────────────
 function toggleComments(postId) {
-  const section = document.getElementById(`comments-${postId}`);
-  section.classList.toggle('open');
-  if (section.classList.contains('open')) {
-    const input = document.getElementById(`comment-input-${postId}`);
-    if (input) input.focus();
+  const wrap = document.getElementById(`cw-${postId}`);
+  wrap.classList.toggle('open');
+  if (wrap.classList.contains('open')) {
+    const inp = document.getElementById(`ci-${postId}`);
+    if (inp) setTimeout(() => inp.focus(), 50);
   }
 }
 
-// ── Submit comment ──
+// ── Submit comment ────────────────────────────────────────────
 async function submitComment(postId) {
   if (!sessionUser) { window.location.href = '/auth'; return; }
-  const input = document.getElementById(`comment-input-${postId}`);
-  const content = input.value.trim();
+  const inp = document.getElementById(`ci-${postId}`);
+  const content = inp?.value.trim();
   if (!content) return;
-  input.disabled = true;
+  inp.disabled = true;
   try {
     const r = await fetch(`/api/community/posts/${postId}/comments`, {
       method: 'POST',
@@ -460,40 +703,35 @@ async function submitComment(postId) {
       body: JSON.stringify({ content }),
     });
     if (!r.ok) throw new Error('Failed');
-    const comment = await r.json();
-    input.value = '';
-    // Append comment to list
-    const list = document.getElementById(`comments-list-${postId}`);
-    const html = `<div class="comment-item">
-      ${avatarHtml(comment.author_avatar, comment.author_name, 28)}
+    const c = await r.json();
+    inp.value = '';
+    const list = document.getElementById(`cl-${postId}`);
+    const ch = c.author_handle ? `@${c.author_handle}` : '';
+    list.insertAdjacentHTML('beforeend', `<div class="comment-row">
+      ${avatarHtml(c.author_avatar, c.author_name, 32, 'comment-av')}
       <div class="comment-body">
-        <div class="comment-author">${esc(comment.author_name)}</div>
-        <div class="comment-text">${esc(comment.content)}</div>
-        <div class="comment-time">just now</div>
+        <div class="comment-meta"><strong>${esc(c.author_name)}</strong>${ch?` <span style="color:var(--muted)">${esc(ch)}</span> · `:''}just now</div>
+        <div class="comment-text">${esc(c.content)}</div>
       </div>
-    </div>`;
-    list.insertAdjacentHTML('beforeend', html);
-    const countEl = document.getElementById(`comment-count-${postId}`);
-    if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
-  } catch { alert('Failed to comment.'); }
-  input.disabled = false;
+    </div>`);
+    const cc = document.getElementById(`cc-${postId}`);
+    if (cc) cc.textContent = parseInt(cc.textContent||0)+1;
+  } catch { alert('Failed to reply'); }
+  inp.disabled = false;
 }
 
-// ── Delete post ──
+// ── Delete post ───────────────────────────────────────────────
 async function deletePost(postId) {
   if (!confirm('Delete this post?')) return;
   try {
-    const r = await fetch(`/api/community/posts/${postId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const r = await fetch(`/api/community/posts/${postId}`, { method:'DELETE', headers:{ Authorization:`Bearer ${token}` } });
     if (!r.ok) return;
     document.getElementById(`post-${postId}`)?.remove();
-    if (!document.querySelector('.post-card')) loadFeed();
+    if (!document.querySelector('.post-item')) loadFeed();
   } catch {}
 }
 
-// ── Real-time new posts via WebSocket ──
+// ── Real-time WS ──────────────────────────────────────────────
 function initWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}`);
@@ -501,26 +739,18 @@ function initWS() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'community_post') {
-        const feed = document.getElementById('feed');
-        const empty = feed.querySelector('.empty-state');
+        if (sessionUser && msg.data.user_id === sessionUser.id) return; // own post already in feed
+        const feed = document.getElementById('posts-feed');
+        const empty = feed.querySelector('.feed-empty');
         if (empty) empty.remove();
-        // Don't duplicate own post (already added via loadFeed)
-        if (sessionUser && msg.data.user_id === sessionUser.id) return;
-        feed.insertAdjacentHTML('afterbegin', buildPostCard(msg.data));
+        feed.insertAdjacentHTML('afterbegin', buildPostHtml(msg.data));
       }
     } catch {}
   };
   ws.onclose = () => setTimeout(initWS, 3000);
 }
 
-// ── Enter key to post ──
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('compose-text')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && e.ctrlKey) submitPost();
-  });
-});
-
-// ── Init ──
+// ── Init ──────────────────────────────────────────────────────
 loadUser().then(loadFeed);
 initWS();
 </script>
