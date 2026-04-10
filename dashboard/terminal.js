@@ -25,6 +25,24 @@ const PERIOD_MS = {
 };
 
 // ============================================================
+// SESSION — who is viewing the terminal
+// ============================================================
+let sessionUser = null; // { is_admin, balance: { visible_balance_usd, deposited_usd, total_gain_usd } }
+
+async function loadSessionUser() {
+  const token = localStorage.getItem('dm_token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const { user, balance } = await res.json();
+    sessionUser = { is_admin: !!user.is_admin, balance };
+  } catch (e) { /* not logged in */ }
+}
+
+// ============================================================
 // STATE
 // ============================================================
 let state = {
@@ -236,10 +254,17 @@ function renderPortfolio() {
   const p = state.portfolio;
   if (!p) return;
 
-  const total    = p.totalValue ?? STARTING_BALANCE;
-  const diff     = total - STARTING_BALANCE;
-  const diffPct  = ((diff / STARTING_BALANCE) * 100).toFixed(1);
-  const isPos    = diff >= 0;
+  // Admin or not logged in → show full pool value
+  // Regular logged-in user → show their personal balance
+  const isPersonalView = sessionUser && !sessionUser.is_admin;
+  const userBalance    = isPersonalView ? (sessionUser.balance?.visible_balance_usd ?? 0) : null;
+  const userDeposited  = isPersonalView ? (sessionUser.balance?.deposited_usd ?? 0) : STARTING_BALANCE;
+
+  const total   = isPersonalView ? userBalance : (p.totalValue ?? STARTING_BALANCE);
+  const base    = isPersonalView ? userDeposited : STARTING_BALANCE;
+  const diff    = total - base;
+  const diffPct = base > 0 ? ((diff / base) * 100).toFixed(1) : '0.0';
+  const isPos   = diff >= 0;
 
   document.getElementById('aum-value').textContent   = fmtUSD(total);
   const changeEl = document.getElementById('aum-change');
@@ -852,7 +877,8 @@ function renderTradeIntel() {
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await loadSessionUser(); // must run before first renderPortfolio
   connect();
   if (window.SpatialPlanner) window.SpatialPlanner.init();
   setInterval(updateClock, 1000);
