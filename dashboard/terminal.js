@@ -286,7 +286,7 @@ function renderPortfolio() {
   const todayEl = document.getElementById('metric-today-pnl');
   todayEl.textContent = fmtUSD(p.closedPnlToday, true);
   todayEl.className   = 'value ' + (p.closedPnlToday >= 0 ? 'pos' : 'neg');
-  document.getElementById('metric-today-sub').textContent = `${p.closedToday?.length ?? 0} closed today`;
+  document.getElementById('metric-today-sub').textContent = `${p.closedTodayCount ?? 0} closed today`;
 
   const totalPnlEl = document.getElementById('metric-total-pnl');
   totalPnlEl.textContent = fmtUSD(p.totalPnl, true);
@@ -473,20 +473,21 @@ function renderPositions() {
 
   const closedHeader = document.getElementById('closed-today-header');
   const closedList   = document.getElementById('closed-today-list');
+  closedHeader.style.display = 'block';
   if (closed.length > 0) {
-    closedHeader.style.display = 'block';
-    closedList.innerHTML = closed.slice(0, 8).map(t => {
+    closedList.innerHTML = closed.map(t => {
       const isPos = t.pnl_usd >= 0;
+      const dateStr = t.closed_at ? new Date(t.closed_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+      const timeStr = formatTime(t.closed_at);
       return `
         <div class="closed-trade-row">
           <span class="asset">${t.asset} ${t.direction}</span>
           <span class="pnl ${isPos ? 'pos' : 'neg'}">${fmtUSD(t.pnl_usd, true)}</span>
-          <span class="time">${formatTime(t.closed_at)}</span>
+          <span class="time">${dateStr} ${timeStr}</span>
         </div>`;
     }).join('');
   } else {
-    closedHeader.style.display = 'none';
-    closedList.innerHTML = '';
+    closedList.innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:8px 0">No closed trades yet</div>';
   }
 }
 

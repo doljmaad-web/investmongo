@@ -129,17 +129,21 @@ export function updateOpenTrades(prices) {
 
 export function getPortfolioStats() {
   const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER'`).all();
-  const closedToday = db.prepare(`
+  const closedTodayRows = db.prepare(`
     SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
     AND DATE(closed_at) = DATE('now')
   `).all();
   const allClosed = db.prepare(`
     SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
   `).all();
+  const recentClosed = db.prepare(`
+    SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
+    ORDER BY closed_at DESC LIMIT 50
+  `).all();
 
   const cash          = getCashBalance();
   const openPnl       = open.reduce((s, t) => s + (t.pnl_usd || 0), 0);
-  const closedToday_  = closedToday.reduce((s, t) => s + (t.pnl_usd || 0), 0);
+  const closedToday_  = closedTodayRows.reduce((s, t) => s + (t.pnl_usd || 0), 0);
   const totalPnl      = allClosed.reduce((s, t) => s + (t.pnl_usd || 0), 0);
   const wins          = allClosed.filter(t => t.pnl_usd > 0).length;
   const winRate       = allClosed.length > 0 ? (wins / allClosed.length * 100) : 0;
@@ -149,9 +153,10 @@ export function getPortfolioStats() {
     cashBalance:     cash,
     openPnl:         parseFloat(openPnl.toFixed(2)),
     closedPnlToday:  parseFloat(closedToday_.toFixed(2)),
+    closedTodayCount: closedTodayRows.length,
     totalPnl:        parseFloat(totalPnl.toFixed(2)),
     openTrades:      open,
-    closedToday:     closedToday,
+    closedToday:     recentClosed,
     allClosed,
     winRate:         parseFloat(winRate.toFixed(1)),
     totalTrades:     allClosed.length,
