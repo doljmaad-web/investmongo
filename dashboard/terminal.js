@@ -39,6 +39,11 @@ async function loadSessionUser() {
     if (!res.ok) return;
     const { user, balance } = await res.json();
     sessionUser = { is_admin: !!user.is_admin, balance };
+    // Show admin-only controls
+    if (sessionUser.is_admin) {
+      const closeAllBtn = document.getElementById('btn-close-all');
+      if (closeAllBtn) closeAllBtn.style.display = '';
+    }
   } catch (e) { /* not logged in */ }
 }
 
@@ -494,7 +499,7 @@ function buildPositionCard(t) {
       <div class="pos-header">
         <span class="pos-asset">${escHtml(t.asset)}</span>
         <span class="pos-dir ${dirClass}">${t.direction}</span>
-        <button class="pos-close-btn" onclick="closePosition(${t.id}, this)" title="Close this position">✕ Close</button>
+        ${sessionUser?.is_admin ? `<button class="pos-close-btn" onclick="closePosition(${t.id}, this)" title="Close this position">✕ Close</button>` : ''}
       </div>
       <div class="pos-pnl ${isPos ? 'pos' : 'neg'}">${fmtUSD(t.pnl_usd, true)}${pnlPct}</div>
       <div class="pos-details">
