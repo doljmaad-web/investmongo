@@ -342,6 +342,52 @@ router.get('/api/auth/me', authMiddleware, (req, res) => {
   }
 });
 
+// ── Pool stats (public) ───────────────────────────────────────
+
+// GET /api/pools/stats
+router.get('/api/pools/stats', (req, res) => {
+  try {
+    const botRow = db.prepare(`
+      SELECT COALESCE(SUM(pnl_usd), 0) AS total_pnl
+      FROM trades
+      WHERE status IN ('CLOSED','STOPPED')
+        AND closed_at >= date('now','start of month')
+    `).get();
+
+    const poolRow = db.prepare(
+      `SELECT total_value FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 1`
+    ).get();
+
+    const totalPool     = Math.max(poolRow?.total_value || 10000, 1);
+    const botMonthlyPct = parseFloat(((botRow.total_pnl / totalPool) * 100).toFixed(2));
+
+    function tierStats(tier, lockMonths) {
+      if (tier === 'flexible') {
+        return db.prepare(`
+          SELECT COALESCE(SUM(ub.visible_balance_usd), 0) AS tvl, COUNT(*) AS investors
+          FROM user_balances ub JOIN users u ON u.id = ub.user_id
+          WHERE u.tier = 'flexible' AND ub.visible_balance_usd > 0
+        `).get();
+      }
+      return db.prepare(`
+        SELECT COALESCE(SUM(ub.visible_balance_usd), 0) AS tvl, COUNT(*) AS investors
+        FROM user_balances ub JOIN users u ON u.id = ub.user_id
+        WHERE u.tier = 'locked' AND u.lock_months = ? AND ub.visible_balance_usd > 0
+      `).get(lockMonths);
+    }
+
+    res.json({
+      bot_monthly_pct: botMonthlyPct,
+      liquid: tierStats('flexible'),
+      growth: tierStats('locked', 3),
+      pro:    tierStats('locked', 6),
+      vault:  tierStats('locked', 12),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Portfolio routes ──────────────────────────────────────────
 
 // GET /api/portfolio/summary

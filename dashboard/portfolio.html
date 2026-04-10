@@ -646,6 +646,154 @@
       .tier-options { grid-template-columns: 1fr; }
       .lock-options { grid-template-columns: repeat(3, 1fr); }
     }
+
+    /* ══ INVESTMENT POOLS ══════════════════════════════════════ */
+    .pools-section { margin-bottom: 28px; }
+    .pools-header {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+      color: #f59e0b; margin-bottom: 18px; font-weight: 600;
+    }
+    .pools-header-line { flex: 1; height: 1px; background: linear-gradient(90deg, #f59e0b44, transparent); }
+
+    .pools-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .pool-card {
+      background: linear-gradient(160deg, rgba(6,12,28,0.98), rgba(8,16,38,0.95));
+      border: 1px solid rgba(56,189,248,0.1);
+      border-radius: 18px; padding: 20px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+      cursor: default;
+    }
+    .pool-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: var(--pool-top); opacity: 0.85;
+    }
+    .pool-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .pool-liquid { --pool-top: linear-gradient(90deg,#38bdf8,#60a5fa); border-color: rgba(56,189,248,0.12); }
+    .pool-liquid:hover { border-color: rgba(56,189,248,0.35); box-shadow: 0 12px 40px rgba(56,189,248,0.08); }
+    .pool-growth { --pool-top: linear-gradient(90deg,#4ade80,#22c55e); border-color: rgba(74,222,128,0.12); }
+    .pool-growth:hover { border-color: rgba(74,222,128,0.35); box-shadow: 0 12px 40px rgba(74,222,128,0.08); }
+    .pool-pro    { --pool-top: linear-gradient(90deg,#a78bfa,#7c3aed); border-color: rgba(167,139,250,0.12); }
+    .pool-pro:hover    { border-color: rgba(167,139,250,0.35); box-shadow: 0 12px 40px rgba(167,139,250,0.08); }
+    .pool-vault  { --pool-top: linear-gradient(90deg,#f59e0b,#d97706); border-color: rgba(245,158,11,0.12); }
+    .pool-vault:hover  { border-color: rgba(245,158,11,0.35); box-shadow: 0 12px 40px rgba(245,158,11,0.08); }
+
+    .pool-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .pool-badge {
+      font-size: 10px; font-weight: 800; letter-spacing: 2.5px;
+      text-transform: uppercase; padding: 4px 12px; border-radius: 20px;
+    }
+    .pool-liquid .pool-badge { background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); }
+    .pool-growth .pool-badge { background:rgba(74,222,128,0.1);  color:#4ade80; border:1px solid rgba(74,222,128,0.25); }
+    .pool-pro    .pool-badge { background:rgba(167,139,250,0.1); color:#a78bfa; border:1px solid rgba(167,139,250,0.25); }
+    .pool-vault  .pool-badge { background:rgba(245,158,11,0.1);  color:#f59e0b; border:1px solid rgba(245,158,11,0.25); }
+
+    .pool-live { display:flex; align-items:center; gap:5px; font-size:9px; color:#4ade80; letter-spacing:1.5px; }
+    .pool-live-dot {
+      width:6px; height:6px; border-radius:50%; background:#4ade80;
+      box-shadow:0 0 8px #4ade80; animation: pool-pulse 2s ease-in-out infinite;
+    }
+    @keyframes pool-pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+    .pool-rate-num {
+      font-size: 48px; font-weight: 900; color: #fff; line-height: 1;
+      letter-spacing: -2px;
+      text-shadow: 0 0 25px rgba(255,255,255,0.7), 0 0 50px rgba(255,255,255,0.25);
+    }
+    .pool-rate-sub { font-size:13px; color:#f59e0b; font-weight:700; margin-top:2px; letter-spacing:0.5px; }
+
+    .pool-meta { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 0; }
+    .pool-meta-item { min-width:60px; }
+    .pool-meta-label { font-size:9px; color:#f59e0b; text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+    .pool-meta-val   { font-size:13px; color:#fff; font-weight:700; margin-top:2px; }
+
+    .pool-divider { height:1px; background:rgba(255,255,255,0.055); margin:14px 0; }
+
+    .pool-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px; }
+    .pool-stat  { text-align:center; }
+    .pool-stat-val {
+      font-size:14px; font-weight:800; color:#60a5fa;
+      text-shadow: 0 0 14px rgba(96,165,250,0.7);
+    }
+    .pool-stat-label { font-size:8px; color:#f59e0b; text-transform:uppercase; letter-spacing:1px; margin-top:2px; font-weight:600; }
+
+    .pool-bar-wrap { height:3px; background:rgba(255,255,255,0.07); border-radius:2px; overflow:hidden; margin-bottom:14px; }
+    .pool-bar { height:100%; border-radius:2px; transition:width 1s ease; }
+    .pool-liquid .pool-bar { background:linear-gradient(90deg,#38bdf8,#60a5fa); box-shadow:0 0 8px rgba(56,189,248,0.5); }
+    .pool-growth .pool-bar { background:linear-gradient(90deg,#4ade80,#22c55e); box-shadow:0 0 8px rgba(74,222,128,0.5); }
+    .pool-pro    .pool-bar { background:linear-gradient(90deg,#a78bfa,#7c3aed); box-shadow:0 0 8px rgba(167,139,250,0.5); }
+    .pool-vault  .pool-bar { background:linear-gradient(90deg,#f59e0b,#d97706); box-shadow:0 0 8px rgba(245,158,11,0.5); }
+
+    .btn-pool-toggle {
+      width:100%; padding:11px; border-radius:10px;
+      font-size:12px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+      cursor:pointer; transition:all 0.2s; background:transparent;
+    }
+    .pool-liquid .btn-pool-toggle { border:1px solid #38bdf8; color:#38bdf8; }
+    .pool-liquid .btn-pool-toggle:hover { background:rgba(56,189,248,0.1); }
+    .pool-growth .btn-pool-toggle { border:1px solid #4ade80; color:#4ade80; }
+    .pool-growth .btn-pool-toggle:hover { background:rgba(74,222,128,0.1); }
+    .pool-pro    .btn-pool-toggle { border:1px solid #a78bfa; color:#a78bfa; }
+    .pool-pro    .btn-pool-toggle:hover { background:rgba(167,139,250,0.1); }
+    .pool-vault  .btn-pool-toggle { border:1px solid #f59e0b; color:#f59e0b; }
+    .pool-vault  .btn-pool-toggle:hover { background:rgba(245,158,11,0.1); }
+
+    /* Invest slide-down panel */
+    .pool-invest-panel { max-height:0; overflow:hidden; transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1); }
+    .pool-invest-panel.open { max-height:320px; }
+
+    .swap-from, .swap-to {
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px; padding:12px 14px; margin-bottom:6px;
+    }
+    .swap-label { font-size:9px; color:#f59e0b; text-transform:uppercase; letter-spacing:1.5px; font-weight:700; margin-bottom:6px; }
+    .swap-row { display:flex; align-items:center; gap:10px; }
+    .swap-token { font-size:11px; font-weight:800; padding:4px 10px; border-radius:16px; white-space:nowrap; }
+    .pool-liquid .swap-token { background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); }
+    .pool-growth .swap-token { background:rgba(74,222,128,0.10); color:#4ade80; border:1px solid rgba(74,222,128,0.25); }
+    .pool-pro    .swap-token { background:rgba(167,139,250,0.1); color:#a78bfa; border:1px solid rgba(167,139,250,0.25); }
+    .pool-vault  .swap-token { background:rgba(245,158,11,0.1);  color:#f59e0b; border:1px solid rgba(245,158,11,0.25); }
+    .swap-input-amt {
+      flex:1; background:transparent; border:none; outline:none;
+      color:#fff; font-size:22px; font-weight:800; min-width:0;
+      text-shadow:0 0 15px rgba(255,255,255,0.4);
+    }
+    .swap-input-amt::placeholder { color:rgba(255,255,255,0.15); }
+    .swap-hint { font-size:10px; color:rgba(255,255,255,0.3); margin-top:5px; }
+    .swap-arrow-row { text-align:center; color:rgba(255,255,255,0.15); font-size:16px; margin:2px 0; }
+    .swap-est-gain {
+      font-size:22px; font-weight:800; color:#4ade80;
+      text-shadow:0 0 14px rgba(74,222,128,0.6);
+    }
+    .swap-est-hint { font-size:10px; color:rgba(255,255,255,0.3); margin-top:3px; }
+
+    .btn-invest-now {
+      width:100%; padding:12px; border:none; border-radius:10px;
+      font-size:13px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase;
+      cursor:pointer; transition:opacity 0.15s, transform 0.1s; margin-top:8px;
+    }
+    .btn-invest-now:hover  { opacity:0.88; transform:scale(0.99); }
+    .btn-invest-now:active { transform:scale(0.97); }
+    .pool-liquid .btn-invest-now { background:linear-gradient(135deg,#38bdf8,#0284c7); color:#fff; }
+    .pool-growth .btn-invest-now { background:linear-gradient(135deg,#4ade80,#16a34a); color:#fff; }
+    .pool-pro    .btn-invest-now { background:linear-gradient(135deg,#a78bfa,#6d28d9); color:#fff; }
+    .pool-vault  .btn-invest-now { background:linear-gradient(135deg,#f59e0b,#b45309); color:#fff; }
+    .btn-invest-now:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+    .pool-err { font-size:11px; color:#fca5a5; text-align:center; min-height:16px; margin-top:6px; }
+
+    @media (max-width:1200px) { .pools-grid { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:640px)  { .pools-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -696,41 +844,185 @@
       </div>
     </div>
 
-    <!-- Tier + Deposit address -->
-    <div class="grid-2">
+    <!-- Investment Pools -->
+    <div class="pools-section">
+      <div class="pools-header">
+        <span class="pools-header-line"></span>
+        Investment Pools &nbsp;·&nbsp; Powered by AI Trading Bot
+        <span class="pools-header-line" style="background:linear-gradient(90deg,transparent,#f59e0b44);"></span>
+      </div>
+      <div class="pools-grid">
 
-      <!-- Tier card -->
-      <div class="card">
-        <div class="card-title">
-          <span>Tier &amp; Lock</span>
-          <span id="tierBadge" class="tier-badge tier-flexible">Flexible</span>
+        <!-- LIQUID -->
+        <div class="pool-card pool-liquid">
+          <div class="pool-head">
+            <span class="pool-badge">Liquid</span>
+            <span class="pool-live"><span class="pool-live-dot"></span>LIVE</span>
+          </div>
+          <div class="pool-rate-num">8%</div>
+          <div class="pool-rate-sub">/ month cap</div>
+          <div class="pool-meta">
+            <div class="pool-meta-item"><div class="pool-meta-label">Lock</div><div class="pool-meta-val">No Lock</div></div>
+            <div class="pool-meta-item"><div class="pool-meta-label">Min</div><div class="pool-meta-val">$50 USDC</div></div>
+          </div>
+          <div class="pool-divider"></div>
+          <div class="pool-stats">
+            <div class="pool-stat"><div class="pool-stat-val" id="liq-tvl">—</div><div class="pool-stat-label">TVL</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="liq-inv">—</div><div class="pool-stat-label">Investors</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="liq-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+          </div>
+          <div class="pool-bar-wrap"><div class="pool-bar" id="liq-bar" style="width:0%"></div></div>
+          <button class="btn-pool-toggle" onclick="togglePool('liquid')">⚡ &nbsp;Invest Now</button>
+          <div class="pool-invest-panel" id="panel-liquid">
+            <div style="height:10px"></div>
+            <div class="swap-from">
+              <div class="swap-label">You Invest</div>
+              <div class="swap-row">
+                <span class="swap-token">USDC</span>
+                <input class="swap-input-amt" id="amt-liquid" type="number" placeholder="0.00" min="50" step="1" oninput="calcEst('liquid',8)">
+              </div>
+              <div class="swap-hint">Min $50 · Arbitrum · No lock period</div>
+            </div>
+            <div class="swap-arrow-row">↓</div>
+            <div class="swap-to">
+              <div class="swap-label">Monthly Gain Estimate (cap)</div>
+              <div class="swap-est-gain" id="est-liquid">$0.00</div>
+              <div class="swap-est-hint">8% monthly cap · withdraw anytime</div>
+            </div>
+            <button class="btn-invest-now" id="ibtn-liquid" onclick="poolInvest('liquid',null,50)">Connect Wallet &amp; Transfer</button>
+            <div class="pool-err" id="err-liquid"></div>
+          </div>
         </div>
-        <div style="margin-bottom:12px; font-size:14px; color:var(--muted); line-height:1.6;" id="tierDesc">
-          Loading tier info...
+
+        <!-- GROWTH -->
+        <div class="pool-card pool-growth">
+          <div class="pool-head">
+            <span class="pool-badge">Growth</span>
+            <span class="pool-live"><span class="pool-live-dot"></span>LIVE</span>
+          </div>
+          <div class="pool-rate-num">10%</div>
+          <div class="pool-rate-sub">/ month cap</div>
+          <div class="pool-meta">
+            <div class="pool-meta-item"><div class="pool-meta-label">Lock</div><div class="pool-meta-val">3 Months</div></div>
+            <div class="pool-meta-item"><div class="pool-meta-label">Min</div><div class="pool-meta-val">$200 USDC</div></div>
+          </div>
+          <div class="pool-divider"></div>
+          <div class="pool-stats">
+            <div class="pool-stat"><div class="pool-stat-val" id="grow-tvl">—</div><div class="pool-stat-label">TVL</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="grow-inv">—</div><div class="pool-stat-label">Investors</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="grow-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+          </div>
+          <div class="pool-bar-wrap"><div class="pool-bar" id="grow-bar" style="width:0%"></div></div>
+          <button class="btn-pool-toggle" onclick="togglePool('growth')">⚡ &nbsp;Invest Now</button>
+          <div class="pool-invest-panel" id="panel-growth">
+            <div style="height:10px"></div>
+            <div class="swap-from">
+              <div class="swap-label">You Invest</div>
+              <div class="swap-row">
+                <span class="swap-token">USDC</span>
+                <input class="swap-input-amt" id="amt-growth" type="number" placeholder="0.00" min="200" step="1" oninput="calcEst('growth',10)">
+              </div>
+              <div class="swap-hint">Min $200 · Arbitrum · 3-month lock</div>
+            </div>
+            <div class="swap-arrow-row">↓</div>
+            <div class="swap-to">
+              <div class="swap-label">Monthly Gain Estimate (cap)</div>
+              <div class="swap-est-gain" id="est-growth">$0.00</div>
+              <div class="swap-est-hint">10% monthly cap · locked 3 months</div>
+            </div>
+            <button class="btn-invest-now" id="ibtn-growth" onclick="poolInvest('growth',3,200)">Connect Wallet &amp; Transfer</button>
+            <div class="pool-err" id="err-growth"></div>
+          </div>
         </div>
-        <button class="btn btn-gold" id="btnUpgradeTier" onclick="openDepositModal('locked')" style="display:none">
-          Upgrade to Locked
-        </button>
+
+        <!-- PRO -->
+        <div class="pool-card pool-pro">
+          <div class="pool-head">
+            <span class="pool-badge">Pro</span>
+            <span class="pool-live"><span class="pool-live-dot"></span>LIVE</span>
+          </div>
+          <div class="pool-rate-num">14%</div>
+          <div class="pool-rate-sub">/ month cap</div>
+          <div class="pool-meta">
+            <div class="pool-meta-item"><div class="pool-meta-label">Lock</div><div class="pool-meta-val">6 Months</div></div>
+            <div class="pool-meta-item"><div class="pool-meta-label">Min</div><div class="pool-meta-val">$350 USDC</div></div>
+          </div>
+          <div class="pool-divider"></div>
+          <div class="pool-stats">
+            <div class="pool-stat"><div class="pool-stat-val" id="pro-tvl">—</div><div class="pool-stat-label">TVL</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="pro-inv">—</div><div class="pool-stat-label">Investors</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="pro-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+          </div>
+          <div class="pool-bar-wrap"><div class="pool-bar" id="pro-bar" style="width:0%"></div></div>
+          <button class="btn-pool-toggle" onclick="togglePool('pro')">⚡ &nbsp;Invest Now</button>
+          <div class="pool-invest-panel" id="panel-pro">
+            <div style="height:10px"></div>
+            <div class="swap-from">
+              <div class="swap-label">You Invest</div>
+              <div class="swap-row">
+                <span class="swap-token">USDC</span>
+                <input class="swap-input-amt" id="amt-pro" type="number" placeholder="0.00" min="350" step="1" oninput="calcEst('pro',14)">
+              </div>
+              <div class="swap-hint">Min $350 · Arbitrum · 6-month lock</div>
+            </div>
+            <div class="swap-arrow-row">↓</div>
+            <div class="swap-to">
+              <div class="swap-label">Monthly Gain Estimate (cap)</div>
+              <div class="swap-est-gain" id="est-pro">$0.00</div>
+              <div class="swap-est-hint">14% monthly cap · locked 6 months</div>
+            </div>
+            <button class="btn-invest-now" id="ibtn-pro" onclick="poolInvest('pro',6,350)">Connect Wallet &amp; Transfer</button>
+            <div class="pool-err" id="err-pro"></div>
+          </div>
+        </div>
+
+        <!-- VAULT -->
+        <div class="pool-card pool-vault">
+          <div class="pool-head">
+            <span class="pool-badge">Vault</span>
+            <span class="pool-live"><span class="pool-live-dot"></span>LIVE</span>
+          </div>
+          <div class="pool-rate-num">18%</div>
+          <div class="pool-rate-sub">/ month cap</div>
+          <div class="pool-meta">
+            <div class="pool-meta-item"><div class="pool-meta-label">Lock</div><div class="pool-meta-val">12 Months</div></div>
+            <div class="pool-meta-item"><div class="pool-meta-label">Min</div><div class="pool-meta-val">$500 USDC</div></div>
+          </div>
+          <div class="pool-divider"></div>
+          <div class="pool-stats">
+            <div class="pool-stat"><div class="pool-stat-val" id="vault-tvl">—</div><div class="pool-stat-label">TVL</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="vault-inv">—</div><div class="pool-stat-label">Investors</div></div>
+            <div class="pool-stat"><div class="pool-stat-val" id="vault-perf">—</div><div class="pool-stat-label">Bot / Mo</div></div>
+          </div>
+          <div class="pool-bar-wrap"><div class="pool-bar" id="vault-bar" style="width:0%"></div></div>
+          <button class="btn-pool-toggle" onclick="togglePool('vault')">⚡ &nbsp;Invest Now</button>
+          <div class="pool-invest-panel" id="panel-vault">
+            <div style="height:10px"></div>
+            <div class="swap-from">
+              <div class="swap-label">You Invest</div>
+              <div class="swap-row">
+                <span class="swap-token">USDC</span>
+                <input class="swap-input-amt" id="amt-vault" type="number" placeholder="0.00" min="500" step="1" oninput="calcEst('vault',18)">
+              </div>
+              <div class="swap-hint">Min $500 · Arbitrum · 12-month lock</div>
+            </div>
+            <div class="swap-arrow-row">↓</div>
+            <div class="swap-to">
+              <div class="swap-label">Monthly Gain Estimate (cap)</div>
+              <div class="swap-est-gain" id="est-vault">$0.00</div>
+              <div class="swap-est-hint">18% monthly cap · locked 12 months</div>
+            </div>
+            <button class="btn-invest-now" id="ibtn-vault" onclick="poolInvest('vault',12,500)">Connect Wallet &amp; Transfer</button>
+            <div class="pool-err" id="err-vault"></div>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Deposit address card -->
-      <div class="card">
-        <div class="card-title">Your Deposit Address (Arbitrum)</div>
-        <div class="address-box">
-          <span class="address-text" id="depositAddr">Loading...</span>
-          <button class="btn-copy" id="btnCopyAddr" onclick="copyAddress()">Copy</button>
-        </div>
-        <div class="token-pills">
-          <span class="token-pill">ETH</span>
-          <span class="token-pill">USDC</span>
-          <span class="token-pill">USDT</span>
-        </div>
-        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="openDepositModal('flexible')">Fund Account</button>
-          <button class="btn btn-outline" id="btnWithdraw" onclick="openWithdrawModal()">Request Withdrawal</button>
-        </div>
+      <!-- Withdraw row -->
+      <div style="text-align:right; margin-top:14px;">
+        <button class="btn btn-outline" id="btnWithdraw" onclick="openWithdrawModal()">Request Withdrawal</button>
       </div>
-
     </div>
 
     <!-- Transaction history -->
@@ -764,7 +1056,7 @@
       </div>
 
       <div id="flexibleInfo" class="info-box">
-        <strong>Flexible</strong> — 9%/month cap. Withdraw anytime.
+        <strong>Flexible (Liquid)</strong> — 8%/month cap. Withdraw anytime.
       </div>
 
       <div id="lockedSection" style="display:none; margin-bottom:16px;">
@@ -981,9 +1273,9 @@
         badge.textContent  = 'Flexible';
         badge.className    = 'tier-badge tier-flexible';
         desc.innerHTML = `
-          <strong>9%/month</strong> gain cap<br>
+          <strong>8%/month</strong> gain cap<br>
           Withdraw anytime<br>
-          <em style="color:var(--muted)">Upgrade to locked for higher cap rates</em>
+          <em style="color:var(--muted)">Upgrade to a locked pool for higher cap rates</em>
         `;
         btnUpg.style.display = 'inline-flex';
       }
@@ -1326,10 +1618,171 @@
       window.location.href = '/auth';
     }
 
+    // ── Pool stats ────────────────────────────────────────────
+    async function loadPoolStats() {
+      try {
+        const data = await fetch('/api/pools/stats').then(r => r.json());
+        const bot  = data.bot_monthly_pct ?? 0;
+
+        function fmtTvl(v) {
+          if (!v || v < 0.01) return '$0';
+          if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+          if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+          return '$' + parseFloat(v).toFixed(0);
+        }
+
+        const pools = [
+          { id:'liq',   key:'liquid', cap:8  },
+          { id:'grow',  key:'growth', cap:10 },
+          { id:'pro',   key:'pro',    cap:14 },
+          { id:'vault', key:'vault',  cap:18 },
+        ];
+
+        pools.forEach(({ id, key, cap }) => {
+          const d = data[key] || {};
+          document.getElementById(`${id}-tvl`).textContent  = fmtTvl(d.tvl);
+          document.getElementById(`${id}-inv`).textContent  = d.investors ?? 0;
+          document.getElementById(`${id}-perf`).textContent = (bot >= 0 ? '+' : '') + bot.toFixed(1) + '%';
+          document.getElementById(`${id}-bar`).style.width  = Math.min((bot / cap) * 100, 100) + '%';
+        });
+      } catch(e) {
+        console.warn('[POOLS] Stats load failed:', e.message);
+      }
+    }
+
+    // ── Toggle invest panel ───────────────────────────────────
+    const _openPool = { id: null };
+    function togglePool(pid) {
+      const panel = document.getElementById('panel-' + pid);
+      if (!panel) return;
+      const opening = !panel.classList.contains('open');
+      // Close all
+      ['liquid','growth','pro','vault'].forEach(p => {
+        document.getElementById('panel-' + p)?.classList.remove('open');
+      });
+      if (opening) {
+        panel.classList.add('open');
+        _openPool.id = pid;
+        setTimeout(() => document.getElementById('amt-' + pid)?.focus(), 380);
+      } else {
+        _openPool.id = null;
+      }
+    }
+
+    function calcEst(pid, capPct) {
+      const amt = parseFloat(document.getElementById('amt-' + pid)?.value) || 0;
+      const el  = document.getElementById('est-' + pid);
+      if (el) el.textContent = '$' + (amt * capPct / 100).toFixed(2);
+    }
+
+    // ── Pool invest via MetaMask ──────────────────────────────
+    async function poolInvest(pid, lockMonths, minDeposit) {
+      const errEl  = document.getElementById('err-' + pid);
+      const btn    = document.getElementById('ibtn-' + pid);
+      const amtEl  = document.getElementById('amt-' + pid);
+      const amount = parseFloat(amtEl?.value);
+
+      errEl.textContent = '';
+
+      if (!amount || amount < minDeposit) {
+        errEl.textContent = `Minimum deposit is $${minDeposit} USDC`;
+        return;
+      }
+      if (!window.ethereum) {
+        errEl.textContent = 'No Web3 wallet found. Install MetaMask or Coinbase Wallet.';
+        return;
+      }
+      const toAddress = user?.deposit_address;
+      if (!toAddress) {
+        errEl.textContent = 'Deposit address not assigned. Please reload.';
+        return;
+      }
+
+      const origText = btn.innerHTML;
+      btn.disabled   = true;
+
+      try {
+        // Connect wallet
+        btn.innerHTML = '<span class="spinner"></span> Connecting wallet...';
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const from = accounts[0];
+
+        // Switch / add Arbitrum
+        btn.innerHTML = '<span class="spinner"></span> Switching to Arbitrum...';
+        try {
+          await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{chainId:'0xa4b1'}] });
+        } catch (se) {
+          if (se.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{ chainId:'0xa4b1', chainName:'Arbitrum One',
+                nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18},
+                rpcUrls:['https://arb1.arbitrum.io/rpc'],
+                blockExplorerUrls:['https://arbiscan.io'] }],
+            });
+          } else throw se;
+        }
+
+        // Build USDC transfer calldata (ERC-20 transfer, 6 decimals)
+        const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+        const rawAmt = BigInt(Math.floor(amount * 1e6));
+        const to32   = toAddress.slice(2).padStart(64, '0');
+        const amt32  = rawAmt.toString(16).padStart(64, '0');
+        const txData = '0xa9059cbb' + to32 + amt32;
+
+        btn.innerHTML = '<span class="spinner"></span> Confirm in wallet...';
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [{ from, to: USDC_ARBITRUM, data: txData }],
+        });
+
+        // Record on server
+        btn.innerHTML = '<span class="spinner"></span> Recording deposit...';
+        const result = await api('/api/portfolio/deposit', {
+          method: 'POST',
+          body: JSON.stringify({
+            amount_usd:  amount,
+            token:       'USDC',
+            tx_hash:     txHash,
+            tier:        lockMonths ? 'locked' : 'flexible',
+            lock_months: lockMonths || undefined,
+          }),
+        });
+
+        if (result.error) {
+          errEl.textContent = result.error;
+          btn.innerHTML  = origText;
+          btn.disabled   = false;
+          return;
+        }
+
+        // Success
+        btn.innerHTML    = '✓ &nbsp;Deposit Confirmed!';
+        btn.style.cssText = 'background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);';
+        amtEl.value      = '';
+        calcEst(pid, lockMonths ? (lockMonths===3?10:lockMonths===6?14:18) : 8);
+        await loadPortfolio();
+        await loadHistory();
+        await loadPoolStats();
+        setTimeout(() => {
+          btn.innerHTML  = origText;
+          btn.style.cssText = '';
+          btn.disabled   = false;
+          togglePool(pid);
+        }, 3500);
+
+      } catch(e) {
+        errEl.textContent = e.code === 4001 ? 'Transaction cancelled.' : (e.message || 'Transaction failed.');
+        btn.innerHTML  = origText;
+        btn.disabled   = false;
+      }
+    }
+
     // ── Init ──────────────────────────────────────────────────
     (async () => {
       await loadPortfolio();
       await loadHistory();
+      await loadPoolStats();
     })();
   </script>
 </body>
