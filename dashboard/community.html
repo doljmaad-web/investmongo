@@ -293,20 +293,47 @@
 
     /* ── RIGHT SIDEBAR ── */
     .sidebar-right {
-      width: 340px; flex-shrink: 0;
-      padding: 16px;
+      width: 340px; flex-shrink: 0; padding: 16px;
+      position: sticky; top: 53px; height: calc(100vh - 53px); overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     }
     .widget {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+      border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
     }
-    .widget-title { font-size: 18px; font-weight: 800; margin-bottom: 14px; }
-    .trend-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
-    .trend-row:last-child { border-bottom: none; }
-    .trend-row:hover .trend-name { color: var(--blue); }
-    .trend-label { font-size: 11px; color: var(--muted); }
-    .trend-name { font-size: 14px; font-weight: 700; margin: 2px 0; transition: color 0.15s; }
-    .trend-count { font-size: 12px; color: var(--muted); }
+    .widget-title {
+      font-size: 16px; font-weight: 800; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .widget-title .refresh-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+    /* Market rows */
+    .mkt-row { display: flex; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+    .mkt-row:last-child { border-bottom: none; }
+    .mkt-rank { font-size: 11px; color: var(--muted); width: 16px; flex-shrink: 0; }
+    .mkt-asset { font-size: 13px; font-weight: 800; flex: 1; color: var(--text); }
+    .mkt-price { font-size: 12px; color: var(--muted); flex: 1; text-align: right; }
+    .mkt-change { font-size: 12px; font-weight: 700; width: 52px; text-align: right; flex-shrink: 0; }
+    .mkt-change.pos { color: var(--green); }
+    .mkt-change.neg { color: var(--red); }
+    .mkt-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box { background: var(--surface2); border-radius: 10px; padding: 12px; text-align: center; }
+    .stat-box .n { font-size: 22px; font-weight: 800; color: var(--text); }
+    .stat-box .l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    /* Fear & greed */
+    .fg-bar { height: 8px; border-radius: 4px; margin: 8px 0 4px;
+      background: linear-gradient(90deg, var(--red), var(--gold), var(--green)); }
+    .fg-needle-wrap { position: relative; height: 0; }
+    .fg-needle { position: absolute; width: 3px; height: 14px; background: #fff;
+      border-radius: 2px; top: -11px; transform: translateX(-50%); }
+    .fg-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 6px; }
+    /* Loading skeleton */
+    .skel { background: var(--surface2); border-radius: 4px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
 
     /* ── Responsive ── */
     @media (max-width: 1100px) { .sidebar-right { display: none; } }
@@ -413,23 +440,59 @@
 
   <!-- RIGHT SIDEBAR -->
   <aside class="sidebar-right">
+
+    <!-- Community Stats -->
     <div class="widget">
-      <div class="widget-title">Trending Tickers</div>
-      <div id="trending-list">
-        <div class="trend-row"><div><div class="trend-label">Crypto</div><div class="trend-name">#BTC</div></div></div>
-        <div class="trend-row"><div><div class="trend-label">Crypto</div><div class="trend-name">#ETH</div></div></div>
-        <div class="trend-row"><div><div class="trend-label">Crypto</div><div class="trend-name">#DOGE</div></div></div>
-        <div class="trend-row"><div><div class="trend-label">Commodity</div><div class="trend-name">#GOLD</div></div></div>
-        <div class="trend-row"><div><div class="trend-label">DeFi</div><div class="trend-name">#HYPE</div></div></div>
+      <div class="widget-title">Community <span class="refresh-dot"></span></div>
+      <div class="stats-grid" id="community-stats">
+        <div class="stat-box"><div class="n skel" style="height:28px;width:40px;margin:0 auto"></div><div class="l">Posts</div></div>
+        <div class="stat-box"><div class="n skel" style="height:28px;width:40px;margin:0 auto"></div><div class="l">Members</div></div>
+        <div class="stat-box"><div class="n skel" style="height:28px;width:40px;margin:0 auto"></div><div class="l">Today</div></div>
+        <div class="stat-box"><div class="n skel" style="height:28px;width:40px;margin:0 auto"></div><div class="l">Likes</div></div>
       </div>
     </div>
-    <div class="widget" style="font-size:12px;color:var(--muted);line-height:1.8;">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">About</div>
-      DeFiMongo Community — Mongolian traders worldwide sharing ideas and insights.
-      <br/><br/>
-      <a href="/" style="color:var(--blue);text-decoration:none;">Terminal</a> ·
-      <a href="/portfolio" style="color:var(--blue);text-decoration:none;">Portfolio</a>
+
+    <!-- Fear & Greed -->
+    <div class="widget" id="fg-widget" style="display:none">
+      <div class="widget-title">Market Sentiment</div>
+      <div style="text-align:center;margin-bottom:6px;">
+        <span id="fg-value" style="font-size:32px;font-weight:900;color:var(--gold)">--</span>
+        <div id="fg-label" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <div class="fg-bar"></div>
+      <div class="fg-needle-wrap"><div class="fg-needle" id="fg-needle"></div></div>
+      <div class="fg-labels"><span>Fear</span><span>Neutral</span><span>Greed</span></div>
     </div>
+
+    <!-- Top 5 by Volume -->
+    <div class="widget">
+      <div class="widget-title">🔥 Top Volume <span style="font-size:11px;font-weight:400;color:var(--muted)">24h</span></div>
+      <div id="vol-list"><div class="skel" style="height:180px;border-radius:8px"></div></div>
+    </div>
+
+    <!-- Top 5 Gainers -->
+    <div class="widget">
+      <div class="widget-title">🚀 Top Gainers <span style="font-size:11px;font-weight:400;color:var(--muted)">24h</span></div>
+      <div id="gainers-list"><div class="skel" style="height:140px;border-radius:8px"></div></div>
+    </div>
+
+    <!-- Top 5 Losers -->
+    <div class="widget">
+      <div class="widget-title">📉 Top Losers <span style="font-size:11px;font-weight:400;color:var(--muted)">24h</span></div>
+      <div id="losers-list"><div class="skel" style="height:140px;border-radius:8px"></div></div>
+    </div>
+
+    <!-- About -->
+    <div class="widget" style="font-size:12px;color:var(--muted);line-height:1.8;">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">DeFiMongo</div>
+      Mongolian traders worldwide — share ideas, signals & insights.
+      <div style="margin-top:10px;display:flex;gap:10px;">
+        <a href="/" style="color:var(--blue);text-decoration:none;font-weight:600;">⚡ Terminal</a>
+        <a href="/portfolio" style="color:var(--blue);text-decoration:none;font-weight:600;">💼 Portfolio</a>
+        <a href="/screener" style="color:var(--blue);text-decoration:none;font-weight:600;">📊 Screener</a>
+      </div>
+    </div>
+
   </aside>
 
 </div>
@@ -751,7 +814,72 @@ function initWS() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
+// ── Right sidebar: live market + community data ───────────────
+function fmtPrice(p) {
+  if (!p) return '--';
+  if (p >= 1000) return '$' + p.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (p >= 1)    return '$' + p.toFixed(2);
+  return '$' + p.toFixed(4);
+}
+function fmtVol(v) {
+  if (!v) return '--';
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(0) + 'M';
+  return '$' + (v/1e3).toFixed(0) + 'K';
+}
+
+function buildMktRows(list, showVol = false) {
+  return list.map((a, i) => `
+    <div class="mkt-row">
+      <span class="mkt-rank">${i+1}</span>
+      <div style="flex:1">
+        <div class="mkt-asset">${esc(a.asset)}</div>
+        ${showVol ? `<div class="mkt-sub">Vol ${fmtVol(a.volume)} · OI ${fmtVol(a.oi)}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        <div class="mkt-price">${fmtPrice(a.price)}</div>
+        <div class="mkt-change ${a.change24h >= 0 ? 'pos' : 'neg'}">${a.change24h >= 0 ? '+' : ''}${a.change24h}%</div>
+      </div>
+    </div>`).join('');
+}
+
+async function loadSidebar() {
+  try {
+    const r = await fetch('/api/community/sidebar');
+    if (!r.ok) return;
+    const d = await r.json();
+
+    // Community stats
+    document.getElementById('community-stats').innerHTML = `
+      <div class="stat-box"><div class="n">${d.stats.totalPosts}</div><div class="l">Posts</div></div>
+      <div class="stat-box"><div class="n">${d.stats.totalMembers}</div><div class="l">Members</div></div>
+      <div class="stat-box"><div class="n">${d.stats.todayPosts}</div><div class="l">Today</div></div>
+      <div class="stat-box"><div class="n">${d.stats.totalLikes}</div><div class="l">Likes</div></div>`;
+
+    // Fear & Greed
+    if (d.fearGreed?.value) {
+      const fg = d.fearGreed;
+      document.getElementById('fg-widget').style.display = 'block';
+      document.getElementById('fg-value').textContent = fg.value;
+      document.getElementById('fg-label').textContent  = fg.label || fg.classification || '';
+      const pct = Math.max(0, Math.min(100, fg.value));
+      document.getElementById('fg-needle').style.left = pct + '%';
+      const color = pct < 30 ? 'var(--red)' : pct < 55 ? 'var(--gold)' : 'var(--green)';
+      document.getElementById('fg-value').style.color = color;
+    }
+
+    // Volume
+    document.getElementById('vol-list').innerHTML = buildMktRows(d.byVolume, true);
+    // Gainers
+    document.getElementById('gainers-list').innerHTML = buildMktRows(d.gainers);
+    // Losers
+    document.getElementById('losers-list').innerHTML = buildMktRows(d.losers);
+  } catch {}
+}
+
 loadUser().then(loadFeed);
+loadSidebar();
+setInterval(loadSidebar, 30000); // refresh every 30s
 initWS();
 </script>
 </body>

@@ -692,7 +692,7 @@ app.post('/api/community/posts/:id/comments', authMiddleware, (req, res) => {
     if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
     const r = db.prepare(`INSERT INTO community_comments (post_id, user_id, content) VALUES (?,?,?)`).run(postId, req.user.id, content.trim());
     db.prepare(`UPDATE community_posts SET comments_count = comments_count+1 WHERE id=?`).run(postId);
-    const comment = db.prepare(`SELECT c.*, u.name AS author_name, u.avatar AS author_avatar FROM community_comments c JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(r.lastInsertRowid);
+    const comment = db.prepare(`SELECT c.*, u.name AS author_name, u.avatar AS author_avatar, COALESCE(u.handle,'') AS author_handle FROM community_comments c JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(r.lastInsertRowid);
     res.json(comment);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -708,6 +708,41 @@ app.delete('/api/community/posts/:id', authMiddleware, (req, res) => {
     db.prepare(`DELETE FROM community_comments WHERE post_id=?`).run(postId);
     db.prepare(`DELETE FROM community_posts WHERE id=?`).run(postId);
     res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/community/sidebar — live market data + community stats for right panel
+app.get('/api/community/sidebar', async (req, res) => {
+  try {
+    const market = await getMarketData();
+
+    // Top 5 by 24h volume
+    const byVolume = [...market]
+      .sort((a, b) => b.dayVolume - a.dayVolume)
+      .slice(0, 5)
+      .map(a => ({ asset: a.asset, price: a.markPx, change24h: a.change24h, volume: a.dayVolume, oi: a.openInterest, funding: a.funding8h }));
+
+    // Top 5 gainers
+    const gainers = [...market]
+      .filter(a => a.change24h > 0)
+      .sort((a, b) => b.change24h - a.change24h)
+      .slice(0, 5)
+      .map(a => ({ asset: a.asset, price: a.markPx, change24h: a.change24h }));
+
+    // Top 5 losers
+    const losers = [...market]
+      .filter(a => a.change24h < 0)
+      .sort((a, b) => a.change24h - b.change24h)
+      .slice(0, 5)
+      .map(a => ({ asset: a.asset, price: a.markPx, change24h: a.change24h }));
+
+    // Community stats
+    const totalPosts   = db.prepare(`SELECT COUNT(*) AS n FROM community_posts`).get()?.n || 0;
+    const totalMembers = db.prepare(`SELECT COUNT(*) AS n FROM users`).get()?.n || 0;
+    const todayPosts   = db.prepare(`SELECT COUNT(*) AS n FROM community_posts WHERE DATE(created_at)=DATE('now')`).get()?.n || 0;
+    const totalLikes   = db.prepare(`SELECT COUNT(*) AS n FROM community_likes`).get()?.n || 0;
+
+    res.json({ byVolume, gainers, losers, stats: { totalPosts, totalMembers, todayPosts, totalLikes }, fearGreed: fearGreed || null });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
