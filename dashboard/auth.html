@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign In — DeFiMongo</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -66,14 +67,20 @@
     }
 
     .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--blue), var(--green));
-      border-radius: 10px;
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      box-shadow: 0 0 24px rgba(79,110,247,0.35);
+      flex-shrink: 0;
+    }
+    .logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     .logo-text {
@@ -236,7 +243,7 @@
 <body>
   <div class="card">
     <div class="logo-wrap">
-      <div class="logo-icon">M</div>
+      <div class="logo-icon"><img src="/logo.png" alt="DeFiMongo" /></div>
       <span class="logo-text">DeFiMongo</span>
     </div>
 
