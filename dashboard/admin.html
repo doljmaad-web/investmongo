@@ -442,14 +442,57 @@
     .tab-section { display: none; }
     .tab-section.active { display: block; }
 
+    .stat-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Pool admin cards */
+    .pool-admin-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-top: 2px solid var(--pc, #60a5fa);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .pac-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--pc, #60a5fa);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+    .pac-rate {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+    .pac-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--muted);
+    }
+    .pac-row span:last-child { color: var(--text); font-weight: 600; }
+    .pac-investors { border-bottom: none; margin-top: 4px; }
+    .pac-investors span:last-child { color: var(--pc, #60a5fa); }
+
     @media (max-width: 900px) {
       .stats-row { grid-template-columns: repeat(3, 1fr); }
+      #poolBreakdownGrid { grid-template-columns: repeat(2, 1fr) !important; }
     }
 
     @media (max-width: 600px) {
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .navbar    { padding: 0 16px; }
       .main      { padding: 20px 14px; }
+      #poolBreakdownGrid { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
@@ -483,51 +526,94 @@
       </div>
     </div>
 
-    <!-- Stats -->
+    <!-- Top stats bar -->
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-label">Total Users</div>
         <div class="stat-value" id="statUsers">—</div>
+        <div class="stat-sub">registered accounts</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Total AUM</div>
         <div class="stat-value green" id="statAUM">—</div>
+        <div class="stat-sub">assets under management</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Gain Paid Out</div>
+        <div class="stat-label">Gains Distributed</div>
         <div class="stat-value" id="statGainPaid">—</div>
+        <div class="stat-sub">paid out to investors</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Platform Profit</div>
+        <div class="stat-label">Platform Revenue</div>
         <div class="stat-value green" id="statProfit">—</div>
+        <div class="stat-sub">net after distributions</div>
       </div>
       <div class="stat-card" id="pendingCard">
         <div class="stat-label">Pending Withdrawals</div>
         <div class="stat-value" id="statPending">—</div>
+        <div class="stat-sub">awaiting your approval</div>
       </div>
     </div>
 
     <!-- Section tabs -->
     <div class="section-tabs">
       <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
-      <button class="tab-btn"        onclick="switchTab('users')">Users</button>
+      <button class="tab-btn"        onclick="switchTab('users')">Investors</button>
       <button class="tab-btn"        onclick="switchTab('deposits')">Deposits</button>
       <button class="tab-btn"        onclick="switchTab('withdrawals')">Withdrawals</button>
     </div>
 
     <!-- Overview tab -->
     <div class="tab-section active" id="tab-overview">
+
+      <!-- Pool breakdown -->
       <div class="card">
-        <div class="card-title">Platform Overview</div>
-        <p style="color:var(--muted); font-size:14px; line-height:1.7;">
-          Welcome to the DeFiMongo admin panel. Use the tabs above to manage users, review deposits, and process withdrawal requests.
-          Use <strong style="color:var(--text);">Sync Gains</strong> to distribute today's bot profits to user balances.
-          Use the <strong style="color:var(--text);">Deposits</strong> tab to trigger a manual deposit scan.
-        </p>
+        <div class="card-title">Investment Pool Breakdown</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;" id="poolBreakdownGrid">
+          <div class="pool-admin-card" style="--pc:#38bdf8">
+            <div class="pac-name">Liquid</div>
+            <div class="pac-rate">3% / mo</div>
+            <div class="pac-row"><span>Lock</span><span>None</span></div>
+            <div class="pac-row"><span>Min</span><span>$50</span></div>
+            <div class="pac-row"><span>TVL</span><span id="adm-liq-tvl">—</span></div>
+            <div class="pac-row pac-investors"><span>Investors</span><span id="adm-liq-inv">—</span></div>
+          </div>
+          <div class="pool-admin-card" style="--pc:#4ade80">
+            <div class="pac-name">Growth</div>
+            <div class="pac-rate">5% / mo</div>
+            <div class="pac-row"><span>Lock</span><span>3 mo</span></div>
+            <div class="pac-row"><span>Min</span><span>$200</span></div>
+            <div class="pac-row"><span>TVL</span><span id="adm-grow-tvl">—</span></div>
+            <div class="pac-row pac-investors"><span>Investors</span><span id="adm-grow-inv">—</span></div>
+          </div>
+          <div class="pool-admin-card" style="--pc:#a78bfa">
+            <div class="pac-name">Pro</div>
+            <div class="pac-rate">8% / mo</div>
+            <div class="pac-row"><span>Lock</span><span>6 mo</span></div>
+            <div class="pac-row"><span>Min</span><span>$350</span></div>
+            <div class="pac-row"><span>TVL</span><span id="adm-pro-tvl">—</span></div>
+            <div class="pac-row pac-investors"><span>Investors</span><span id="adm-pro-inv">—</span></div>
+          </div>
+          <div class="pool-admin-card" style="--pc:#f59e0b">
+            <div class="pac-name">Vault</div>
+            <div class="pac-rate">14% / mo</div>
+            <div class="pac-row"><span>Lock</span><span>12 mo</span></div>
+            <div class="pac-row"><span>Min</span><span>$500</span></div>
+            <div class="pac-row"><span>TVL</span><span id="adm-vault-tvl">—</span></div>
+            <div class="pac-row pac-investors"><span>Investors</span><span id="adm-vault-inv">—</span></div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);padding-top:12px;">
+          <strong style="color:var(--text)">How gains work:</strong>
+          Each pool has a monthly cap — the bot's actual profit is distributed up to that cap.
+          Use <strong style="color:var(--text)">Sync Gains</strong> to credit today's returns to all investor balances.
+          Locked pools cannot withdraw until the lock expires.
+          Use <strong style="color:var(--text)">Deposits</strong> tab to scan for new incoming transactions.
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Recent Withdrawals</div>
+        <div class="card-title">Pending Withdrawal Requests</div>
         <div id="recentWithdrawalsWrap">
           <div class="empty-state">Loading...</div>
         </div>
@@ -724,6 +810,27 @@
       }
     }
 
+    // ── Pool breakdown (overview tab) ───────────────────────
+    async function loadPoolBreakdown() {
+      try {
+        const data = await fetch('/api/pools/stats').then(r => r.json());
+        function fmtTvl(v) {
+          if (!v || v < 0.01) return '$0';
+          if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+          if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+          return '$' + parseFloat(v).toFixed(0);
+        }
+        const map = { liq:'liquid', grow:'growth', pro:'pro', vault:'vault' };
+        for (const [id, key] of Object.entries(map)) {
+          const d = data[key] || {};
+          const tvlEl = document.getElementById(`adm-${id}-tvl`);
+          const invEl = document.getElementById(`adm-${id}-inv`);
+          if (tvlEl) tvlEl.textContent = fmtTvl(d.tvl || 0);
+          if (invEl) invEl.textContent = d.investors ?? 0;
+        }
+      } catch(e) { /* silent */ }
+    }
+
     // ── Users ───────────────────────────────────────────────
     async function loadUsers() {
       const wrap = document.getElementById('usersTableWrap');
@@ -739,41 +846,75 @@
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Provider</th>
-                <th>Tier</th>
+                <th>Investor</th>
+                <th>Pool</th>
                 <th>Deposited</th>
-                <th>Balance</th>
-                <th>Gain</th>
+                <th>Current Balance</th>
+                <th>Total Gain</th>
+                <th>Lock Expires</th>
                 <th>Joined</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               ${users.map(u => {
+                const gainUsd = u.total_gain_usd || 0;
                 const gainPct = u.deposited_usd > 0
-                  ? ((u.total_gain_usd / u.deposited_usd) * 100).toFixed(1) + '%'
-                  : '0.0%';
-                const isAdmin = u.is_admin ? ' <span style="color:var(--gold);font-size:10px;">ADMIN</span>' : '';
+                  ? ((gainUsd / u.deposited_usd) * 100).toFixed(1)
+                  : '0.0';
+                const gainColor = gainUsd >= 0 ? 'var(--green)' : 'var(--red)';
+                const isAdmin = u.is_admin ? ' <span style="color:var(--gold);font-size:10px;font-weight:700;">ADMIN</span>' : '';
+
+                // Pool label
+                let poolLabel = 'Liquid';
+                let poolRate  = '3%/mo';
+                let poolColor = '#38bdf8';
+                if (u.tier === 'locked') {
+                  if (u.lock_months === 3)  { poolLabel='Growth'; poolRate='5%/mo';  poolColor='#4ade80'; }
+                  if (u.lock_months === 6)  { poolLabel='Pro';    poolRate='8%/mo';  poolColor='#a78bfa'; }
+                  if (u.lock_months === 12) { poolLabel='Vault';  poolRate='14%/mo'; poolColor='#f59e0b'; }
+                }
+
+                // Lock expiry
+                let lockExpiry = '—';
+                if (u.tier === 'locked' && u.lock_until) {
+                  const d = new Date(u.lock_until);
+                  const now = new Date();
+                  if (d > now) {
+                    const daysLeft = Math.ceil((d - now) / 86400000);
+                    lockExpiry = `${fmtDate(u.lock_until)} <span style="color:var(--muted);font-size:10px">(${daysLeft}d left)</span>`;
+                  } else {
+                    lockExpiry = '<span style="color:var(--green);font-size:11px">Unlocked</span>';
+                  }
+                }
+
                 return `<tr>
                   <td>
-                    <div style="font-weight:500">${escHtml(u.name)}${isAdmin}</div>
+                    <div style="font-weight:600">${escHtml(u.name)}${isAdmin}</div>
                     <div style="font-size:11px;color:var(--muted)">${escHtml(u.email || truncAddr(u.wallet_address) || '')}</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:1px">${u.auth_provider}</div>
                   </td>
-                  <td><span class="provider-badge">${u.auth_provider}</span></td>
                   <td>
-                    <span class="status-badge ${u.tier === 'locked' ? 'status-pending' : 'status-confirmed'}">
-                      ${u.tier}${u.tier === 'locked' ? ' ' + u.lock_months + 'mo' : ''}
-                    </span>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <span style="width:8px;height:8px;border-radius:50%;background:${poolColor};flex-shrink:0;box-shadow:0 0 6px ${poolColor}"></span>
+                      <div>
+                        <div style="font-weight:700;color:${poolColor}">${poolLabel}</div>
+                        <div style="font-size:11px;color:var(--muted)">${poolRate} cap</div>
+                      </div>
+                    </div>
                   </td>
-                  <td>${fmt(u.deposited_usd)}</td>
-                  <td style="color:var(--green)">${fmt(u.visible_balance_usd)}</td>
-                  <td>${gainPct}</td>
-                  <td style="color:var(--muted)">${fmtDate(u.created_at)}</td>
+                  <td style="font-weight:600">${fmt(u.deposited_usd)}</td>
+                  <td style="color:var(--green);font-weight:600">${fmt(u.visible_balance_usd)}</td>
+                  <td>
+                    <div style="color:${gainColor};font-weight:600">${gainUsd >= 0 ? '+' : ''}${fmt(gainUsd)}</div>
+                    <div style="font-size:11px;color:var(--muted)">${gainUsd >= 0 ? '+' : ''}${gainPct}%</div>
+                  </td>
+                  <td style="font-size:12px">${lockExpiry}</td>
+                  <td style="color:var(--muted);font-size:12px">${fmtDate(u.created_at)}</td>
                   <td>
                     <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;"
                       onclick="openCredit(${u.id}, '${escHtml(u.name)}', ${u.visible_balance_usd || 0})">
-                      Credit
+                      Adjust
                     </button>
                   </td>
                 </tr>`;
@@ -1059,7 +1200,7 @@
     }
 
     async function loadAll() {
-      await loadStats();
+      await Promise.all([loadStats(), loadPoolBreakdown()]);
       // Load the active tab's data too
       const activeSection = document.querySelector('.tab-section.active');
       if (activeSection) {
@@ -1067,7 +1208,7 @@
         if (id === 'users')       loadUsers();
         if (id === 'deposits')    loadDeposits();
         if (id === 'withdrawals') loadWithdrawals();
-        if (id === 'overview')    loadWithdrawals('recentWithdrawalsWrap');
+        if (id === 'overview')    { loadPoolBreakdown(); loadWithdrawals('recentWithdrawalsWrap'); }
       }
     }
 

@@ -71,7 +71,7 @@ function buildJwtPayload(user) {
     wallet_address: user.wallet_address || null,
     is_admin:       !!user.is_admin,
     tier:           user.tier || 'flexible',
-    tier_pct:       user.tier_pct || 9,
+    tier_pct:       user.tier_pct || 3,
   };
 }
 
@@ -439,11 +439,11 @@ router.post('/api/portfolio/deposit', authMiddleware, (req, res) => {
     if (tier && ['flexible', 'locked'].includes(tier)) {
       const months = parseInt(lock_months) || 0;
 
-      let tierPct = 9;
+      let tierPct = 3;
       if (tier === 'locked') {
-        if      (months === 3)  tierPct = 10;
-        else if (months === 6)  tierPct = 14;
-        else if (months === 12) tierPct = 18;
+        if      (months === 3)  tierPct = 5;
+        else if (months === 6)  tierPct = 8;
+        else if (months === 12) tierPct = 14;
         else return res.status(400).json({ error: 'lock_months must be 3, 6, or 12 for locked tier' });
       }
 
