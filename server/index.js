@@ -9,7 +9,7 @@ import cron              from 'node-cron';
 import { handleSignal, runServerLoop, getTradingAssets, addTradingAsset, setTradingAssetPct, removeTradingAsset, getTrendBias, setTrendBias } from './bot.js';
 import userRoutes  from './user-routes.js';
 import adminRoutes from './admin-routes.js';
-import { adminMiddleware } from './auth.js';
+import { adminMiddleware, authMiddleware, verifyJWT } from './auth.js';
 import { scanAllDeposits, syncUserGains } from './wallet-manager.js';
 
 process.on('unhandledRejection', (reason) => {
@@ -616,6 +616,95 @@ app.get('/portfolio', (req, res) => res.sendFile(path.join(__dirname, '../dashbo
 app.get('/admin',     (req, res) => res.sendFile(path.join(__dirname, '../dashboard/admin.html')));
 app.get('/auth',      (req, res) => res.sendFile(path.join(__dirname, '../dashboard/auth.html')));
 app.get('/screener',  (req, res) => res.sendFile(path.join(__dirname, '../dashboard/screener.html')));
+app.get('/community', (req, res) => res.sendFile(path.join(__dirname, '../dashboard/community.html')));
+
+// ── Community API ────────────────────────────────────────────
+
+// GET /api/community/posts — list posts newest first, with user info + like status
+app.get('/api/community/posts', (req, res) => {
+  try {
+    const header = req.headers['authorization'] || '';
+    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+    const me = token ? verifyJWT(token) : null;
+    const meId = me?.id || null;
+
+    const posts = db.prepare(`
+      SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin
+      FROM community_posts p
+      JOIN users u ON u.id = p.user_id
+      ORDER BY p.created_at DESC
+      LIMIT 100
+    `).all();
+
+    const result = posts.map(post => ({
+      ...post,
+      liked: meId ? !!db.prepare(`SELECT 1 FROM community_likes WHERE post_id=? AND user_id=?`).get(post.id, meId) : false,
+      comments: db.prepare(`
+        SELECT c.*, u.name AS author_name, u.avatar AS author_avatar
+        FROM community_comments c JOIN users u ON u.id = c.user_id
+        WHERE c.post_id=? ORDER BY c.created_at ASC
+      `).all(post.id),
+    }));
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/community/posts — create post (auth required)
+app.post('/api/community/posts', authMiddleware, (req, res) => {
+  try {
+    const { content, ticker } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    const r = db.prepare(`INSERT INTO community_posts (user_id, content, ticker) VALUES (?,?,?)`).run(req.user.id, content.trim(), ticker?.trim() || null);
+    const post = db.prepare(`SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin FROM community_posts p JOIN users u ON u.id=p.user_id WHERE p.id=?`).get(r.lastInsertRowid);
+    broadcast({ type: 'community_post', data: { ...post, liked: false, comments: [] } });
+    res.json({ ...post, liked: false, comments: [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/community/posts/:id/like — toggle like
+app.post('/api/community/posts/:id/like', authMiddleware, (req, res) => {
+  try {
+    const postId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const existing = db.prepare(`SELECT 1 FROM community_likes WHERE post_id=? AND user_id=?`).get(postId, userId);
+    if (existing) {
+      db.prepare(`DELETE FROM community_likes WHERE post_id=? AND user_id=?`).run(postId, userId);
+      db.prepare(`UPDATE community_posts SET likes_count = MAX(0, likes_count-1) WHERE id=?`).run(postId);
+    } else {
+      db.prepare(`INSERT OR IGNORE INTO community_likes (post_id, user_id) VALUES (?,?)`).run(postId, userId);
+      db.prepare(`UPDATE community_posts SET likes_count = likes_count+1 WHERE id=?`).run(postId);
+    }
+    const { likes_count } = db.prepare(`SELECT likes_count FROM community_posts WHERE id=?`).get(postId);
+    res.json({ liked: !existing, likes_count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/community/posts/:id/comments — add comment
+app.post('/api/community/posts/:id/comments', authMiddleware, (req, res) => {
+  try {
+    const postId = parseInt(req.params.id);
+    const { content } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+    const r = db.prepare(`INSERT INTO community_comments (post_id, user_id, content) VALUES (?,?,?)`).run(postId, req.user.id, content.trim());
+    db.prepare(`UPDATE community_posts SET comments_count = comments_count+1 WHERE id=?`).run(postId);
+    const comment = db.prepare(`SELECT c.*, u.name AS author_name, u.avatar AS author_avatar FROM community_comments c JOIN users u ON u.id=c.user_id WHERE c.id=?`).get(r.lastInsertRowid);
+    res.json(comment);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/community/posts/:id — delete own post or admin
+app.delete('/api/community/posts/:id', authMiddleware, (req, res) => {
+  try {
+    const postId = parseInt(req.params.id);
+    const post = db.prepare(`SELECT user_id FROM community_posts WHERE id=?`).get(postId);
+    if (!post) return res.status(404).json({ error: 'Not found' });
+    if (post.user_id !== req.user.id && !req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
+    db.prepare(`DELETE FROM community_likes WHERE post_id=?`).run(postId);
+    db.prepare(`DELETE FROM community_comments WHERE post_id=?`).run(postId);
+    db.prepare(`DELETE FROM community_posts WHERE id=?`).run(postId);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Serve dashboard for all other routes
 app.get('/', (req, res) => {

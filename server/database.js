@@ -242,6 +242,35 @@ db.exec(`
   );
 `);
 
+// ── Community Schema ─────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS community_posts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL,
+    content       TEXT NOT NULL,
+    ticker        TEXT,
+    likes_count   INTEGER DEFAULT 0,
+    comments_count INTEGER DEFAULT 0,
+    created_at    TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS community_likes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id    INTEGER NOT NULL,
+    user_id    INTEGER NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(post_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS community_comments (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id    INTEGER NOT NULL,
+    user_id    INTEGER NOT NULL,
+    content    TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+
 // Migrations — safe to run on every boot
 try { db.exec(`ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'flexible'`); } catch (_) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN tier_pct REAL DEFAULT 9`); } catch (_) {}
