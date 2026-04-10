@@ -630,7 +630,8 @@ app.get('/api/community/posts', (req, res) => {
 
     const stmtPosts = db.prepare(`
       SELECT p.*, u.name AS author_name, u.avatar AS author_avatar,
-             u.is_admin AS author_is_admin, u.handle AS author_handle
+             u.is_admin AS author_is_admin,
+             COALESCE(u.handle, '') AS author_handle
       FROM community_posts p
       JOIN users u ON u.id = p.user_id
       ORDER BY p.created_at DESC LIMIT 100
@@ -638,7 +639,7 @@ app.get('/api/community/posts', (req, res) => {
     const stmtLiked    = db.prepare(`SELECT 1 AS hit FROM community_likes WHERE post_id=? AND user_id=?`);
     const stmtComments = db.prepare(`
       SELECT c.id, c.content, c.created_at, u.name AS author_name,
-             u.avatar AS author_avatar, u.handle AS author_handle
+             u.avatar AS author_avatar, COALESCE(u.handle, '') AS author_handle
       FROM community_comments c JOIN users u ON u.id = c.user_id
       WHERE c.post_id=? ORDER BY c.created_at ASC
     `);
@@ -659,7 +660,7 @@ app.post('/api/community/posts', authMiddleware, (req, res) => {
     const { content, ticker } = req.body;
     if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
     const r = db.prepare(`INSERT INTO community_posts (user_id, content, ticker) VALUES (?,?,?)`).run(req.user.id, content.trim(), ticker?.trim() || null);
-    const post = db.prepare(`SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin FROM community_posts p JOIN users u ON u.id=p.user_id WHERE p.id=?`).get(r.lastInsertRowid);
+    const post = db.prepare(`SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin, COALESCE(u.handle,'') AS author_handle FROM community_posts p JOIN users u ON u.id=p.user_id WHERE p.id=?`).get(r.lastInsertRowid);
     broadcast({ type: 'community_post', data: { ...post, liked: false, comments: [] } });
     res.json({ ...post, liked: false, comments: [] });
   } catch (err) { res.status(500).json({ error: err.message }); }

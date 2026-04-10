@@ -563,7 +563,7 @@ async function loadFeed() {
   try {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const r = await fetch('/api/community/posts', { headers });
-    if (!r.ok) throw new Error('feed error');
+    if (!r.ok) { const e = await r.json().catch(()=>({error:'Server error'})); throw new Error(e.error || 'feed error'); }
     const posts = await r.json();
     renderFeed(posts);
 
