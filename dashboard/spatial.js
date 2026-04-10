@@ -1454,7 +1454,7 @@
       }
 
       // Interval buttons (left)
-      const btnLabels=['1m','3m','5m','1h','4h','1D','1W'];
+      const btnLabels=['1m','3m','5m','30m','1h','4h','1D','1W'];
       const btnW=32, btnH=20, btnGap=4;
       let bx=PAD.left+4;
       for (const lbl of btnLabels) {
