@@ -647,6 +647,122 @@
       .lock-options { grid-template-columns: repeat(3, 1fr); }
     }
 
+    /* ══ TOP SECTION LAYOUT (stats + news) ═══════════════════ */
+    .top-section {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+    .top-left { display: flex; flex-direction: column; gap: 0; }
+
+    /* ══ TRADE INTELLIGENCE NEWS FEED ════════════════════════ */
+    .news-feed-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 280px;
+    }
+    .news-feed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .news-feed-title {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #f59e0b;
+      font-weight: 700;
+    }
+    .news-feed-live {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .news-feed-live-dot {
+      width: 6px;
+      height: 6px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    .news-feed-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 6px 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    .news-feed-list::-webkit-scrollbar { width: 4px; }
+    .news-feed-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .news-item {
+      display: block;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      text-decoration: none;
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .news-item:hover { background: rgba(255,255,255,0.04); }
+    .news-item:last-child { border-bottom: none; }
+    .news-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+    .news-src-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .news-src-badge.src-crypto { background: rgba(96,165,250,0.15); color: #60a5fa; }
+    .news-src-badge.src-macro  { background: rgba(245,158,11,0.15);  color: #f59e0b; }
+    .news-src-badge.src-x      { background: rgba(168,85,247,0.15);  color: #a855f7; }
+    .news-sentiment {
+      font-size: 10px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .news-sentiment.bull { color: #22c55e; }
+    .news-sentiment.bear { color: #ef4444; }
+    .news-sentiment.neut { color: var(--muted); }
+    .news-time { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .news-headline {
+      font-size: 12px;
+      color: rgba(255,255,255,0.82);
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .news-feed-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .top-section { grid-template-columns: 1fr; }
+      .news-feed-card { min-height: 220px; max-height: 280px; }
+    }
+
     /* ══ INVESTMENT POOLS ══════════════════════════════════════ */
     .pools-section { margin-bottom: 28px; }
     .pools-header {
@@ -820,27 +936,43 @@
     <h1 class="page-title">My Portfolio</h1>
     <p class="page-subtitle" id="pageSubtitle">Loading your investment data...</p>
 
-    <!-- Stats row -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label">Total Deposited</div>
-        <div class="stat-value" id="statDeposited">—</div>
-        <div class="stat-sub">USDT equivalent</div>
+    <!-- Stats + News two-column layout -->
+    <div class="top-section">
+      <div class="top-left">
+        <!-- Stats row -->
+        <div class="stats-row" style="margin-bottom:0;">
+          <div class="stat-card">
+            <div class="stat-label">Total Deposited</div>
+            <div class="stat-value" id="statDeposited">—</div>
+            <div class="stat-sub">USDT equivalent</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Current Balance</div>
+            <div class="stat-value positive" id="statBalance">—</div>
+            <div class="stat-sub">Including gains</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Gain</div>
+            <div class="stat-value" id="statGainUsd">—</div>
+            <div class="stat-sub" id="statGainPct">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Monthly Gain</div>
+            <div class="stat-value" id="statMonthlyGain">—</div>
+            <div class="stat-sub" id="statMonthlyLabel">—</div>
+          </div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Current Balance</div>
-        <div class="stat-value positive" id="statBalance">—</div>
-        <div class="stat-sub">Including gains</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Total Gain</div>
-        <div class="stat-value" id="statGainUsd">—</div>
-        <div class="stat-sub" id="statGainPct">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Monthly Gain</div>
-        <div class="stat-value" id="statMonthlyGain">—</div>
-        <div class="stat-sub" id="statMonthlyLabel">—</div>
+
+      <!-- Trade Intelligence News Feed -->
+      <div class="news-feed-card">
+        <div class="news-feed-header">
+          <span class="news-feed-title">Trade Intelligence</span>
+          <span class="news-feed-live"><span class="news-feed-live-dot"></span>LIVE</span>
+        </div>
+        <div class="news-feed-list" id="portfolioNewsFeed">
+          <div class="news-feed-empty">Loading news...</div>
+        </div>
       </div>
     </div>
 
@@ -1778,11 +1910,100 @@
       }
     }
 
+    // ── Trade Intelligence News Feed ─────────────────────────
+    function timeAgo(dateStr) {
+      if (!dateStr) return '';
+      const diff = (Date.now() - new Date(dateStr)) / 1000;
+      if (diff < 60)   return Math.floor(diff) + 's';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+      return Math.floor(diff / 86400) + 'd';
+    }
+
+    function sentimentClass(s) {
+      if (!s) return 'neut';
+      const v = s.toLowerCase();
+      if (v === 'bullish' || v === 'positive') return 'bull';
+      if (v === 'bearish' || v === 'negative') return 'bear';
+      return 'neut';
+    }
+
+    function sentimentIcon(s) {
+      const c = sentimentClass(s);
+      return c === 'bull' ? '▲' : c === 'bear' ? '▼' : '●';
+    }
+
+    async function loadPortfolioNews() {
+      const container = document.getElementById('portfolioNewsFeed');
+      if (!container) return;
+
+      try {
+        const [newsRes, xRes] = await Promise.allSettled([
+          fetch('/api/news').then(r => r.json()),
+          fetch('/api/x-feed').then(r => r.json()),
+        ]);
+
+        const items = [];
+
+        if (newsRes.status === 'fulfilled') {
+          const d = newsRes.value;
+          const arr = Array.isArray(d) ? d : (d.articles || d.items || []);
+          arr.slice(0, 10).forEach(a => items.push({
+            source:    a.source || 'Crypto',
+            srcClass:  'src-crypto',
+            headline:  a.headline || a.title || '',
+            time:      a.publishedAt || a.time || a.pubDate || '',
+            link:      a.url || a.link || '#',
+            sentiment: a.sentiment || '',
+          }));
+        }
+
+        if (xRes.status === 'fulfilled') {
+          const d = xRes.value;
+          const arr = Array.isArray(d) ? d : (d.items || []);
+          arr.slice(0, 6).forEach(a => items.push({
+            source:   a.channel || a.source || 'Signal',
+            srcClass: a.type === 'macro' ? 'src-macro' : 'src-x',
+            headline: a.headline || a.title || '',
+            time:     a.publishedAt || a.time || a.pubDate || '',
+            link:     a.url || a.link || '#',
+            sentiment: a.sentiment || '',
+          }));
+        }
+
+        // Sort newest first
+        items.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+        if (items.length === 0) {
+          container.innerHTML = '<div class="news-feed-empty">No news available</div>';
+          return;
+        }
+
+        container.innerHTML = items.slice(0, 15).map(item => `
+          <a class="news-item" href="${item.link || '#'}" target="_blank" rel="noopener noreferrer">
+            <div class="news-item-meta">
+              <span class="news-src-badge ${item.srcClass}">${item.source}</span>
+              <span class="news-time">${timeAgo(item.time)}</span>
+              <span class="news-sentiment ${sentimentClass(item.sentiment)}">${sentimentIcon(item.sentiment)}</span>
+            </div>
+            <div class="news-headline">${item.headline}</div>
+          </a>
+        `).join('');
+
+      } catch (e) {
+        console.warn('[NEWS FEED] Error:', e.message);
+        if (container) container.innerHTML = '<div class="news-feed-empty">Feed unavailable</div>';
+      }
+    }
+
     // ── Init ──────────────────────────────────────────────────
     (async () => {
       await loadPortfolio();
       await loadHistory();
       await loadPoolStats();
+      await loadPortfolioNews();
+      // Refresh news every 60 seconds
+      setInterval(loadPortfolioNews, 60_000);
     })();
   </script>
 </body>
