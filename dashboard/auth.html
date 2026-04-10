@@ -377,6 +377,8 @@
         }));
         return `https://erikwonlife-glitch.github.io/DeFiMongo/#dm=${payload}`;
       }
+      // Explicit next param always wins — even for admins
+      if (next && next.startsWith('/')) return next;
       if (user.is_admin) return '/admin';
       return '/portfolio';
     }
