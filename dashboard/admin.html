@@ -612,6 +612,60 @@
         </div>
       </div>
 
+      <!-- Fund Bot Account -->
+      <div class="card" style="border-color:rgba(0,212,180,0.2);">
+        <div class="card-title">
+          <span>⚡ Fund Bot Trading Account</span>
+          <span style="font-size:11px;font-weight:400;color:var(--muted);">Arbitrum · USDC</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:14px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;">From (Treasury)</div>
+            <div style="font-size:12px;font-family:monospace;color:var(--text);">0x066aE...0820c</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Your sweep wallet · MetaMask</div>
+          </div>
+          <div style="background:rgba(0,212,180,0.05);border:1px solid rgba(0,212,180,0.2);border-radius:10px;padding:14px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#00d4b4;margin-bottom:6px;">To (Bot Agent)</div>
+            <div style="font-size:12px;font-family:monospace;color:var(--text);">0x07Ae97...D19fD5a884</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">Hyperliquid trading wallet</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Amount (USDC)</label>
+            <div style="display:flex;align-items:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;gap:8px;">
+              <input id="botFundAmount" type="number" min="1" step="1" placeholder="e.g. 500"
+                style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;font-family:inherit;" />
+              <span style="font-size:12px;font-weight:700;color:rgba(0,212,180,0.8);white-space:nowrap;">USDC</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <button onclick="setBotAmount(100)"  style="padding:5px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">$100</button>
+            <button onclick="setBotAmount(500)"  style="padding:5px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">$500</button>
+            <button onclick="setBotAmount(1000)" style="padding:5px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">$1K</button>
+          </div>
+        </div>
+
+        <div style="margin-top:6px;font-size:11px;color:var(--muted);">
+          Monthly est. gain: <span id="botFundEst" style="color:#4ade80;font-weight:600;">—</span>
+          &nbsp;·&nbsp; This sends real USDC on Arbitrum. MetaMask will ask you to confirm.
+        </div>
+
+        <button id="btnFundBot" onclick="fundBotAccount()" style="
+          margin-top:14px; width:100%; padding:13px;
+          background:linear-gradient(135deg,#00b4a0,#00d4b4);
+          border:none; border-radius:10px; color:#000;
+          font-size:14px; font-weight:800; letter-spacing:1px;
+          cursor:pointer; font-family:inherit;
+          box-shadow:0 4px 20px rgba(0,212,180,0.3);
+          transition:opacity 0.15s,transform 0.1s;
+        ">Connect Treasury Wallet &amp; Send USDC</button>
+
+        <div id="botFundMsg" style="margin-top:10px;font-size:12px;text-align:center;min-height:18px;"></div>
+      </div>
+
       <div class="card">
         <div class="card-title">Pending Withdrawal Requests</div>
         <div id="recentWithdrawalsWrap">
@@ -1197,6 +1251,91 @@
       localStorage.removeItem('dm_token');
       localStorage.removeItem('dm_user');
       window.location.href = '/auth';
+    }
+
+    // ── Fund Bot Account ──────────────────────────────────────
+    const BOT_WALLET   = '0x07Ae975fF2921dC122a11adB201241D19fD5a884';
+    const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+
+    function setBotAmount(n) {
+      document.getElementById('botFundAmount').value = n;
+      updateBotEst();
+    }
+
+    function updateBotEst() {
+      const amt = parseFloat(document.getElementById('botFundAmount')?.value) || 0;
+      const el  = document.getElementById('botFundEst');
+      if (!el) return;
+      if (amt <= 0) { el.textContent = '—'; return; }
+      // rough estimate: 3% monthly on liquid, 14% on vault — show range
+      el.textContent = `$${(amt * 0.03).toFixed(0)} – $${(amt * 0.14).toFixed(0)} / mo`;
+    }
+
+    document.getElementById('botFundAmount')?.addEventListener('input', updateBotEst);
+
+    async function fundBotAccount() {
+      const btn    = document.getElementById('btnFundBot');
+      const msgEl  = document.getElementById('botFundMsg');
+      const amount = parseFloat(document.getElementById('botFundAmount')?.value);
+
+      msgEl.style.color = '#f87171';
+      if (!amount || amount < 1) { msgEl.textContent = 'Enter a valid USDC amount (min $1).'; return; }
+      if (!window.ethereum)      { msgEl.textContent = 'MetaMask not found. Install MetaMask.'; return; }
+
+      const origText = btn.innerHTML;
+      btn.disabled   = true;
+      btn.innerHTML  = '<span style="opacity:.7">Connecting wallet…</span>';
+      msgEl.textContent = '';
+
+      try {
+        // Connect
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const from = accounts[0];
+
+        // Switch to Arbitrum
+        btn.innerHTML = '<span style="opacity:.7">Switching to Arbitrum…</span>';
+        try {
+          await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0xa4b1' }] });
+        } catch (se) {
+          if (se.code === 4902) {
+            await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
+              chainId: '0xa4b1', chainName: 'Arbitrum One',
+              nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+              rpcUrls: ['https://arb1.arbitrum.io/rpc'],
+              blockExplorerUrls: ['https://arbiscan.io'],
+            }]});
+          } else throw se;
+        }
+
+        // Build USDC transfer (ERC-20, 6 decimals)
+        btn.innerHTML = '<span style="opacity:.7">Waiting for MetaMask…</span>';
+        const usdcAmount = BigInt(Math.round(amount * 1_000_000));
+        const paddedTo   = BOT_WALLET.slice(2).padStart(64, '0');
+        const paddedAmt  = usdcAmount.toString(16).padStart(64, '0');
+        const data       = '0xa9059cbb' + paddedTo + paddedAmt;
+
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [{ from, to: USDC_ARBITRUM, data, chainId: '0xa4b1' }],
+        });
+
+        msgEl.style.color = '#4ade80';
+        msgEl.textContent = `✅ Sent! Tx: ${txHash.slice(0, 16)}…`;
+        btn.innerHTML = '✓ Transfer Sent!';
+        btn.style.cssText += 'background:rgba(74,222,128,0.2);color:#4ade80;border:1px solid rgba(74,222,128,0.4);box-shadow:none;';
+        setTimeout(() => {
+          btn.innerHTML  = origText;
+          btn.style.cssText = '';
+          btn.disabled   = false;
+          document.getElementById('botFundAmount').value = '';
+          updateBotEst();
+        }, 4000);
+
+      } catch (e) {
+        msgEl.textContent = e.code === 4001 ? 'Transaction cancelled.' : (e.message || 'Transfer failed.');
+        btn.innerHTML  = origText;
+        btn.disabled   = false;
+      }
     }
 
     async function loadAll() {
