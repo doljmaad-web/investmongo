@@ -448,6 +448,23 @@
       <a href="/auth?next=/community" class="signin-btn">Sign In</a>
     </div>
 
+    <!-- MONGO Token card (only shown when logged in) -->
+    <div id="mongo-token-card" style="display:none;margin-top:14px;">
+      <div style="background:linear-gradient(135deg,rgba(251,191,36,0.12),rgba(124,92,252,0.1));border:1px solid rgba(251,191,36,0.3);border-radius:14px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <img src="/logo.png" style="width:26px;height:26px;border-radius:50%;box-shadow:0 0 8px rgba(251,191,36,0.5);" alt="MONGO" />
+          <span style="font-size:13px;font-weight:800;color:var(--gold);letter-spacing:0.5px;">MONGO Tokens</span>
+          <span style="font-size:10px;color:var(--muted);margin-left:auto;">Private</span>
+        </div>
+        <div style="font-size:28px;font-weight:900;color:var(--text);margin-bottom:2px;" id="mongo-balance-display">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+          +<span id="mongo-daily-rate">0</span> / day &nbsp;·&nbsp; <span id="mongo-multiplier">1</span>x multiplier
+        </div>
+        <div style="font-size:11px;color:var(--muted);border-top:1px solid rgba(251,191,36,0.15);padding-top:8px;max-height:100px;overflow-y:auto;" id="mongo-tx-list">
+        </div>
+      </div>
+    </div>
+
     <!-- Sidebar nav links -->
     <nav class="sidebar-nav">
       <a href="/" class="sidebar-nav-item"><span class="icon">⚡</span> Terminal</a>
@@ -618,6 +635,7 @@ async function loadUser() {
     renderProfileSidebar();
     document.getElementById('profile-card').style.display = 'block';
     document.getElementById('compose-box').style.display = 'block';
+    loadMongoTokens();
   } catch {
     document.getElementById('guest-card').style.display = 'block';
     document.getElementById('guest-compose').style.display = 'flex';
@@ -1043,6 +1061,43 @@ async function loadSidebar() {
     // Losers
     document.getElementById('losers-list').innerHTML = buildMktRows(d.losers);
   } catch {}
+}
+
+// ── MONGO Token display ───────────────────────────────────────
+async function loadMongoTokens() {
+  if (!token || !sessionUser) return;
+  try {
+    const r = await fetch('/api/tokens/balance', { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return;
+    const data = await r.json();
+
+    document.getElementById('mongo-token-card').style.display = 'block';
+
+    const bal = parseFloat(data.balance || 0);
+    document.getElementById('mongo-balance-display').textContent =
+      bal >= 1000 ? (bal/1000).toFixed(2) + 'K' : bal.toFixed(2);
+
+    document.getElementById('mongo-multiplier').textContent = (data.multiplier || 1) + 'x';
+    const daily = data.dailyRate || 0;
+    document.getElementById('mongo-daily-rate').textContent = daily > 0 ? '+' + daily : '0';
+
+    const txList = document.getElementById('mongo-tx-list');
+    const txs = data.transactions || [];
+    if (txs.length === 0) {
+      txList.innerHTML = '<span style="color:var(--muted);">No activity yet</span>';
+    } else {
+      txList.innerHTML = txs.slice(0, 5).map(tx => {
+        const sign  = tx.amount >= 0 ? '+' : '';
+        const color = tx.amount >= 0 ? 'var(--green)' : 'var(--red)';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <span style="color:var(--muted);font-size:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(tx.description||tx.type)}</span>
+          <span style="color:${color};font-size:11px;font-weight:700;white-space:nowrap;">${sign}${parseFloat(tx.amount).toFixed(2)}</span>
+        </div>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.warn('[MONGO] token load failed:', e);
+  }
 }
 
 loadUser().then(loadFeed);

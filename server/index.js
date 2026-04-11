@@ -30,6 +30,7 @@ process.on('SIGTERM', () => {
   setTimeout(() => process.exit(0), 10000).unref();
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
+import { awardTokens, getBalance, getTransactions, runDailyRewards, getAirdropSnapshot } from './mongo-tokens.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
 import { getPortfolioStats, getAvailableCapital, closeTradeById, snapshotPortfolio } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData } from './hyperliquid.js';
@@ -678,6 +679,7 @@ app.post('/api/community/posts', authMiddleware, (req, res) => {
              COALESCE(u.handle,'') AS author_handle,
              COALESCE(u.tier,'flexible') AS author_tier, COALESCE(u.lock_months,0) AS author_lock_months
       FROM community_posts p JOIN users u ON u.id=p.user_id WHERE p.id=?`).get(r.lastInsertRowid);
+    awardTokens(req.user.id, 2, 'community_post', 'Posted in community');
     broadcast({ type: 'community_post', data: { ...post, liked: false, following: false, followers: 0, comments: [] } });
     res.json({ ...post, liked: false, following: false, followers: 0, comments: [] });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -696,8 +698,12 @@ app.post('/api/community/posts/:id/like', authMiddleware, (req, res) => {
       db.prepare(`INSERT OR IGNORE INTO community_likes (post_id, user_id) VALUES (?,?)`).run(postId, userId);
       db.prepare(`UPDATE community_posts SET likes_count = likes_count+1 WHERE id=?`).run(postId);
     }
-    const { likes_count } = db.prepare(`SELECT likes_count FROM community_posts WHERE id=?`).get(postId);
-    res.json({ liked: !existing, likes_count });
+    const updatedPost = db.prepare(`SELECT likes_count, user_id FROM community_posts WHERE id=?`).get(postId);
+    // Award 5 MONGO to post author on every 10th like milestone
+    if (!existing && updatedPost.likes_count > 0 && updatedPost.likes_count % 10 === 0) {
+      awardTokens(updatedPost.user_id, 5, 'like_milestone', `Post #${postId} reached ${updatedPost.likes_count} likes`);
+    }
+    res.json({ liked: !existing, likes_count: updatedPost.likes_count });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -791,6 +797,31 @@ app.get('/api/community/sidebar', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── MONGO Token API ──────────────────────────────────────────
+
+// GET /api/tokens/balance — user's own balance + recent transactions
+app.get('/api/tokens/balance', authMiddleware, (req, res) => {
+  try {
+    const balance = getBalance(req.user.id);
+    const transactions = getTransactions(req.user.id, 30);
+    // Calculate earning rate
+    const user = db.prepare(`SELECT COALESCE(tier,'flexible') AS tier, COALESCE(lock_months,0) AS lock_months FROM users WHERE id=?`).get(req.user.id);
+    const ub   = db.prepare(`SELECT COALESCE(visible_balance_usd,0) AS bal FROM user_balances WHERE user_id=?`).get(req.user.id);
+    const multiplierMap = { 0:1, 3:2, 6:4, 12:8 };
+    const mult = user.tier === 'locked' ? (multiplierMap[user.lock_months] || 1) : 1;
+    const dailyRate = ub ? parseFloat(((ub.bal / 100) * mult).toFixed(2)) : 0;
+    res.json({ balance: parseFloat(balance.toFixed(2)), dailyRate, multiplier: mult, transactions });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/tokens/snapshot — admin only, airdrop export
+app.get('/api/tokens/snapshot', adminMiddleware, (req, res) => {
+  try {
+    const snapshot = getAirdropSnapshot();
+    res.json(snapshot);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Serve dashboard for all other routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../dashboard/index.html'));
@@ -805,6 +836,11 @@ cron.schedule('*/2 * * * *', () => scanAllDeposits().catch(console.error));
 
 // Sync user gains daily at 00:05
 cron.schedule('5 0 * * *', () => syncUserGains().catch(console.error));
+
+// MONGO token daily rewards at 00:10 every day
+cron.schedule('10 0 * * *', () => {
+  try { runDailyRewards(); } catch (e) { console.error('[MONGO] Cron error:', e.message); }
+});
 
 // Track B: Run indicator every minute (Precision v11 — 1m signals)
 cron.schedule('* * * * *', async () => {

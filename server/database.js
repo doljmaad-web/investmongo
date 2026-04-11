@@ -282,6 +282,24 @@ db.exec(`
   );
 `);
 
+// ── MONGO Token Schema ────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mongo_balances (
+    user_id      INTEGER PRIMARY KEY,
+    balance      REAL DEFAULT 0,
+    last_updated TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS mongo_transactions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    amount      REAL NOT NULL,
+    type        TEXT NOT NULL,
+    description TEXT,
+    created_at  TEXT DEFAULT (datetime('now'))
+  );
+`);
+
 // Community post image/link support
 try { db.exec(`ALTER TABLE community_posts ADD COLUMN image TEXT`); } catch (_) {}
 try { db.exec(`ALTER TABLE community_posts ADD COLUMN link  TEXT`); } catch (_) {}
