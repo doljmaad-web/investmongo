@@ -100,9 +100,52 @@
     .profile-handle { font-size: 13px; color: var(--muted); margin-top: 2px; }
     .profile-bio { font-size: 13px; color: var(--text); margin: 10px 0; line-height: 1.5; opacity: 0.85; }
 
-    .profile-stats { display: flex; gap: 16px; margin: 10px 0; }
-    .stat { text-align: center; }
-    .stat-num { font-size: 15px; font-weight: 700; color: var(--text); }
+    /* Tier badges */
+    .tier-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .tier-liquid { background: rgba(0,212,180,0.12); color: #00d4b4; border: 1px solid rgba(0,212,180,0.3); }
+    .tier-growth { background: rgba(96,165,250,0.12); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+    .tier-pro    { background: rgba(124,92,252,0.14); color: #a78bfa; border: 1px solid rgba(124,92,252,0.35); }
+    .tier-vault  { background: rgba(251,191,36,0.14); color: #fbbf24; border: 1px solid rgba(251,191,36,0.35); }
+
+    /* Follow button */
+    .follow-btn {
+      font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 20px;
+      border: 1px solid var(--border); background: transparent; color: var(--text);
+      cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.15s; flex-shrink: 0;
+    }
+    .follow-btn:hover { border-color: #555; background: var(--surface2); }
+    .follow-btn.following { background: var(--surface2); color: var(--muted); }
+    .follow-btn.following:hover { background: rgba(244,33,46,0.1); color: var(--red); border-color: var(--red); }
+
+    /* Post image */
+    .post-image { width: 100%; border-radius: 12px; margin: 8px 0; max-height: 400px; object-fit: cover; cursor: pointer; }
+    .post-link-card {
+      display: flex; align-items: center; gap: 10px;
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 8px 0;
+      text-decoration: none; color: var(--text); transition: background 0.15s;
+    }
+    .post-link-card:hover { background: var(--surface2); }
+    .post-link-icon { font-size: 18px; flex-shrink: 0; }
+    .post-link-url { font-size: 12px; color: var(--muted); word-break: break-all; }
+
+    /* Compose image preview */
+    .compose-image-preview { position: relative; margin: 8px 0; }
+    .compose-image-preview img { width: 100%; border-radius: 10px; max-height: 240px; object-fit: cover; }
+    .remove-image-btn {
+      position: absolute; top: 6px; right: 6px;
+      background: rgba(0,0,0,0.7); border: none; border-radius: 50%;
+      width: 26px; height: 26px; color: #fff; cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .profile-stats { display: flex; gap: 16px; margin: 10px 0; flex-wrap: wrap; }
+    .stat { text-align: center; cursor: pointer; }
+    .stat:hover .stat-num { color: var(--blue); }
+    .stat-num { font-size: 15px; font-weight: 700; color: var(--text); transition: color 0.15s; }
     .stat-label { font-size: 11px; color: var(--muted); }
 
     .edit-profile-btn {
@@ -374,11 +417,18 @@
         </div>
       </div>
       <div class="profile-info">
-        <div class="profile-name" id="profile-name">—</div>
-        <div class="profile-handle" id="profile-handle">@—</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div>
+            <div class="profile-name" id="profile-name">—</div>
+            <div class="profile-handle" id="profile-handle">@—</div>
+          </div>
+          <span id="profile-tier-badge" class="tier-badge tier-liquid">Liquid</span>
+        </div>
         <div class="profile-bio" id="profile-bio" style="display:none"></div>
         <div class="profile-stats">
           <div class="stat"><div class="stat-num" id="profile-posts">0</div><div class="stat-label">Posts</div></div>
+          <div class="stat"><div class="stat-num" id="profile-followers">0</div><div class="stat-label">Followers</div></div>
+          <div class="stat"><div class="stat-num" id="profile-following">0</div><div class="stat-label">Following</div></div>
         </div>
         <button class="edit-profile-btn" onclick="toggleEditForm()">Edit Profile</button>
       </div>
@@ -416,12 +466,24 @@
         <div class="compose-avatar" id="compose-av"><img id="compose-av-img" src="" alt="" style="display:none" /><span id="compose-av-letter" style="font-size:18px;display:flex;align-items:center;justify-content:center;height:100%;"></span></div>
         <div class="compose-right">
           <textarea class="compose-textarea" id="compose-text" placeholder="What's on your mind?" maxlength="1000"></textarea>
+          <div id="compose-image-preview" class="compose-image-preview" style="display:none">
+            <img id="compose-preview-img" src="" alt="" />
+            <button class="remove-image-btn" onclick="removePostImage()">✕</button>
+          </div>
+          <div id="compose-link-row" style="display:none;margin:6px 0;">
+            <input class="edit-input" id="compose-link" placeholder="https://…" style="margin:0;font-size:12px;" />
+          </div>
           <div class="compose-toolbar">
-            <div class="compose-tools">
+            <div class="compose-tools" style="gap:8px;flex-wrap:wrap;">
               <div class="ticker-pill">
                 <span style="color:var(--gold);font-size:13px;">#</span>
-                <input id="compose-ticker" placeholder="Ticker (BTC, ETH…)" maxlength="12" />
+                <input id="compose-ticker" placeholder="Ticker (BTC…)" maxlength="12" />
               </div>
+              <button onclick="document.getElementById('post-img-input').click()" title="Attach image"
+                style="background:none;border:1px solid var(--border);border-radius:20px;padding:5px 10px;color:var(--muted);cursor:pointer;font-size:13px;font-family:inherit;">📷</button>
+              <input type="file" id="post-img-input" accept="image/*" style="display:none" onchange="handlePostImage(event)" />
+              <button onclick="toggleLinkRow()" title="Attach link"
+                style="background:none;border:1px solid var(--border);border-radius:20px;padding:5px 10px;color:var(--muted);cursor:pointer;font-size:13px;font-family:inherit;">🔗</button>
             </div>
             <button class="compose-post-btn" id="post-btn" onclick="submitPost()">Post</button>
           </div>
@@ -522,6 +584,25 @@ function avatarHtml(url, name, size=42, cls='post-user-avatar') {
   return `<div class="${cls}" style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${Math.floor(size*0.4)}px;font-weight:700;color:var(--muted)">${initial}</div>`;
 }
 
+// Tier badge — admin shows as Vault (anonymous), no admin label exposed
+function tierBadge(tier, lockMonths, isAdmin) {
+  if (isAdmin) return `<span class="tier-badge tier-vault">⭐ Vault</span>`;
+  if (tier === 'locked') {
+    if (lockMonths >= 12) return `<span class="tier-badge tier-vault">⭐ Vault</span>`;
+    if (lockMonths >= 6)  return `<span class="tier-badge tier-pro">💎 Pro</span>`;
+    if (lockMonths >= 3)  return `<span class="tier-badge tier-growth">🌱 Growth</span>`;
+  }
+  return `<span class="tier-badge tier-liquid">💧 Liquid</span>`;
+}
+
+// Make URLs in text clickable
+function linkify(text) {
+  return esc(text).replace(
+    /(https?:\/\/[^\s<>"]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--blue);text-decoration:none;">$1</a>'
+  );
+}
+
 // ── Auth ─────────────────────────────────────────────────────
 async function loadUser() {
   if (!token) {
@@ -545,7 +626,6 @@ async function loadUser() {
 
 function renderProfileSidebar() {
   const u = sessionUser;
-  // Avatar
   const avEl = document.getElementById('profile-avatar-el');
   if (u.avatar) avEl.innerHTML = `<img src="${esc(u.avatar)}" />`;
   else avEl.textContent = (u.name||'?')[0].toUpperCase();
@@ -553,18 +633,28 @@ function renderProfileSidebar() {
   document.getElementById('profile-name').textContent = u.name || '—';
   document.getElementById('profile-handle').textContent = u.handle ? `@${u.handle}` : `@${(u.name||'user').toLowerCase().replace(/\s+/g,'_')}`;
 
+  // Tier badge — admin shown as Vault
+  document.getElementById('profile-tier-badge').outerHTML =
+    tierBadge(u.tier, u.lock_months, u.is_admin).replace('class="tier-badge', 'id="profile-tier-badge" class="tier-badge');
+
   const bioEl = document.getElementById('profile-bio');
   if (u.bio) { bioEl.textContent = u.bio; bioEl.style.display = 'block'; }
 
-  // Pre-fill edit form
   document.getElementById('edit-handle').value = u.handle || '';
   document.getElementById('edit-bio').value    = u.bio    || '';
 
-  // Compose avatar
   const avImg = document.getElementById('compose-av-img');
   const avLetter = document.getElementById('compose-av-letter');
   if (u.avatar) { avImg.src = u.avatar; avImg.style.display = 'block'; avLetter.style.display = 'none'; }
   else { avLetter.textContent = (u.name||'?')[0].toUpperCase(); avImg.style.display = 'none'; avLetter.style.display = 'flex'; }
+
+  // Load follower/following counts
+  fetch('/api/community/me/counts', { headers: { Authorization: `Bearer ${token}` } })
+    .then(r => r.json()).then(d => {
+      document.getElementById('profile-posts').textContent     = d.posts     || 0;
+      document.getElementById('profile-followers').textContent = d.followers || 0;
+      document.getElementById('profile-following').textContent = d.following || 0;
+    }).catch(() => {});
 }
 
 // ── Avatar upload ─────────────────────────────────────────────
@@ -599,6 +689,61 @@ function handleAvatarUpload(e) {
   reader.readAsDataURL(file);
 }
 
+// ── Post image/link attachment ────────────────────────────────
+let postImageB64 = null;
+
+function handlePostImage(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 1200, maxH = 900;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      postImageB64 = canvas.toDataURL('image/jpeg', 0.82);
+      document.getElementById('compose-preview-img').src = postImageB64;
+      document.getElementById('compose-image-preview').style.display = 'block';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+function removePostImage() {
+  postImageB64 = null;
+  document.getElementById('compose-image-preview').style.display = 'none';
+  document.getElementById('compose-preview-img').src = '';
+}
+function toggleLinkRow() {
+  const row = document.getElementById('compose-link-row');
+  row.style.display = row.style.display === 'none' ? 'block' : 'none';
+  if (row.style.display === 'block') document.getElementById('compose-link').focus();
+}
+
+// ── Follow / unfollow ─────────────────────────────────────────
+async function toggleFollow(userId, btn) {
+  if (!sessionUser) { window.location.href = '/auth?next=/community'; return; }
+  try {
+    const r = await fetch(`/api/community/follow/${userId}`, { method:'POST', headers:{ Authorization:`Bearer ${token}` } });
+    if (!r.ok) return;
+    const { following, followers } = await r.json();
+    btn.className   = `follow-btn${following?' following':''}`;
+    btn.textContent = following ? 'Following' : 'Follow';
+    btn.onmouseenter = following ? () => { btn.textContent = 'Unfollow'; } : null;
+    btn.onmouseleave = following ? () => { btn.textContent = 'Following'; } : null;
+    // Update follower count on card
+    const fcEl = document.getElementById(`fc-${userId}`);
+    if (fcEl) fcEl.textContent = followers;
+    // Refresh own following count
+    renderProfileSidebar();
+  } catch {}
+}
+
 // ── Edit profile ──────────────────────────────────────────────
 function toggleEditForm() {
   document.getElementById('edit-form').classList.toggle('open');
@@ -629,12 +774,7 @@ async function loadFeed() {
     if (!r.ok) { const e = await r.json().catch(()=>({error:'Server error'})); throw new Error(e.error || 'feed error'); }
     const posts = await r.json();
     renderFeed(posts);
-
-    // Update post count
-    if (sessionUser) {
-      const mine = posts.filter(p => p.user_id === sessionUser.id).length;
-      document.getElementById('profile-posts').textContent = mine;
-    }
+    if (sessionUser) renderProfileSidebar(); // refresh counts
   } catch (err) {
     document.getElementById('posts-feed').innerHTML = `<div class="feed-empty"><div class="big-icon">⚠️</div><h3>Could not load posts</h3><p>${esc(err.message)}</p></div>`;
   }
@@ -650,15 +790,25 @@ function renderFeed(posts) {
 }
 
 function buildPostHtml(p) {
-  const canDelete = sessionUser && (sessionUser.id === p.user_id || sessionUser.is_admin);
-  const handle = p.author_handle ? `@${p.author_handle}` : `@${(p.author_name||'user').toLowerCase().replace(/\s+/g,'_')}`;
+  const canDelete  = sessionUser && (sessionUser.id === p.user_id || sessionUser.is_admin);
+  const isOwnPost  = sessionUser && sessionUser.id === p.user_id;
+  const handle     = p.author_handle ? `@${p.author_handle}` : `@${(p.author_name||'user').toLowerCase().replace(/\s+/g,'_')}`;
+  const badge      = tierBadge(p.author_tier, p.author_lock_months, p.author_is_admin);
+  const showFollow = sessionUser && !isOwnPost;
+  const isFollowing = !!p.following;
+
   const commentsHtml = p.comments.map(c => {
     const ch = c.author_handle ? `@${c.author_handle}` : '';
+    const cb = tierBadge(c.author_tier, c.author_lock_months, false);
     return `<div class="comment-row">
       ${avatarHtml(c.author_avatar, c.author_name, 32, 'comment-av')}
       <div class="comment-body">
-        <div class="comment-meta"><strong>${esc(c.author_name)}</strong> ${ch ? `<span style="color:var(--muted)">${esc(ch)}</span> · ` : ''}${timeAgo(c.created_at)}</div>
-        <div class="comment-text">${esc(c.content)}</div>
+        <div class="comment-meta">
+          <strong>${esc(c.author_name)}</strong> ${cb}
+          ${ch ? `<span style="color:var(--muted);font-size:11px"> ${esc(ch)}</span>` : ''}
+          <span style="color:var(--muted)"> · ${timeAgo(c.created_at)}</span>
+        </div>
+        <div class="comment-text">${linkify(c.content)}</div>
       </div>
     </div>`;
   }).join('');
@@ -672,20 +822,31 @@ function buildPostHtml(p) {
       </div>`
     : `<div style="padding:10px 0;font-size:13px;color:var(--muted)"><a href="/auth?next=/community" style="color:var(--blue)">Sign in</a> to reply</div>`;
 
+  const imageHtml = p.image ? `<img class="post-image" src="${p.image}" alt="post image" onclick="this.style.maxHeight=this.style.maxHeight?'':'none'" />` : '';
+  const linkHtml  = p.link  ? `<a class="post-link-card" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">
+    <span class="post-link-icon">🔗</span><span class="post-link-url">${esc(p.link)}</span></a>` : '';
+
   return `<div class="post-item" id="post-${p.id}">
     <div class="post-row">
       ${avatarHtml(p.author_avatar, p.author_name, 42, 'post-user-avatar')}
       <div class="post-body">
         <div class="post-header-row">
           <span class="post-author-name">${esc(p.author_name)}</span>
-          ${p.author_is_admin ? '<span class="admin-badge">ADMIN</span>' : ''}
+          ${badge}
           <span class="post-author-handle">${esc(handle)}</span>
           <span class="post-dot">·</span>
           <span class="post-time">${timeAgo(p.created_at)}</span>
           ${p.ticker ? `<span class="post-ticker-tag">#${esc(p.ticker)}</span>` : ''}
+          ${showFollow ? `<button id="fb-${p.user_id}" class="follow-btn${isFollowing?' following':''}"
+            onclick="toggleFollow(${p.user_id}, this)"
+            onmouseenter="${isFollowing?`this.textContent='Unfollow'`:''}"
+            onmouseleave="${isFollowing?`this.textContent='Following'`:''}"
+            >${isFollowing ? 'Following' : 'Follow'}</button>` : ''}
           ${canDelete ? `<button class="post-delete-btn" onclick="deletePost(${p.id})" title="Delete">✕</button>` : ''}
         </div>
-        <div class="post-text">${esc(p.content)}</div>
+        <div class="post-text">${linkify(p.content)}</div>
+        ${imageHtml}
+        ${linkHtml}
         <div class="post-actions-row">
           <button class="post-action${p.liked?' liked':''}" id="like-${p.id}" onclick="toggleLike(${p.id})">
             <span class="icon">${p.liked?'❤️':'🤍'}</span>
@@ -695,6 +856,9 @@ function buildPostHtml(p) {
             <span class="icon">💬</span>
             <span id="cc-${p.id}">${p.comments_count||0}</span>
           </button>
+          <span style="font-size:11px;color:var(--muted);margin-left:auto">
+            <span id="fc-${p.user_id}">${p.followers||0}</span> followers
+          </span>
         </div>
         <div class="comments-wrap" id="cw-${p.id}">
           <div id="cl-${p.id}">${commentsHtml}</div>
@@ -709,18 +873,22 @@ function buildPostHtml(p) {
 async function submitPost() {
   const content = document.getElementById('compose-text').value.trim();
   const ticker  = document.getElementById('compose-ticker').value.trim().toUpperCase();
-  if (!content) return;
+  const link    = document.getElementById('compose-link').value.trim();
+  if (!content && !postImageB64) return;
   const btn = document.getElementById('post-btn');
   btn.disabled = true; btn.textContent = 'Posting…';
   try {
     const r = await fetch('/api/community/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ content, ticker: ticker || null }),
+      body: JSON.stringify({ content, ticker: ticker || null, image: postImageB64 || null, link: link || null }),
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Failed');
     document.getElementById('compose-text').value = '';
     document.getElementById('compose-ticker').value = '';
+    document.getElementById('compose-link').value = '';
+    document.getElementById('compose-link-row').style.display = 'none';
+    removePostImage();
     await loadFeed();
   } catch (err) { alert(err.message); }
   btn.disabled = false; btn.textContent = 'Post';

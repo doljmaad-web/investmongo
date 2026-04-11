@@ -271,9 +271,24 @@ db.exec(`
   );
 `);
 
+// Community follows table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS community_follows (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    follower_id  INTEGER NOT NULL,
+    following_id INTEGER NOT NULL,
+    created_at   TEXT DEFAULT (datetime('now')),
+    UNIQUE(follower_id, following_id)
+  );
+`);
+
+// Community post image/link support
+try { db.exec(`ALTER TABLE community_posts ADD COLUMN image TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE community_posts ADD COLUMN link  TEXT`); } catch (_) {}
+
 // Community profile migrations
 try { db.exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''`); } catch (_) {}
-try { db.exec(`ALTER TABLE users ADD COLUMN handle TEXT`); } catch (_) {}  // UNIQUE not supported in SQLite ALTER TABLE
+try { db.exec(`ALTER TABLE users ADD COLUMN handle TEXT`); } catch (_) {}
 
 // Migrations — safe to run on every boot
 try { db.exec(`ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'flexible'`); } catch (_) {}

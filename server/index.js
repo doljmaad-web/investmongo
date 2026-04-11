@@ -631,24 +631,34 @@ app.get('/api/community/posts', (req, res) => {
     const stmtPosts = db.prepare(`
       SELECT p.*, u.name AS author_name, u.avatar AS author_avatar,
              u.is_admin AS author_is_admin,
-             COALESCE(u.handle, '') AS author_handle
+             COALESCE(u.handle, '') AS author_handle,
+             COALESCE(u.tier, 'flexible') AS author_tier,
+             COALESCE(u.lock_months, 0) AS author_lock_months
       FROM community_posts p
       JOIN users u ON u.id = p.user_id
       ORDER BY p.created_at DESC LIMIT 100
     `);
     const stmtLiked    = db.prepare(`SELECT 1 AS hit FROM community_likes WHERE post_id=? AND user_id=?`);
+    const stmtFollowing = db.prepare(`SELECT 1 AS hit FROM community_follows WHERE follower_id=? AND following_id=?`);
     const stmtComments = db.prepare(`
       SELECT c.id, c.content, c.created_at, u.name AS author_name,
-             u.avatar AS author_avatar, COALESCE(u.handle, '') AS author_handle
+             u.avatar AS author_avatar, COALESCE(u.handle, '') AS author_handle,
+             COALESCE(u.tier, 'flexible') AS author_tier,
+             COALESCE(u.lock_months, 0) AS author_lock_months
       FROM community_comments c JOIN users u ON u.id = c.user_id
       WHERE c.post_id=? ORDER BY c.created_at ASC
     `);
 
+    const stmtFollowers  = db.prepare(`SELECT COUNT(*) AS n FROM community_follows WHERE following_id=?`);
+    const stmtFollowings = db.prepare(`SELECT COUNT(*) AS n FROM community_follows WHERE follower_id=?`);
+
     const posts  = stmtPosts.all();
     const result = posts.map(post => ({
       ...post,
-      liked:    meId ? !!stmtLiked.get(post.id, meId) : false,
-      comments: stmtComments.all(post.id),
+      liked:     meId ? !!stmtLiked.get(post.id, meId) : false,
+      following: meId ? !!stmtFollowing.get(meId, post.user_id) : false,
+      followers: stmtFollowers.get(post.user_id)?.n || 0,
+      comments:  stmtComments.all(post.id),
     }));
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -657,12 +667,19 @@ app.get('/api/community/posts', (req, res) => {
 // POST /api/community/posts — create post (auth required)
 app.post('/api/community/posts', authMiddleware, (req, res) => {
   try {
-    const { content, ticker } = req.body;
-    if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
-    const r = db.prepare(`INSERT INTO community_posts (user_id, content, ticker) VALUES (?,?,?)`).run(req.user.id, content.trim(), ticker?.trim() || null);
-    const post = db.prepare(`SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin, COALESCE(u.handle,'') AS author_handle FROM community_posts p JOIN users u ON u.id=p.user_id WHERE p.id=?`).get(r.lastInsertRowid);
-    broadcast({ type: 'community_post', data: { ...post, liked: false, comments: [] } });
-    res.json({ ...post, liked: false, comments: [] });
+    const { content, ticker, image, link } = req.body;
+    if (!content?.trim() && !image) return res.status(400).json({ error: 'Content required' });
+    if (image && image.length > 500000) return res.status(400).json({ error: 'Image too large' });
+    const cleanLink = link?.trim() ? link.trim() : null;
+    const r = db.prepare(`INSERT INTO community_posts (user_id, content, ticker, image, link) VALUES (?,?,?,?,?)`)
+      .run(req.user.id, (content||'').trim(), ticker?.trim() || null, image || null, cleanLink);
+    const post = db.prepare(`
+      SELECT p.*, u.name AS author_name, u.avatar AS author_avatar, u.is_admin AS author_is_admin,
+             COALESCE(u.handle,'') AS author_handle,
+             COALESCE(u.tier,'flexible') AS author_tier, COALESCE(u.lock_months,0) AS author_lock_months
+      FROM community_posts p JOIN users u ON u.id=p.user_id WHERE p.id=?`).get(r.lastInsertRowid);
+    broadcast({ type: 'community_post', data: { ...post, liked: false, following: false, followers: 0, comments: [] } });
+    res.json({ ...post, liked: false, following: false, followers: 0, comments: [] });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -708,6 +725,34 @@ app.delete('/api/community/posts/:id', authMiddleware, (req, res) => {
     db.prepare(`DELETE FROM community_comments WHERE post_id=?`).run(postId);
     db.prepare(`DELETE FROM community_posts WHERE id=?`).run(postId);
     res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/community/follow/:id — follow or unfollow a user
+app.post('/api/community/follow/:id', authMiddleware, (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id);
+    const meId = req.user.id;
+    if (targetId === meId) return res.status(400).json({ error: 'Cannot follow yourself' });
+    const existing = db.prepare(`SELECT 1 FROM community_follows WHERE follower_id=? AND following_id=?`).get(meId, targetId);
+    if (existing) {
+      db.prepare(`DELETE FROM community_follows WHERE follower_id=? AND following_id=?`).run(meId, targetId);
+    } else {
+      db.prepare(`INSERT OR IGNORE INTO community_follows (follower_id, following_id) VALUES (?,?)`).run(meId, targetId);
+    }
+    const followers  = db.prepare(`SELECT COUNT(*) AS n FROM community_follows WHERE following_id=?`).get(targetId)?.n || 0;
+    const following  = !existing;
+    res.json({ following, followers });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/community/me/counts — follower/following counts for logged-in user
+app.get('/api/community/me/counts', authMiddleware, (req, res) => {
+  try {
+    const followers  = db.prepare(`SELECT COUNT(*) AS n FROM community_follows WHERE following_id=?`).get(req.user.id)?.n || 0;
+    const followings = db.prepare(`SELECT COUNT(*) AS n FROM community_follows WHERE follower_id=?`).get(req.user.id)?.n || 0;
+    const posts      = db.prepare(`SELECT COUNT(*) AS n FROM community_posts WHERE user_id=?`).get(req.user.id)?.n || 0;
+    res.json({ followers, following: followings, posts });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
