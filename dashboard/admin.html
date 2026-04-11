@@ -491,16 +491,36 @@
     .pac-investors { border-bottom: none; margin-top: 4px; }
     .pac-investors span:last-child { color: var(--pc, #60a5fa); }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1024px) {
       .stats-row { grid-template-columns: repeat(3, 1fr); }
       #poolBreakdownGrid { grid-template-columns: repeat(2, 1fr) !important; }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
+      .navbar { padding: 0 16px; height: auto; flex-wrap: wrap; gap: 8px; padding: 10px 16px; }
+      .nav-right .nav-link { display: none; }
+      .main { padding: 20px 14px; }
       .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .navbar    { padding: 0 16px; }
-      .main      { padding: 20px 14px; }
+      /* Tabs: allow horizontal scroll */
+      .section-tabs { overflow-x: auto; flex-wrap: nowrap; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+      .section-tabs::-webkit-scrollbar { display: none; }
+      .tab-btn { flex-shrink: 0; font-size: 13px; padding: 7px 14px; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .page-actions { flex-wrap: wrap; }
+      .card { padding: 16px; }
+      .card-title { flex-wrap: wrap; gap: 8px; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-card { padding: 14px 12px; }
+      .stat-value { font-size: 18px; }
+      .navbar { padding: 8px 12px; }
+      .nav-title { font-size: 11px; }
+      .admin-badge { display: none; }
       #poolBreakdownGrid { grid-template-columns: 1fr !important; }
+      .main { padding: 14px 10px; }
+      .btn { padding: 7px 12px; font-size: 12px; }
     }
   </style>
 </head>

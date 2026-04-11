@@ -380,9 +380,39 @@
 
     /* ── Responsive ── */
     @media (max-width: 1100px) { .sidebar-right { display: none; } }
+
+    /* Mobile profile strip (shown only when sidebar is hidden) */
+    .mobile-profile-strip {
+      display: none;
+      align-items: center; gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .mobile-profile-strip .mp-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--surface3); overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .mobile-profile-strip .mp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .mobile-profile-strip .mp-name { font-size: 14px; font-weight: 700; }
+    .mobile-profile-strip .mp-badge { margin-left: auto; }
+
     @media (max-width: 700px) {
       .sidebar-left { display: none; }
       .topnav-links .topnav-btn:not(.active) { display: none; }
+      .mobile-profile-strip { display: flex; }
+      .feed-main { border-right: none; }
+      .compose-textarea { font-size: 15px; }
+      .post-item { padding: 12px; }
+    }
+
+    @media (max-width: 480px) {
+      .topnav { padding: 0 12px; height: 48px; }
+      .topnav-logo span { display: none; }
+      .compose-toolbar { flex-wrap: wrap; gap: 6px; }
+      .feed-header h2 { font-size: 16px; }
+      .post-actions { flex-wrap: wrap; gap: 4px; }
     }
   </style>
 </head>
@@ -475,6 +505,17 @@
 
   <!-- MAIN FEED -->
   <main class="feed-main">
+
+    <!-- Mobile-only compact profile strip (shown when left sidebar is hidden) -->
+    <div class="mobile-profile-strip" id="mobile-profile-strip">
+      <div class="mp-avatar" id="mobile-av"><span id="mobile-av-letter"></span></div>
+      <div>
+        <div class="mp-name" id="mobile-name">—</div>
+        <div style="font-size:11px;color:var(--muted);" id="mobile-handle"></div>
+      </div>
+      <span class="mp-badge" id="mobile-tier-badge"></span>
+    </div>
+
     <div class="feed-header"><h2>Community Feed</h2></div>
 
     <!-- Compose (signed in) -->
@@ -673,6 +714,20 @@ function renderProfileSidebar() {
       document.getElementById('profile-followers').textContent = d.followers || 0;
       document.getElementById('profile-following').textContent = d.following || 0;
     }).catch(() => {});
+
+  // Mobile profile strip (shown when sidebar hidden on mobile)
+  const mStrip = document.getElementById('mobile-profile-strip');
+  if (mStrip) {
+    const mAv = document.getElementById('mobile-av');
+    if (u.avatar) mAv.innerHTML = `<img src="${esc(u.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    else { mAv.innerHTML = ''; mAv.textContent = (u.name||'?')[0].toUpperCase(); }
+    document.getElementById('mobile-name').textContent = u.name || '—';
+    document.getElementById('mobile-handle').textContent = u.handle ? `@${u.handle}` : '';
+    document.getElementById('mobile-tier-badge').outerHTML =
+      tierBadge(u.tier, u.lock_months, u.is_admin).replace('class="tier-badge', 'id="mobile-tier-badge" class="tier-badge"');
+    // Only show on actual mobile (CSS handles display, but set block so CSS media can override)
+    mStrip.style.display = '';  // let CSS decide
+  }
 }
 
 // ── Avatar upload ─────────────────────────────────────────────

@@ -213,9 +213,23 @@
       .perf-grid  { grid-template-columns: 1fr; }
       .perf-left  { border-right: none; border-bottom: 1px solid var(--border); }
     }
-    @media (max-width: 600px) {
-      #topbar { padding: 0 12px; }
-      #page   { padding: 12px; }
+    @media (max-width: 700px) {
+      #topbar { height: auto; flex-wrap: wrap; padding: 8px 12px; gap: 6px; }
+      /* Hide auto-refresh countdown on small screens */
+      #countdown { display: none; }
+      .auto-label { font-size: 9px; }
+      #page { padding: 10px; gap: 14px; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 4px; }
+      /* Only show key columns on mobile — hide less important ones via table responsive */
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 600px; }
+      #page { font-size: 12px; }
+    }
+    @media (max-width: 480px) {
+      #topbar { padding: 6px 10px; }
+      .tb-title { font-size: 11px; }
+      .stat-cards { grid-template-columns: 1fr; }
+      .stat-value { font-size: 16px; }
     }
   </style>
 </head>

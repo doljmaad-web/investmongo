@@ -1219,3 +1219,57 @@ html, body {
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* ====== MOBILE RESPONSIVE ====== */
+@media (max-width: 900px) {
+  html, body { height: auto; overflow-x: hidden; overflow-y: auto; }
+
+  #app { height: auto; min-height: 100dvh; }
+
+  /* ── Topbar: two rows on small screens ── */
+  #topbar {
+    height: auto; flex-wrap: wrap; padding: 8px 10px;
+    gap: 6px; align-items: center;
+  }
+  /* Hide Portfolio & Screener links to save space */
+  #topbar a[href="/portfolio"],
+  #topbar a[href="/screener"] { display: none; }
+  .logo { font-size: 11px; }
+  .logo span { display: none; }
+  #aum-display { font-size: 15px; }
+  #aum-display .change { font-size: 11px; }
+
+  /* ── Stack the 3 main panels vertically ── */
+  #main { flex-direction: column; height: auto; flex: none; gap: 0; background: transparent; }
+  .panel { width: 100% !important; height: auto; border-bottom: 1px solid var(--border); }
+  #panel-left  { max-height: 260px; overflow: hidden; display: flex; flex-direction: column; }
+  #panel-right { max-height: 320px; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Center panel: stack Spatial + Chart vertically */
+  #panel-center { grid-template-columns: 1fr; display: flex; flex-direction: column; min-height: 0; }
+  #spatial-panel { border-right: none; border-bottom: 1px solid var(--border); max-height: 300px; }
+  #spatial-canvas-wrap { height: 180px; min-height: 120px; flex: none; }
+  #chart-column { height: 280px; min-height: 0; }
+  #chart-container { flex: 1; min-height: 0; }
+
+  /* Panel bodies scroll */
+  .panel-body { overflow-y: auto; }
+  #signal-section { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  #signal-feed { flex: 1; overflow-y: auto; }
+
+  /* ── Bottom section: stack vertically ── */
+  #bottom-section { grid-template-columns: 1fr; height: auto; border-top: 1px solid var(--border); }
+  .bottom-panel { height: 200px; border-bottom: 1px solid var(--border); }
+  #orderbook-panel { height: 220px; }
+}
+
+@media (max-width: 480px) {
+  #topbar { padding: 6px 8px; }
+  #topbar a[href*="community"] { padding: 3px 8px; font-size: 10px; }
+  #aum-display .change { display: none; }
+  #panel-left  { max-height: 220px; }
+  #panel-right { max-height: 280px; }
+  #spatial-canvas-wrap { height: 150px; }
+  #chart-column { height: 240px; }
+  .bottom-panel { height: 180px; }
+}

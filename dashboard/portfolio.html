@@ -684,19 +684,41 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    @media (max-width: 768px) {
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .grid-2    { grid-template-columns: 1fr; }
+    @media (max-width: 900px) {
+      .nav-link  { display: none !important; }
       .navbar    { padding: 0 16px; }
       .main      { padding: 24px 16px; }
-      .nav-link  { display: none !important; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .grid-2    { grid-template-columns: 1fr; }
+      .title-news-row { flex-direction: column; gap: 12px; }
+      .news-ticker-card { min-height: 80px; }
+    }
+
+    @media (max-width: 600px) {
+      .navbar { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+      .user-chip .user-name { display: none; }
+      .main { padding: 16px 12px; }
+      .page-title { font-size: 22px; }
+      .pool-rate-num { font-size: 36px; }
+      .stats-row { gap: 10px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 20px; }
+      /* MONGO banner: stack on mobile */
+      #mongo-banner > div { flex-direction: column; align-items: flex-start !important; gap: 14px; }
+      #mongo-banner > div > div:last-child { align-self: stretch; text-align: left; }
+      /* Address box: wrap */
+      .address-box { flex-wrap: wrap; }
+      .address-text { font-size: 11px; word-break: break-all; }
     }
 
     @media (max-width: 480px) {
       .stats-row   { grid-template-columns: 1fr; }
-      .stat-value  { font-size: 20px; }
+      .stat-value  { font-size: 18px; }
       .tier-options { grid-template-columns: 1fr; }
       .lock-options { grid-template-columns: repeat(3, 1fr); }
+      .btn-signout { display: none; }
+      .page-title { font-size: 20px; }
+      .modal { padding: 20px 16px; }
     }
 
     /* ══ TITLE + NEWS ROW ════════════════════════════════════ */
