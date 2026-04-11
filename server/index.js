@@ -31,6 +31,7 @@ process.on('SIGTERM', () => {
 });
 import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { awardTokens, getBalance, getTransactions, runDailyRewards, getAirdropSnapshot } from './mongo-tokens.js';
+import { setupNewsRoutes } from './news-routes.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
 import { getPortfolioStats, getAvailableCapital, closeTradeById, snapshotPortfolio } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData } from './hyperliquid.js';
@@ -46,6 +47,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dashboard')));
 app.use(userRoutes);
 app.use(adminRoutes);
+setupNewsRoutes(app);
 
 // ============================================================
 // WEBSOCKET — broadcast to all connected dashboard clients
