@@ -6,6 +6,8 @@ const HL_COIN_MAP = {
   GOLD: 'XAU',
 };
 
+export function hlCoin(coin) { return HL_COIN_MAP[coin] || coin; }
+
 async function hlPost(body, timeout = 10000) {
   const res = await fetch(HL_URL, {
     method: 'POST',
@@ -47,7 +49,8 @@ export async function getCurrentPrices(coins) {
     const data   = await hlPost({ type: 'allMids' });
     const prices = {};
     for (const coin of coins) {
-      if (data[coin]) prices[coin] = parseFloat(data[coin]);
+      const hlCoin = HL_COIN_MAP[coin] || coin;
+      if (data[hlCoin]) prices[coin] = parseFloat(data[hlCoin]);
     }
     return prices;
   } catch (err) {
@@ -57,11 +60,12 @@ export async function getCurrentPrices(coins) {
 }
 
 export async function getFundingRate(coin) {
+  const hlCoinName = HL_COIN_MAP[coin] || coin;
   try {
     const data = await hlPost({ type: 'metaAndAssetCtxs' });
     const meta  = data[0]?.universe || [];
     const ctx   = data[1] || [];
-    const idx   = meta.findIndex(a => a.name === coin);
+    const idx   = meta.findIndex(a => a.name === hlCoinName);
     if (idx >= 0 && ctx[idx]) return parseFloat(ctx[idx].funding || 0);
     return 0;
   } catch {

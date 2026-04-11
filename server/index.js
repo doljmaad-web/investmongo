@@ -34,7 +34,7 @@ import { awardTokens, getBalance, getTransactions, runDailyRewards, getAirdropSn
 import { setupNewsRoutes } from './news-routes.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
 import { getPortfolioStats, getAvailableCapital, closeTradeById, snapshotPortfolio } from './paper-trading.js';
-import { getCurrentPrices, fetchCandles, getMarketData } from './hyperliquid.js';
+import { getCurrentPrices, fetchCandles, getMarketData, hlCoin } from './hyperliquid.js';
 import { calcRSI } from './indicator.js';
 import { db }                          from './database.js';
 
@@ -329,7 +329,7 @@ app.get('/api/spatial/candles', async (req, res) => {
       const r = await fetch(HL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'candleSnapshot', req: { coin, interval, startTime, endTime } }),
+        body: JSON.stringify({ type: 'candleSnapshot', req: { coin: hlCoin(coin), interval, startTime, endTime } }),
         signal: AbortSignal.timeout(8000),
       });
       if (!r.ok) throw new Error(`HL ${r.status}`);
