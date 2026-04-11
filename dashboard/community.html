@@ -241,7 +241,7 @@
 
     .news-card {
       display: flex; gap: 12px;
-      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      padding: 14px 16px 8px;
       text-decoration: none; color: inherit;
       transition: background 0.12s; cursor: pointer;
     }
@@ -250,7 +250,7 @@
     .news-card-source {
       display: inline-flex; align-items: center; gap: 5px;
       font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-      padding: 2px 7px; border-radius: 4px; margin-bottom: 6px;
+      padding: 2px 7px; border-radius: 4px;
     }
     .news-src-mn    { background: rgba(232,39,30,0.15); color: #e8271e; border: 1px solid rgba(232,39,30,0.3); }
     .news-src-world { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
@@ -264,6 +264,33 @@
     }
     .news-card-time { font-size: 11px; color: var(--muted); margin-top: 6px; }
     .news-card-link-icon { font-size: 18px; flex-shrink: 0; opacity: 0.4; align-self: center; }
+
+    /* ── News card redesign with action bar ── */
+    .news-card-wrap {
+      border-bottom: 1px solid var(--border);
+    }
+    .news-card-wrap .news-card {
+      border-bottom: none;
+    }
+    .news-card-meta {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .news-card-actions {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 16px 10px;
+    }
+    .news-post-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 14px; border-radius: 20px;
+      background: rgba(29,155,240,0.1); border: 1px solid rgba(29,155,240,0.3);
+      color: var(--blue); font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: 'Space Grotesk', sans-serif;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .news-post-btn:hover {
+      background: rgba(29,155,240,0.2); border-color: var(--blue);
+      transform: translateY(-1px);
+    }
 
     .news-loading {
       text-align: center; padding: 40px 16px;
@@ -1295,30 +1322,70 @@ async function loadNewsPanel(type) {
 
   try {
     const r = await fetch(endpoint);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+      throw new Error(err.error || `HTTP ${r.status}`);
+    }
     const items = await r.json();
     if (!Array.isArray(items) || items.length === 0) {
       feedEl.innerHTML = `<div class="news-loading">Мэдээ олдсонгүй.</div>`;
       return;
     }
 
-    feedEl.innerHTML = items.map(item => `
-      <a class="news-card" href="${esc(item.url || '#')}" target="_blank" rel="noopener noreferrer">
-        <div class="news-card-body">
-          <span class="news-card-source ${srcClass}">${esc(item.source || '')}</span>
-          <div class="news-card-title">${esc(item.title || '')}</div>
-          ${item.description ? `<div class="news-card-desc">${esc(item.description)}</div>` : ''}
-          <div class="news-card-time">${relTime(item.pubDate || item.fetched_at)}</div>
+    feedEl.innerHTML = items.map((item, idx) => {
+      const safeTitle = esc(item.title || '');
+      const safeUrl   = esc(item.url   || '#');
+      const safeDesc  = item.description ? `<div class="news-card-desc">${esc(item.description)}</div>` : '';
+      const timeStr   = relTime(item.pubDate || item.fetched_at);
+      // encode for onclick attribute
+      const encodedTitle = encodeURIComponent(item.title || '');
+      const encodedUrl   = encodeURIComponent(item.url   || '');
+      const postBtnHtml  = sessionUser
+        ? `<button class="news-post-btn" onclick="event.preventDefault();shareNewsToFeed(decodeURIComponent('${encodedTitle}'),decodeURIComponent('${encodedUrl}'))" title="Нийгмийн сүлжээнд нийтлэх">✏️ Нийтлэх</button>`
+        : `<a class="news-post-btn" href="/auth?next=/community" title="Нийтлэхийн тулд нэвтэрнэ үү">✏️ Нийтлэх</a>`;
+      return `
+      <div class="news-card-wrap">
+        <a class="news-card" href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+          <div class="news-card-body">
+            <div class="news-card-meta">
+              <span class="news-card-source ${srcClass}">${esc(item.source || '')}</span>
+              <span class="news-card-time">${timeStr}</span>
+            </div>
+            <div class="news-card-title">${safeTitle}</div>
+            ${safeDesc}
+          </div>
+          <div class="news-card-link-icon">↗</div>
+        </a>
+        <div class="news-card-actions">
+          ${postBtnHtml}
         </div>
-        <div class="news-card-link-icon">↗</div>
-      </a>`).join('');
+      </div>`;
+    }).join('');
 
     newsLoaded[type] = true;
-    // Auto-refresh every 30 min
     setTimeout(() => { newsLoaded[type] = false; }, 30 * 60 * 1000);
   } catch (e) {
     feedEl.innerHTML = `<div class="news-loading">⚠️ Алдаа гарлаа: ${esc(e.message)}</div>`;
   }
+}
+
+// ── Share news article to community feed ─────────────────────
+function shareNewsToFeed(title, url) {
+  // Switch to community tab
+  switchTab('community');
+  // Pre-fill compose with article reference
+  const textarea = document.getElementById('compose-text');
+  const linkInput = document.getElementById('compose-link');
+  if (!textarea) return;
+  textarea.value = `📰 ${title}`;
+  textarea.focus();
+  // Pre-fill the link field
+  if (linkInput) {
+    linkInput.value = url;
+    document.getElementById('compose-link-row').style.display = 'block';
+  }
+  // Scroll compose box into view
+  document.getElementById('compose-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 loadUser().then(loadFeed);
