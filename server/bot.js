@@ -8,6 +8,7 @@ import {
 import { checkRiskLimits }               from './risk.js';
 import { sendTelegram }                  from './telegram.js';
 import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
+import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset } from './oanda.js';
 import { db }                            from './database.js';
 
 // ============================================================
@@ -234,7 +235,9 @@ export async function runServerLoop(broadcastFn) {
 
   for (const { asset } of assetRows) {
     try {
-      const candles30m = await fetchCandles(asset, '30m', 300);
+      const candles30m = isOandaAsset(asset)
+        ? await fetchCandlesOanda(asset, '30m', 300)
+        : await fetchCandles(asset, '30m', 300);
 
       if (!candles30m || candles30m.length < 70) {
         console.log(`[BOT] ${asset}: insufficient 30m candles — skipping`);
@@ -259,7 +262,13 @@ export async function runServerLoop(broadcastFn) {
 
   // Update P&L + broadcast
   try {
-    const prices = await getCurrentPrices(assetNames);
+    const hlAssets    = assetNames.filter(a => !isOandaAsset(a));
+    const oandaAssets = assetNames.filter(a =>  isOandaAsset(a));
+    const [hlPrices, oandaPrices] = await Promise.all([
+      hlAssets.length    ? getCurrentPrices(hlAssets)           : {},
+      oandaAssets.length ? getCurrentPricesOanda(oandaAssets)   : {},
+    ]);
+    const prices = { ...hlPrices, ...oandaPrices };
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     if (broadcastFn) broadcastFn({ type: 'portfolio_update', data: stats });
