@@ -2,8 +2,9 @@
 const HL_URL = 'https://api.hyperliquid.xyz/info';
 
 // Internal ticker → Hyperliquid ticker mapping
+// GOLD maps to PAXG (PAX Gold — 1 token = 1 troy oz gold, the gold perp on Hyperliquid)
 const HL_COIN_MAP = {
-  GOLD: 'XAU',
+  GOLD: 'PAXG',
 };
 
 export function hlCoin(coin) { return HL_COIN_MAP[coin] || coin; }
