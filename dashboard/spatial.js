@@ -19,7 +19,7 @@
   let candleTimer  = null;
 
   // ── Asset list ─────────────────────────────────────────────
-  const ASSETS = ['BTC','ETH','SOL','XRP','DOGE','BNB','AVAX','LINK','ARB','SUI','ZEC','HYPE','TAO','PENDLE','GOLD','PEPE'];
+  const ASSETS = ['BTC','ETH','SOL','XRP','DOGE','BNB','AVAX','LINK','ARB','SUI','ZEC','HYPE','TAO','PENDLE','GOLD','SILVER','OIL','PEPE'];
   const TICKER_MAP = { 'PEPE': 'kPEPE' }; // display name → Hyperliquid ticker
   function getTicker(coin) { return TICKER_MAP[coin] || coin; }
 

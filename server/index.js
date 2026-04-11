@@ -35,6 +35,7 @@ import { setupNewsRoutes } from './news-routes.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
 import { getPortfolioStats, getAvailableCapital, closeTradeById, snapshotPortfolio } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData, hlCoin } from './hyperliquid.js';
+import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset } from './oanda.js';
 import { calcRSI } from './indicator.js';
 import { db }                          from './database.js';
 
@@ -308,7 +309,9 @@ app.post('/api/chat', async (req, res) => {
 app.get('/api/spatial/price', async (req, res) => {
   try {
     const coin   = (req.query.coin || 'BTC').toUpperCase();
-    const prices = await getCurrentPrices([coin]);
+    const prices = isOandaAsset(coin)
+      ? await getCurrentPricesOanda([coin])
+      : await getCurrentPrices([coin]);
     res.json({ price: prices[coin] || null, ts: Date.now() });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -320,6 +323,14 @@ app.get('/api/spatial/candles', async (req, res) => {
   try {
     const coin     = (req.query.coin || 'BTC').toUpperCase();
     const interval = req.query.interval || '1d';
+
+    // OANDA assets: always use OANDA fetch (no year-range support)
+    if (isOandaAsset(coin)) {
+      const bars    = Math.min(parseInt(req.query.bars) || 200, 500);
+      const candles = await fetchCandlesOanda(coin, interval, bars);
+      return res.json({ candles, ts: Date.now(), interval });
+    }
+
     // Support explicit year range: ?year=2026
     const year = parseInt(req.query.year);
     if (year && !isNaN(year)) {
