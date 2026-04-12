@@ -173,6 +173,8 @@ db.exec(`
 
 // Migration: add deploy_pct column if upgrading from the initial schema
 try { db.exec(`ALTER TABLE trading_assets ADD COLUMN deploy_pct REAL DEFAULT 50`); } catch (_) {}
+// Migration: add oanda_trade_id for live OANDA execution on SILVER/OIL
+try { db.exec(`ALTER TABLE trades ADD COLUMN oanda_trade_id TEXT`); } catch (_) {}
 
 // Drawings table for Spatial Trade Planner manual annotations
 db.exec(`

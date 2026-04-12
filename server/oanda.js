@@ -55,6 +55,77 @@ export async function fetchCandles(coin, interval = '30m', bars = 300) {
   }
 }
 
+// ── Account ID (lazy-fetched + cached) ─────────────────────
+let cachedAccountId = null;
+export async function getAccountId() {
+  if (cachedAccountId) return cachedAccountId;
+  const res = await fetch(`${OANDA_BASE}/accounts`, {
+    headers: getHeaders(),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error(`OANDA /accounts ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const accounts = data.accounts || [];
+  if (accounts.length === 0) throw new Error('No OANDA accounts found for this token');
+  cachedAccountId = accounts[0].id;
+  console.log(`[OANDA] Using accountId=${cachedAccountId}`);
+  return cachedAccountId;
+}
+
+// ── Place a market order ────────────────────────────────────
+// units: positive = LONG, negative = SHORT (instrument units, not USD)
+// Returns { oandaTradeId, fillPrice }
+export async function placeOandaOrder(coin, units, stopLossPrice) {
+  const instrument = OANDA_INSTRUMENT_MAP[coin];
+  if (!instrument) throw new Error(`No OANDA instrument for ${coin}`);
+  const accountId = await getAccountId();
+
+  const body = {
+    order: {
+      type:        'MARKET',
+      instrument,
+      units:       String(units),
+      timeInForce: 'FOK',
+      stopLossOnFill: {
+        price:       stopLossPrice.toFixed(5),
+        timeInForce: 'GTC',
+      },
+    },
+  };
+
+  const res = await fetch(`${OANDA_BASE}/accounts/${accountId}/orders`, {
+    method:  'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body:    JSON.stringify(body),
+    signal:  AbortSignal.timeout(10000),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`OANDA order failed ${res.status}: ${JSON.stringify(data)}`);
+
+  const fill = data.orderFillTransaction;
+  if (!fill) throw new Error(`Order not filled: ${JSON.stringify(data)}`);
+
+  return {
+    oandaTradeId: fill.tradeOpened?.tradeID ?? null,
+    fillPrice:    parseFloat(fill.price),
+  };
+}
+
+// ── Close an open OANDA trade ───────────────────────────────
+export async function closeOandaTrade(oandaTradeId) {
+  const accountId = await getAccountId();
+  const res = await fetch(`${OANDA_BASE}/accounts/${accountId}/trades/${oandaTradeId}/close`, {
+    method:  'PUT',
+    headers: getHeaders(),
+    signal:  AbortSignal.timeout(10000),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`OANDA close trade ${oandaTradeId} failed ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
 export async function getCurrentPrices(coins) {
   const prices = {};
   for (const coin of coins) {
