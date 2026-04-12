@@ -928,6 +928,19 @@ server.listen(PORT, async () => {
 
   // Warm up on start
   await fetchAllNews(true).catch(console.error);
+
+  // Test Twelve Data connectivity on startup
+  setTimeout(async () => {
+    try {
+      const key = process.env.TWELVEDATA_API_KEY;
+      if (!key) { console.log('[TWELVEDATA] ⚠️  TWELVEDATA_API_KEY not set — SILVER/OIL charts disabled'); return; }
+      const r = await fetch(`https://api.twelvedata.com/time_series?symbol=XAG/USD&interval=30min&outputsize=2&apikey=${key}`, { signal: AbortSignal.timeout(8000) });
+      const d = await r.json();
+      if (d.status === 'error') console.log(`[TWELVEDATA] ❌ API error: ${d.message}`);
+      else console.log(`[TWELVEDATA] ✅ Connected — XAG/USD latest close: ${d.values?.[0]?.close}`);
+    } catch (e) { console.log(`[TWELVEDATA] ❌ Connection failed: ${e.message}`); }
+  }, 5000);
+
   setTimeout(async () => {
     try {
       console.log('[STARTUP] Running initial bot loop...');

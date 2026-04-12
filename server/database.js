@@ -175,6 +175,8 @@ db.exec(`
 try { db.exec(`ALTER TABLE trading_assets ADD COLUMN deploy_pct REAL DEFAULT 50`); } catch (_) {}
 // Migration: add oanda_trade_id for live OANDA execution on SILVER/OIL
 try { db.exec(`ALTER TABLE trades ADD COLUMN oanda_trade_id TEXT`); } catch (_) {}
+// Cleanup: remove XAU — it was a temporary GOLD ticker that fails on Hyperliquid
+try { db.exec(`DELETE FROM trading_assets WHERE asset='XAU'`); } catch (_) {}
 
 // Drawings table for Spatial Trade Planner manual annotations
 db.exec(`
