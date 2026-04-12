@@ -305,6 +305,21 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// Twelve Data raw debug — returns the direct API response for diagnosis
+app.get('/api/debug/twelvedata', async (req, res) => {
+  const symbol = req.query.symbol || 'XAG/USD';
+  const key    = process.env.TWELVEDATA_API_KEY;
+  if (!key) return res.json({ error: 'TWELVEDATA_API_KEY not set' });
+  try {
+    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=30min&outputsize=3&apikey=${key}`;
+    const r   = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const raw = await r.json();
+    res.json({ httpStatus: r.status, url: url.replace(key, 'KEY_HIDDEN'), raw });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Spatial Trade Planner — live price for any coin
 app.get('/api/spatial/price', async (req, res) => {
   try {
