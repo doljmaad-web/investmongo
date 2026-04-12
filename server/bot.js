@@ -8,7 +8,7 @@ import {
 import { checkRiskLimits }               from './risk.js';
 import { sendTelegram }                  from './telegram.js';
 import { fetchCandles, getCurrentPrices } from './hyperliquid.js';
-import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset, placeOandaOrder, closeOandaTrade } from './oanda.js';
+import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset } from './oanda.js';
 import { db }                            from './database.js';
 
 // ============================================================
@@ -98,21 +98,6 @@ async function postTradeAdvisory(tradeId, signal) {
   }
 }
 
-// ── Close live OANDA trades for an asset (called on signal flip) ─
-async function closeOandaOpenTrades(asset) {
-  const open = db.prepare(
-    `SELECT id, oanda_trade_id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND oanda_trade_id IS NOT NULL`
-  ).all(asset);
-  for (const t of open) {
-    try {
-      await closeOandaTrade(t.oanda_trade_id);
-      console.log(`[BOT] OANDA trade ${t.oanda_trade_id} closed (signal flip)`);
-    } catch (err) {
-      console.error(`[BOT] OANDA close failed (tradeId=${t.oanda_trade_id}):`, err.message);
-    }
-  }
-}
-
 // ============================================================
 // MAIN SIGNAL HANDLER
 //
@@ -199,8 +184,6 @@ export async function handleSignal(rawSignal, source = 'server') {
   const signalId = signalRow.lastInsertRowid;
 
   // Close any open opposite position — this is the primary exit mechanism
-  // For OANDA assets, close the live trade on the demo account first
-  if (isOandaAsset(signal.asset)) await closeOandaOpenTrades(signal.asset);
   const closed = closeOpenPosition(signal.asset, signal.price);
   if (closed > 0) {
     console.log(`[BOT] Flipped — closed ${closed} opposite position(s) @ $${signal.price}`);
@@ -217,21 +200,6 @@ export async function handleSignal(rawSignal, source = 'server') {
   // Open new position
   const tradeId = openPaperTrade(signalId, defaultDecision, signal);
   console.log(`[BOT] Trade #${tradeId} opened — ${direction} ${signal.asset}`);
-
-  // For OANDA assets, also place the real order on the demo account
-  if (isOandaAsset(signal.asset)) {
-    try {
-      const rawUnits = Math.round(sizeUsd / signal.price);
-      const units    = direction === 'LONG' ? rawUnits : -rawUnits;
-      const { oandaTradeId, fillPrice } = await placeOandaOrder(signal.asset, units, stopLoss);
-      if (oandaTradeId) {
-        db.prepare('UPDATE trades SET oanda_trade_id=? WHERE id=?').run(oandaTradeId, tradeId);
-        console.log(`[BOT] OANDA order filled — tradeID=${oandaTradeId} price=${fillPrice} units=${units}`);
-      }
-    } catch (err) {
-      console.error(`[BOT] OANDA order placement failed (paper trade still active):`, err.message);
-    }
-  }
 
   const icon     = signal.signal === 'BUY' ? '📈' : '📉';
   const dotLabel = signal.type === 'yellow_dot' ? '🟡 Yellow dot' : '🩷 Pink dot';
@@ -332,16 +300,6 @@ async function checkSafetySL(asset, currentPrice) {
       const pnlPct = isLong
         ? (currentPrice - trade.entry_price) / trade.entry_price * 100
         : (trade.entry_price - currentPrice) / trade.entry_price * 100;
-
-      // Close the live OANDA position before the paper record
-      if (trade.oanda_trade_id) {
-        try {
-          await closeOandaTrade(trade.oanda_trade_id);
-          console.log(`[BOT] OANDA trade ${trade.oanda_trade_id} closed (safety SL)`);
-        } catch (err) {
-          console.error(`[BOT] OANDA safety SL close failed:`, err.message);
-        }
-      }
 
       closeTradeById(trade.id, currentPrice);
       console.log(`[BOT] Safety SL hit — ${asset} ${trade.direction} @ $${currentPrice} PnL=${pnlPct.toFixed(2)}%`);
