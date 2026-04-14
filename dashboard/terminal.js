@@ -64,7 +64,83 @@ let state = {
 let ws       = null;
 let wsRetry  = null;
 let chartCtx = null;
+let dockResizeTimer = null;
 
+const LEFT_DOCK_STORAGE_KEY = 'invest-mongo-left-dock-v1';
+let leftDockState = {
+  signals: true,
+  trend: true,
+};
+
+function loadLeftDockState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LEFT_DOCK_STORAGE_KEY) || '{}');
+    leftDockState = {
+      ...leftDockState,
+      ...saved,
+    };
+  } catch (_) {}
+}
+
+function persistLeftDockState() {
+  try {
+    localStorage.setItem(LEFT_DOCK_STORAGE_KEY, JSON.stringify(leftDockState));
+  } catch (_) {}
+}
+
+function syncDockButtons(key, isOpen) {
+  document.querySelectorAll(`[data-panel-toggle="${key}"]`).forEach(btn => {
+    btn.setAttribute('aria-expanded', String(isOpen));
+  });
+}
+
+function getVisibleDockSections() {
+  return Array.from(document.querySelectorAll('#panel-left .left-dock-section')).filter(section => {
+    return window.getComputedStyle(section).display !== 'none';
+  });
+}
+
+function refreshLeftDockLayout() {
+  const panelLeft = document.getElementById('panel-left');
+  if (!panelLeft) return;
+  const visibleSections = getVisibleDockSections();
+  const hasOpenSection = visibleSections.some(section => !section.classList.contains('is-collapsed'));
+  panelLeft.classList.toggle('panel-left-collapsed', visibleSections.length > 0 && !hasOpenSection);
+}
+
+function applyLeftDockState() {
+  document.querySelectorAll('#panel-left .left-dock-section').forEach(section => {
+    const key = section.dataset.dockKey;
+    const isOpen = leftDockState[key] !== false;
+    section.classList.toggle('is-collapsed', !isOpen);
+    syncDockButtons(key, isOpen);
+  });
+  refreshLeftDockLayout();
+}
+
+function scheduleDockResize() {
+  window.dispatchEvent(new Event('resize'));
+  clearTimeout(dockResizeTimer);
+  dockResizeTimer = setTimeout(() => {
+    window.dispatchEvent(new Event('resize'));
+    drawChart();
+  }, 320);
+}
+
+function toggleDockSection(key) {
+  leftDockState[key] = leftDockState[key] === false;
+  applyLeftDockState();
+  persistLeftDockState();
+  scheduleDockResize();
+}
+
+function initLeftDock() {
+  loadLeftDockState();
+  document.querySelectorAll('[data-panel-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => toggleDockSection(btn.dataset.panelToggle));
+  });
+  applyLeftDockState();
+}
 // ============================================================
 // ADMIN TREND BIAS
 // ============================================================
@@ -85,7 +161,11 @@ async function loadTrendBias() {
   // Only show trend control section if logged-in admin
   if (isAdmin()) {
     const section = document.getElementById('trend-bias-section');
-    if (section) section.style.display = '';
+    if (section) {
+      section.style.display = '';
+      applyLeftDockState();
+      scheduleDockResize();
+    }
   }
   try {
     const r = await fetch('/api/trend-bias');
@@ -120,16 +200,16 @@ function applyTrendBias(bias) {
   const text = document.getElementById('trend-status-text');
   if (!icon || !text) return;
   if (bias === 'neutral') {
-    icon.textContent = '⚡';
+    icon.textContent = 'N';
     text.textContent = 'Bot trading independently in both directions';
     text.style.color = 'var(--text-muted)';
   } else if (bias === 'long') {
-    icon.textContent = '▲';
-    text.textContent = 'LONG TREND active — bot aggressively hunting Yellow dot BUY entries. Short signals suppressed.';
+    icon.textContent = 'L';
+    text.textContent = 'LONG TREND active - bot aggressively hunting Yellow dot BUY entries. Short signals suppressed.';
     text.style.color = 'var(--green)';
   } else {
-    icon.textContent = '▼';
-    text.textContent = 'SHORT TREND active — bot aggressively hunting Pink dot SELL entries. Long signals suppressed.';
+    icon.textContent = 'S';
+    text.textContent = 'SHORT TREND active - bot aggressively hunting Pink dot SELL entries. Long signals suppressed.';
     text.style.color = 'var(--red)';
   }
 }
@@ -885,6 +965,7 @@ function renderTradeIntel() {
 // ============================================================
 window.addEventListener('load', async () => {
   await loadSessionUser(); // must run before first renderPortfolio
+  initLeftDock();
   connect();
   if (window.SpatialPlanner) window.SpatialPlanner.init();
   setInterval(updateClock, 1000);

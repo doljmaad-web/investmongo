@@ -86,38 +86,79 @@
     <div class="panel" id="panel-left">
 
       <!-- Top half: Signal Feed -->
-      <div id="signal-section">
-        <div class="panel-header">
-          <h3>Precision v9 Signals</h3>
-          <div class="header-right">
-            <div class="live-dot"></div>
-            <span style="font-size:10px;color:var(--text-muted);" id="signal-count">0</span>
+      <div class="left-dock-section left-dock-fill" id="signal-section" data-dock-key="signals">
+        <button
+          class="dock-tab"
+          type="button"
+          data-panel-toggle="signals"
+          aria-expanded="true"
+          aria-controls="signal-card"
+          title="Toggle Precision v9 Signals"
+        >
+          <span class="dock-tab-label">Signals</span>
+          <span class="dock-tab-arrow">&lsaquo;</span>
+        </button>
+        <div class="left-dock-card" id="signal-card">
+          <div class="panel-header dock-header">
+            <h3>Precision v9 Signals</h3>
+            <div class="header-right">
+              <div class="live-dot"></div>
+              <span style="font-size:10px;color:var(--text-muted);" id="signal-count">0</span>
+              <button
+                class="dock-toggle-btn"
+                type="button"
+                data-panel-toggle="signals"
+                aria-label="Collapse Precision v9 Signals"
+                title="Collapse to left"
+              >
+                &lsaquo;
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="panel-body" id="signal-feed">
-          <div class="empty-state">Waiting for signals...</div>
+          <div class="panel-body" id="signal-feed">
+            <div class="empty-state">Waiting for signals...</div>
+          </div>
         </div>
       </div>
 
-      <!-- Divider -->
-      <div class="section-divider" style="margin:0;"></div>
-
       <!-- Bottom half: Admin Trend Bias (hidden until admin check passes) -->
-      <div id="trend-bias-section" style="display:none">
-        <div class="panel-header" style="padding:6px 12px;">
-          <h3>Admin Trend Control</h3>
-          <div class="header-right">
-            <div class="live-dot" style="background:var(--amber);box-shadow:0 0 4px var(--amber);"></div>
+      <div class="left-dock-section" id="trend-bias-section" data-dock-key="trend" style="display:none">
+        <button
+          class="dock-tab admin-dock-tab"
+          type="button"
+          data-panel-toggle="trend"
+          aria-expanded="true"
+          aria-controls="trend-card"
+          title="Toggle Admin Trend Control"
+        >
+          <span class="dock-tab-label">Trend</span>
+          <span class="dock-tab-arrow">&lsaquo;</span>
+        </button>
+        <div class="left-dock-card" id="trend-card">
+          <div class="panel-header dock-header" style="padding:6px 12px;">
+            <h3>Admin Trend Control</h3>
+            <div class="header-right">
+              <div class="live-dot" style="background:var(--amber);box-shadow:0 0 4px var(--amber);"></div>
+              <button
+                class="dock-toggle-btn"
+                type="button"
+                data-panel-toggle="trend"
+                aria-label="Collapse Admin Trend Control"
+                title="Collapse to left"
+              >
+                &lsaquo;
+              </button>
+            </div>
           </div>
-        </div>
-        <div id="trend-btn-group">
-          <button class="trend-btn active" id="tbtn-neutral"  onclick="setTrendBias('neutral')">⚡ Neutral</button>
-          <button class="trend-btn long"   id="tbtn-long"     onclick="setTrendBias('long')">▲ Long Trend</button>
-          <button class="trend-btn short"  id="tbtn-short"    onclick="setTrendBias('short')">▼ Short Trend</button>
-        </div>
-        <div id="trend-status-box">
-          <div id="trend-status-icon">⚡</div>
-          <div id="trend-status-text">Bot trading independently in both directions</div>
+          <div id="trend-btn-group">
+            <button class="trend-btn active" id="tbtn-neutral"  onclick="setTrendBias('neutral')">Neutral</button>
+            <button class="trend-btn long"   id="tbtn-long"     onclick="setTrendBias('long')">Long Trend</button>
+            <button class="trend-btn short"  id="tbtn-short"    onclick="setTrendBias('short')">Short Trend</button>
+          </div>
+          <div id="trend-status-box">
+            <div id="trend-status-icon">N</div>
+            <div id="trend-status-text">Bot trading independently in both directions</div>
+          </div>
         </div>
       </div>
 
