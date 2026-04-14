@@ -28,8 +28,11 @@ import { db }                            from './database.js';
 // ============================================================
 
 const SIGNAL_WINDOW  = 2;               // act on signal within last 2 × 30m candles (up to 1 bar old)
-const SAFETY_SL_PCT  = 0.03;           // 3% safety stop-loss — last resort protection
-const DEDUP_MS       = 90 * 60 * 1000; // 90 min dedup — prevents re-firing across the scan window
+const SAFETY_SL_PCT         = 0.03;            // 3% initial protective stop
+const ATR_PERIOD            = 14;
+const ATR_BREAKEVEN_TRIGGER = 1.0;             // arm breakeven after price moves 1 ATR in favor
+const ATR_TRAIL_MULTIPLIER  = 1.8;             // trail behind price once trade is in profit
+const DEDUP_MS              = 90 * 60 * 1000; // 90 min dedup - prevents re-firing across the scan window
 
 // ── Admin trend bias ─────────────────────────────────────────
 // 'neutral' | 'long' | 'short' — set via dashboard admin buttons
@@ -51,6 +54,50 @@ function roundPrice(p) {
   if (p >= 1)     return parseFloat(p.toFixed(5));
   if (p >= 0.1)   return parseFloat(p.toFixed(6));
   return parseFloat(p.toFixed(8));
+}
+
+function applyAtrTrailingStop(asset, candles30m, currentPrice) {
+  if (!candles30m || candles30m.length < ATR_PERIOD + 1) return;
+
+  const atr = calcATR(candles30m, ATR_PERIOD);
+  if (!Number.isFinite(atr) || atr <= 0) return;
+
+  const openTrades = db.prepare(`
+    SELECT id, asset, direction, entry_price, stop_loss
+    FROM trades
+    WHERE status='OPEN' AND mode='PAPER' AND asset=?
+  `).all(asset);
+
+  for (const trade of openTrades) {
+    const isLong = trade.direction === 'LONG';
+    const profitMove = isLong
+      ? currentPrice - trade.entry_price
+      : trade.entry_price - currentPrice;
+
+    if (profitMove < atr * ATR_BREAKEVEN_TRIGGER) continue;
+
+    const breakEvenStop = trade.entry_price;
+    const atrTrailStop = isLong
+      ? currentPrice - atr * ATR_TRAIL_MULTIPLIER
+      : currentPrice + atr * ATR_TRAIL_MULTIPLIER;
+
+    const candidateStopRaw = isLong
+      ? Math.max(breakEvenStop, atrTrailStop)
+      : Math.min(breakEvenStop, atrTrailStop);
+    const candidateStop = roundPrice(candidateStopRaw);
+
+    const canTighten = isLong
+      ? candidateStop > trade.stop_loss && candidateStop < currentPrice
+      : candidateStop < trade.stop_loss && candidateStop > currentPrice;
+
+    if (!canTighten) continue;
+
+    db.prepare('UPDATE trades SET stop_loss=? WHERE id=?').run(candidateStop, trade.id);
+    console.log(
+      `[BOT] ATR trail tightened ${asset} ${trade.direction} stop ` +
+      `from ${trade.stop_loss} to ${candidateStop} (ATR=${atr.toFixed(4)})`
+    );
+  }
 }
 
 // ── Trading asset management (persisted in SQLite) ─────────
@@ -252,7 +299,9 @@ export async function runServerLoop(broadcastFn) {
         if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
       }
 
-      // Safety SL check — closes trade only if price breaches the 3% safety stop
+      applyAtrTrailingStop(asset, candles30m, candles30m.at(-1).close);
+
+      // Safety SL check - closes trade if price breaches the current protective stop
       await checkSafetySL(asset, candles30m.at(-1).close);
 
     } catch (err) {
