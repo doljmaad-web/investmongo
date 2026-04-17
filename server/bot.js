@@ -12,7 +12,7 @@ import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPrices
 import { db }                            from './database.js';
 
 // ============================================================
-// Strategy: Precision V9 — 30m candles
+// Strategy: Precision V9 — 15m candles
 //
 // Pure signal-following mode:
 //   • Yellow dot (BUY)  → close any open SHORT → open LONG
@@ -23,11 +23,11 @@ import { db }                            from './database.js';
 // catastrophic loss if the market gaps hard against the position.
 //
 // Bias timeframe: 2h (context only — does not filter entries)
-// Signal window:  barsAgo < 2 (up to 60 min old signal is valid)
+// Signal window:  barsAgo < 2 (up to 30 min old signal is valid)
 // Dedup window:   30 min (one trade per direction per asset)
 // ============================================================
 
-const SIGNAL_WINDOW  = 2;               // act on signal within last 2 × 30m candles (up to 1 bar old)
+const SIGNAL_WINDOW  = 2;               // act on signal within last 2 × 15m candles (up to 1 bar old)
 const SAFETY_SL_PCT         = 0.03;            // 3% initial protective stop
 const ATR_PERIOD            = 14;
 const ATR_BREAKEVEN_TRIGGER = 1.0;             // arm breakeven after price moves 1 ATR in favor
@@ -136,7 +136,7 @@ async function postTradeAdvisory(tradeId, signal) {
     const icon     = advisory.caution ? '⚠️' : '✅';
     await sendTelegram(
       `${icon} ADVISORY — Trade #${tradeId}\n` +
-      `${signal.signal} ${signal.asset} @ $${signal.price} [30m]\n` +
+      `${signal.signal} ${signal.asset} @ $${signal.price} [15m]\n` +
       `${advisory.hold ? 'HOLD' : 'REVIEW'} | Caution: ${advisory.caution ? 'YES' : 'NO'}\n` +
       `${advisory.reason}`
     );
@@ -209,7 +209,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     stop_loss:   stopLoss,
     take_profit: takeProfit,
     reasoning: {
-      summary: `${direction} on Precision V9 30m ${signal.type === 'yellow_dot' ? 'yellow dot' : 'pink dot'} — held until opposite signal`,
+      summary: `${direction} on Precision V9 15m ${signal.type === 'yellow_dot' ? 'yellow dot' : 'pink dot'} — held until opposite signal`,
     },
     validated_news: [],
   };
@@ -225,7 +225,7 @@ export async function handleSignal(rawSignal, source = 'server') {
     new Date().toISOString(), source, signal.asset, signal.signal,
     signal.type || 'yellow_dot', signal.price,
     signal.rsi || null, signal.sma50 || null, signal.sma200 || null,
-    '30m', signal.pattern || null, signal.strength || 'normal',
+    '15m', signal.pattern || null, signal.strength || 'normal',
     'ADVISORY', 75, defaultDecision.reasoning.summary, 'pending', 'low', '[]',
   );
   const signalId = signalRow.lastInsertRowid;
@@ -253,7 +253,7 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   await sendTelegram(
     `${icon} TRADE OPENED\n` +
-    `${dotLabel} — ${signal.signal} ${signal.asset} @ $${signal.price} [30m]\n` +
+    `${dotLabel} — ${signal.signal} ${signal.asset} @ $${signal.price} [15m]\n` +
     `RSI: ${signal.rsi?.toFixed(1) || '--'} | Pattern: ${signal.pattern || '--'}\n` +
     `Safety SL: $${stopLoss} (3%) | Exit: opposite signal\n` +
     `Size: ${deployPct}% ($${sizeUsd}) | Mode: PAPER`
@@ -268,8 +268,8 @@ export async function handleSignal(rawSignal, source = 'server') {
 // TRACK B: Server loop (every minute via cron)
 //
 // Per asset:
-//   1. Fetch 30m candles (300 bars)
-//   2. Detect Precision V9 signal on 30m
+//   1. Fetch 15m candles (300 bars)
+//   2. Detect Precision V9 signal on 15m
 //   3. If fresh signal (barsAgo < SIGNAL_WINDOW) → handleSignal
 //      Yellow dot → LONG | Pink dot → SHORT
 //      Opposite position is closed automatically on flip
@@ -278,24 +278,24 @@ export async function handleSignal(rawSignal, source = 'server') {
 export async function runServerLoop(broadcastFn) {
   const assetRows  = getTradingAssets();
   const assetNames = assetRows.map(r => r.asset);
-  console.log(`[BOT] Precision V9 30m scan — assets: ${assetNames.join(', ')}`);
+  console.log(`[BOT] Precision V9 15m scan — assets: ${assetNames.join(', ')}`);
 
   for (const { asset } of assetRows) {
     try {
       const candles30m = isOandaAsset(asset)
-        ? await fetchCandlesOanda(asset, '30m', 300)
-        : await fetchCandles(asset, '30m', 300);
+        ? await fetchCandlesOanda(asset, '15m', 300)
+        : await fetchCandles(asset, '15m', 300);
 
       if (!candles30m || candles30m.length < 70) {
-        console.log(`[BOT] ${asset}: insufficient 30m candles — skipping`);
+        console.log(`[BOT] ${asset}: insufficient 15m candles — skipping`);
         continue;
       }
 
       const result = detectSignals(candles30m);
-      console.log(`[BOT] ${asset} 30m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
+      console.log(`[BOT] ${asset} 15m: signal=${result.signal || 'none'} barsAgo=${result.barsAgo ?? '-'} RSI=${result.rsi ?? '-'}`);
 
       if (result.signal && result.barsAgo < SIGNAL_WINDOW) {
-        const outcome = await handleSignal({ ...result, asset, timeframe: '30m' }, 'server');
+        const outcome = await handleSignal({ ...result, asset, timeframe: '15m' }, 'server');
         if (outcome && broadcastFn) broadcastFn({ type: 'new_signal', data: outcome });
       }
 
