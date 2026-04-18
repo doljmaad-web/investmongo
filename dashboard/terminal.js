@@ -42,7 +42,9 @@ async function loadSessionUser() {
     // Show admin-only controls
     if (sessionUser.is_admin) {
       const closeAllBtn = document.getElementById('btn-close-all');
+      const resetPaperBtn = document.getElementById('btn-reset-paper');
       if (closeAllBtn) closeAllBtn.style.display = '';
+      if (resetPaperBtn) resetPaperBtn.style.display = '';
     }
   } catch (e) { /* not logged in */ }
 }
@@ -304,6 +306,26 @@ function handleMessage(msg) {
   }
 }
 
+async function refreshPortfolio() {
+  const [portfolioRes, snapshotsRes] = await Promise.all([
+    fetch('/api/portfolio'),
+    fetch(`/api/snapshots?period=${activePeriod}`),
+  ]);
+  const portfolioData = await portfolioRes.json();
+  if (!portfolioRes.ok) throw new Error(portfolioData.error || 'Failed to refresh portfolio');
+
+  state.portfolio = portfolioData;
+
+  if (snapshotsRes.ok) {
+    const snapshotsData = await snapshotsRes.json();
+    state.snapshots = snapshotsData.snapshots || [];
+  }
+
+  renderPortfolio();
+  renderPositions();
+  drawChart();
+}
+
 // Helper to build a unified signal record from WS outcome
 function buildSignalRecord(outcome) {
   return {
@@ -536,6 +558,26 @@ async function closeAllPositions() {
   } finally {
     btn.disabled = false;
     btn.textContent = '⏻ CLOSE ALL';
+  }
+}
+
+async function resetPaperPortfolioAction() {
+  const btn = document.getElementById('btn-reset-paper');
+  if (!confirm('Reset paper trading now? This will delete all paper trades and paper portfolio snapshots, then use the configured PAPER_BALANCE again.')) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Resetting…';
+  try {
+    const res = await fetch('/api/trades/reset-paper', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    alert(`Reset complete. Removed ${data.deletedTrades} paper trade(s) and ${data.deletedSnapshots} snapshot(s). Balance reset to $${Number(data.resetBalance || 0).toFixed(2)}.`);
+    await refreshPortfolio();
+  } catch (e) {
+    alert('❌ Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'RESET PAPER';
   }
 }
 

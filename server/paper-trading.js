@@ -41,6 +41,20 @@ export function getPortfolioSnapshotsSince(cutoff) {
   ).all(cutoff);
 }
 
+export function resetPaperPortfolio() {
+  const tradeCount = db.prepare(`SELECT COUNT(*) AS count FROM trades WHERE mode='PAPER'`).get()?.count ?? 0;
+  const snapshotCount = db.prepare(`SELECT COUNT(*) AS count FROM portfolio_snapshots`).get()?.count ?? 0;
+
+  db.prepare(`DELETE FROM trades WHERE mode='PAPER'`).run();
+  db.prepare(`DELETE FROM portfolio_snapshots`).run();
+
+  return {
+    deletedTrades: tradeCount,
+    deletedSnapshots: snapshotCount,
+    resetBalance: getConfiguredPaperBalance(),
+  };
+}
+
 // Capital currently free to deploy: AUM minus what's locked in open trades
 export function getAvailableCapital() {
   const stats      = getPortfolioStats();

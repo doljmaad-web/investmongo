@@ -40,6 +40,7 @@ import {
   snapshotPortfolio,
   getRecentPortfolioSnapshots,
   getPortfolioSnapshotsSince,
+  resetPaperPortfolio,
 } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData, hlCoin } from './hyperliquid.js';
 import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset } from './oanda.js';
@@ -189,6 +190,19 @@ app.post('/api/trades/close-all', async (req, res) => {
     res.json({ closed: closedCount, total: open.length });
   } catch (e) {
     console.error('[ADMIN] close-all error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/trades/reset-paper', (req, res) => {
+  try {
+    const result = resetPaperPortfolio();
+    const stats = getPortfolioStats();
+    const snapshots = getRecentPortfolioSnapshots();
+    broadcast({ type: 'portfolio_update', data: { ...stats, snapshots } });
+    res.json({ ok: true, ...result, stats });
+  } catch (e) {
+    console.error('[ADMIN] reset-paper error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
