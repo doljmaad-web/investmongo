@@ -5,12 +5,40 @@ import { db } from './database.js';
 // 1 = no leverage (original behaviour)
 // 3 = 3x leverage, 5 = 5x leverage, etc.
 const LEVERAGE = 5;
+const DEFAULT_PAPER_BALANCE = 10000;
+
+export function getConfiguredPaperBalance() {
+  const configured = parseFloat(process.env.PAPER_BALANCE ?? DEFAULT_PAPER_BALANCE);
+  return Number.isFinite(configured) ? configured : DEFAULT_PAPER_BALANCE;
+}
+
+export function hasPaperTradeHistory() {
+  const row = db.prepare(`SELECT COUNT(*) AS count FROM trades WHERE mode='PAPER'`).get();
+  return (row?.count ?? 0) > 0;
+}
 
 export function getCashBalance() {
+  const configuredBalance = getConfiguredPaperBalance();
+  if (!hasPaperTradeHistory()) return configuredBalance;
+
   const snap = db.prepare(
     'SELECT cash_balance FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 1'
   ).get();
-  return snap?.cash_balance ?? parseFloat(process.env.PAPER_BALANCE ?? 10000);
+  return snap?.cash_balance ?? configuredBalance;
+}
+
+export function getRecentPortfolioSnapshots(limit = 100) {
+  if (!hasPaperTradeHistory()) return [];
+  return db.prepare(
+    'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT ?'
+  ).all(limit).reverse();
+}
+
+export function getPortfolioSnapshotsSince(cutoff) {
+  if (!hasPaperTradeHistory()) return [];
+  return db.prepare(
+    'SELECT total_value, snapshot_at FROM portfolio_snapshots WHERE snapshot_at >= ? ORDER BY snapshot_at ASC'
+  ).all(cutoff);
 }
 
 // Capital currently free to deploy: AUM minus what's locked in open trades
@@ -149,6 +177,7 @@ export function getPortfolioStats() {
   const winRate       = allClosed.length > 0 ? (wins / allClosed.length * 100) : 0;
 
   return {
+    initialBalance:  getConfiguredPaperBalance(),
     totalValue:      parseFloat((cash + openPnl + totalPnl).toFixed(2)),
     cashBalance:     cash,
     openPnl:         parseFloat(openPnl.toFixed(2)),

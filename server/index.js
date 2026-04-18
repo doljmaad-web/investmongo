@@ -33,7 +33,14 @@ import { fetchAllNews, newsCache, fearGreed } from './news-scraper.js';
 import { awardTokens, getBalance, getTransactions, runDailyRewards, getAirdropSnapshot } from './mongo-tokens.js';
 import { setupNewsRoutes } from './news-routes.js';
 import { chatWithGemini, getGeminiUsage } from './gemini.js';
-import { getPortfolioStats, getAvailableCapital, closeTradeById, snapshotPortfolio } from './paper-trading.js';
+import {
+  getPortfolioStats,
+  getAvailableCapital,
+  closeTradeById,
+  snapshotPortfolio,
+  getRecentPortfolioSnapshots,
+  getPortfolioSnapshotsSince,
+} from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData, hlCoin } from './hyperliquid.js';
 import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset } from './oanda.js';
 import { calcRSI } from './indicator.js';
@@ -71,9 +78,7 @@ wss.on('connection', (ws) => {
     const stats     = getPortfolioStats();
     const signals   = db.prepare('SELECT * FROM signals ORDER BY created_at DESC LIMIT 20').all();
     const news      = newsCache.slice(0, 25);
-    const snapshots = db.prepare(
-      'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
-    ).all().reverse();
+    const snapshots = getRecentPortfolioSnapshots();
 
     ws.send(JSON.stringify({
       type: 'init',
@@ -203,9 +208,7 @@ app.get('/api/snapshots', (req, res) => {
     '90d': 90*24*60*60*1000, '180d': 180*24*60*60*1000, '365d': 365*24*60*60*1000,
   };
   const cutoff = new Date(Date.now() - (periodMs[period] || periodMs['1d'])).toISOString();
-  const rows = db.prepare(
-    'SELECT total_value, snapshot_at FROM portfolio_snapshots WHERE snapshot_at >= ? ORDER BY snapshot_at ASC'
-  ).all(cutoff);
+  const rows = getPortfolioSnapshotsSince(cutoff);
   res.json({ snapshots: rows });
 });
 
@@ -902,9 +905,7 @@ cron.schedule('* * * * *', async () => {
     updateOpenTrades(prices);
     const stats = getPortfolioStats();
     try {
-      const freshSnaps = db.prepare(
-        'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 100'
-      ).all().reverse();
+      const freshSnaps = getRecentPortfolioSnapshots();
       broadcast({ type: 'portfolio_update', data: { ...stats, snapshots: freshSnaps } });
     } catch (snapErr) {
       console.error('[BROADCAST] Snapshot fetch failed:', snapErr.message);

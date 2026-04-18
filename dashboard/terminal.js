@@ -7,7 +7,7 @@ const WS_URL = location.protocol === 'https:'
   ? `wss://${location.host}`
   : `ws://${location.host}`;
 
-const STARTING_BALANCE = 10000;
+const FALLBACK_BALANCE = 10000;
 const MAX_NEWS_LINES   = 12;
 const NEWS_FADE_AFTER  = 8;
 
@@ -125,6 +125,10 @@ function scheduleDockResize() {
     window.dispatchEvent(new Event('resize'));
     drawChart();
   }, 320);
+}
+
+function getPortfolioBaseBalance() {
+  return state.portfolio?.initialBalance ?? FALLBACK_BALANCE;
 }
 
 function toggleDockSection(key) {
@@ -343,10 +347,10 @@ function renderPortfolio() {
   // Regular logged-in user → show their personal balance
   const isPersonalView = sessionUser && !sessionUser.is_admin;
   const userBalance    = isPersonalView ? (sessionUser.balance?.visible_balance_usd ?? 0) : null;
-  const userDeposited  = isPersonalView ? (sessionUser.balance?.deposited_usd ?? 0) : STARTING_BALANCE;
+  const userDeposited  = isPersonalView ? (sessionUser.balance?.deposited_usd ?? 0) : getPortfolioBaseBalance();
 
-  const total   = isPersonalView ? userBalance : (p.totalValue ?? STARTING_BALANCE);
-  const base    = isPersonalView ? userDeposited : STARTING_BALANCE;
+  const total   = isPersonalView ? userBalance : (p.totalValue ?? getPortfolioBaseBalance());
+  const base    = isPersonalView ? userDeposited : getPortfolioBaseBalance();
   const diff    = total - base;
   const diffPct = base > 0 ? ((diff / base) * 100).toFixed(1) : '0.0';
   const isPos   = diff >= 0;
@@ -748,8 +752,8 @@ function drawChart() {
 
   if (points.length === 0) {
     points = [
-      { value: STARTING_BALANCE, time: new Date(cutoff) },
-      { value: state.portfolio?.totalValue ?? STARTING_BALANCE, time: new Date() },
+      { value: getPortfolioBaseBalance(), time: new Date(cutoff) },
+      { value: state.portfolio?.totalValue ?? getPortfolioBaseBalance(), time: new Date() },
     ];
   }
   if (state.portfolio?.totalValue) {
