@@ -6,44 +6,108 @@ import { db } from './database.js';
 // 3 = 3x leverage, 5 = 5x leverage, etc.
 const LEVERAGE = 5;
 const DEFAULT_PAPER_BALANCE = 10000;
+let paperSessionCache = null;
 
 export function getConfiguredPaperBalance() {
   const configured = parseFloat(process.env.PAPER_BALANCE ?? DEFAULT_PAPER_BALANCE);
   return Number.isFinite(configured) ? configured : DEFAULT_PAPER_BALANCE;
 }
 
+function getDbNow() {
+  return db.prepare(`SELECT datetime('now') AS now`).get()?.now
+    || new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
+export function getPaperSession() {
+  const configuredBalance = getConfiguredPaperBalance();
+
+  if (paperSessionCache && paperSessionCache.startingBalance === configuredBalance) {
+    return paperSessionCache;
+  }
+
+  const existing = db.prepare(
+    `SELECT starting_balance, session_started_at FROM paper_state WHERE id=1`
+  ).get();
+
+  if (!existing) {
+    const sessionStartedAt = getDbNow();
+    db.prepare(`
+      INSERT INTO paper_state (id, starting_balance, session_started_at, updated_at)
+      VALUES (1, ?, ?, ?)
+    `).run(configuredBalance, sessionStartedAt, sessionStartedAt);
+    paperSessionCache = { startingBalance: configuredBalance, sessionStartedAt };
+    return paperSessionCache;
+  }
+
+  if (parseFloat(existing.starting_balance) !== configuredBalance) {
+    const sessionStartedAt = getDbNow();
+    db.prepare(`
+      UPDATE paper_state
+      SET starting_balance=?, session_started_at=?, updated_at=?
+      WHERE id=1
+    `).run(configuredBalance, sessionStartedAt, sessionStartedAt);
+    paperSessionCache = { startingBalance: configuredBalance, sessionStartedAt };
+    return paperSessionCache;
+  }
+
+  paperSessionCache = {
+    startingBalance: parseFloat(existing.starting_balance),
+    sessionStartedAt: existing.session_started_at,
+  };
+  return paperSessionCache;
+}
+
+export function getPaperSessionStart() {
+  return getPaperSession().sessionStartedAt;
+}
+
 export function hasPaperTradeHistory() {
-  const row = db.prepare(`SELECT COUNT(*) AS count FROM trades WHERE mode='PAPER'`).get();
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM trades
+    WHERE mode='PAPER' AND opened_at >= ?
+  `).get(getPaperSessionStart());
   return (row?.count ?? 0) > 0;
 }
 
 export function getCashBalance() {
   const configuredBalance = getConfiguredPaperBalance();
+  const sessionStart = getPaperSessionStart();
   if (!hasPaperTradeHistory()) return configuredBalance;
 
   const snap = db.prepare(
-    'SELECT cash_balance FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT 1'
-  ).get();
+    'SELECT cash_balance FROM portfolio_snapshots WHERE snapshot_at >= ? ORDER BY snapshot_at DESC LIMIT 1'
+  ).get(sessionStart);
   return snap?.cash_balance ?? configuredBalance;
 }
 
 export function getRecentPortfolioSnapshots(limit = 100) {
+  const sessionStart = getPaperSessionStart();
   if (!hasPaperTradeHistory()) return [];
   return db.prepare(
-    'SELECT total_value, snapshot_at FROM portfolio_snapshots ORDER BY snapshot_at DESC LIMIT ?'
-  ).all(limit).reverse();
+    'SELECT total_value, snapshot_at FROM portfolio_snapshots WHERE snapshot_at >= ? ORDER BY snapshot_at DESC LIMIT ?'
+  ).all(sessionStart, limit).reverse();
 }
 
 export function getPortfolioSnapshotsSince(cutoff) {
+  const sessionStart = getPaperSessionStart();
   if (!hasPaperTradeHistory()) return [];
   return db.prepare(
-    'SELECT total_value, snapshot_at FROM portfolio_snapshots WHERE snapshot_at >= ? ORDER BY snapshot_at ASC'
-  ).all(cutoff);
+    'SELECT total_value, snapshot_at FROM portfolio_snapshots WHERE snapshot_at >= ? AND snapshot_at >= ? ORDER BY snapshot_at ASC'
+  ).all(sessionStart, cutoff);
 }
 
 export function resetPaperPortfolio() {
+  const configuredBalance = getConfiguredPaperBalance();
+  const sessionStartedAt = getDbNow();
   const tradeCount = db.prepare(`SELECT COUNT(*) AS count FROM trades WHERE mode='PAPER'`).get()?.count ?? 0;
   const snapshotCount = db.prepare(`SELECT COUNT(*) AS count FROM portfolio_snapshots`).get()?.count ?? 0;
+
+  db.prepare(`
+    INSERT OR REPLACE INTO paper_state (id, starting_balance, session_started_at, updated_at)
+    VALUES (1, ?, ?, ?)
+  `).run(configuredBalance, sessionStartedAt, sessionStartedAt);
+  paperSessionCache = { startingBalance: configuredBalance, sessionStartedAt };
 
   db.prepare(`DELETE FROM trades WHERE mode='PAPER'`).run();
   db.prepare(`DELETE FROM portfolio_snapshots`).run();
@@ -51,7 +115,7 @@ export function resetPaperPortfolio() {
   return {
     deletedTrades: tradeCount,
     deletedSnapshots: snapshotCount,
-    resetBalance: getConfiguredPaperBalance(),
+    resetBalance: configuredBalance,
   };
 }
 
@@ -78,7 +142,10 @@ export function closeTradeById(tradeId, exitPrice) {
 
 // Close all open positions for an asset (called on signal flip)
 export function closeOpenPosition(asset, exitPrice) {
-  const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`).all(asset);
+  const open = db.prepare(`
+    SELECT * FROM trades
+    WHERE status='OPEN' AND mode='PAPER' AND asset=? AND opened_at >= ?
+  `).all(asset, getPaperSessionStart());
   for (const t of open) {
     const isLong = t.direction === 'LONG';
     const pnlUsd = isLong
@@ -123,7 +190,10 @@ export function openPaperTrade(signalId, decision, signal) {
 }
 
 export function updateOpenTrades(prices) {
-  const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER'`).all();
+  const open = db.prepare(`
+    SELECT * FROM trades
+    WHERE status='OPEN' AND mode='PAPER' AND opened_at >= ?
+  `).all(getPaperSessionStart());
 
   for (const t of open) {
     const price = prices[t.asset];
@@ -170,18 +240,28 @@ export function updateOpenTrades(prices) {
 }
 
 export function getPortfolioStats() {
-  const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER'`).all();
+  const sessionStart = getPaperSessionStart();
+  const open = db.prepare(`
+    SELECT * FROM trades
+    WHERE status='OPEN' AND mode='PAPER' AND opened_at >= ?
+  `).all(sessionStart);
   const closedTodayRows = db.prepare(`
-    SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
-    AND DATE(closed_at) = DATE('now')
-  `).all();
+    SELECT * FROM trades
+    WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
+      AND opened_at >= ?
+      AND DATE(closed_at) = DATE('now')
+  `).all(sessionStart);
   const allClosed = db.prepare(`
-    SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
-  `).all();
+    SELECT * FROM trades
+    WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
+      AND opened_at >= ?
+  `).all(sessionStart);
   const recentClosed = db.prepare(`
-    SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
+    SELECT * FROM trades
+    WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED')
+      AND opened_at >= ?
     ORDER BY closed_at DESC LIMIT 50
-  `).all();
+  `).all(sessionStart);
 
   const cash          = getCashBalance();
   const openPnl       = open.reduce((s, t) => s + (t.pnl_usd || 0), 0);

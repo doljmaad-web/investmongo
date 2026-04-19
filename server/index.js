@@ -41,6 +41,7 @@ import {
   getRecentPortfolioSnapshots,
   getPortfolioSnapshotsSince,
   resetPaperPortfolio,
+  getPaperSessionStart,
 } from './paper-trading.js';
 import { getCurrentPrices, fetchCandles, getMarketData, hlCoin } from './hyperliquid.js';
 import { fetchCandles as fetchCandlesOanda, getCurrentPrices as getCurrentPricesOanda, isOandaAsset } from './oanda.js';
@@ -135,8 +136,17 @@ app.get('/api/signals', (req, res) => {
 });
 
 app.get('/api/trades', (req, res) => {
-  const open   = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' ORDER BY opened_at DESC`).all();
-  const closed = db.prepare(`SELECT * FROM trades WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED') ORDER BY closed_at DESC LIMIT 30`).all();
+  const sessionStart = getPaperSessionStart();
+  const open = db.prepare(`
+    SELECT * FROM trades
+    WHERE status='OPEN' AND mode='PAPER' AND opened_at >= ?
+    ORDER BY opened_at DESC
+  `).all(sessionStart);
+  const closed = db.prepare(`
+    SELECT * FROM trades
+    WHERE mode='PAPER' AND status IN ('CLOSED','STOPPED') AND opened_at >= ?
+    ORDER BY closed_at DESC LIMIT 30
+  `).all(sessionStart);
   res.json({ open, closed });
 });
 
@@ -167,7 +177,10 @@ app.post('/api/trades/close/:id', async (req, res) => {
 // POST /api/trades/close-all  → admin: close every open paper position at current market price
 app.post('/api/trades/close-all', async (req, res) => {
   try {
-    const open = db.prepare(`SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER'`).all();
+    const open = db.prepare(`
+      SELECT * FROM trades
+      WHERE status='OPEN' AND mode='PAPER' AND opened_at >= ?
+    `).all(getPaperSessionStart());
     if (open.length === 0) return res.json({ closed: 0, message: 'No open positions' });
 
     const { getCurrentPrices } = await import('./hyperliquid.js');
@@ -588,8 +601,8 @@ app.get('/api/screener/market', async (req, res) => {
 
     // Open positions
     const openTrades = db.prepare(
-      `SELECT asset, direction FROM trades WHERE status='OPEN' AND mode='PAPER'`
-    ).all();
+      `SELECT asset, direction FROM trades WHERE status='OPEN' AND mode='PAPER' AND opened_at >= ?`
+    ).all(getPaperSessionStart());
     const positionMap = {};
     for (const t of openTrades) positionMap[t.asset] = t.direction;
 
@@ -615,6 +628,7 @@ app.get('/api/screener/market', async (req, res) => {
 
 app.get('/api/screener/performance', (req, res) => {
   try {
+    const sessionStart = getPaperSessionStart();
     const overall = db.prepare(`
       SELECT
         COUNT(*)                                                AS total,
@@ -626,8 +640,8 @@ app.get('/api/screener/performance', (req, res) => {
         ROUND(MIN(pnl_pct),  2)                                AS worst_pct,
         ROUND(AVG(CASE WHEN pnl_usd > 0 THEN pnl_pct END), 2) AS avg_win_pct,
         ROUND(AVG(CASE WHEN pnl_usd <= 0 THEN pnl_pct END), 2) AS avg_loss_pct
-      FROM trades WHERE status='CLOSED' AND mode='PAPER'
-    `).get();
+      FROM trades WHERE status='CLOSED' AND mode='PAPER' AND opened_at >= ?
+    `).get(sessionStart);
 
     const byAsset = db.prepare(`
       SELECT asset,
@@ -635,21 +649,21 @@ app.get('/api/screener/performance', (req, res) => {
         SUM(CASE WHEN pnl_usd > 0 THEN 1 ELSE 0 END)        AS wins,
         ROUND(SUM(pnl_usd), 2)                               AS pnl,
         ROUND(AVG(pnl_pct), 2)                               AS avg_pct
-      FROM trades WHERE status='CLOSED' AND mode='PAPER'
+      FROM trades WHERE status='CLOSED' AND mode='PAPER' AND opened_at >= ?
       GROUP BY asset ORDER BY pnl DESC
-    `).all();
+    `).all(sessionStart);
 
     const recent = db.prepare(`
       SELECT asset, direction, entry_price, exit_price, pnl_usd, pnl_pct, opened_at, closed_at
-      FROM trades WHERE status='CLOSED' AND mode='PAPER'
+      FROM trades WHERE status='CLOSED' AND mode='PAPER' AND opened_at >= ?
       ORDER BY closed_at DESC LIMIT 15
-    `).all();
+    `).all(sessionStart);
 
     const open = db.prepare(`
       SELECT asset, direction, entry_price, stop_loss, pnl_usd, pnl_pct, opened_at
-      FROM trades WHERE status='OPEN' AND mode='PAPER'
+      FROM trades WHERE status='OPEN' AND mode='PAPER' AND opened_at >= ?
       ORDER BY opened_at DESC
-    `).all();
+    `).all(sessionStart);
 
     res.json({ overall, byAsset, recent, open });
   } catch (err) {

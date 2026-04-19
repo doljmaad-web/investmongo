@@ -159,6 +159,13 @@ db.exec(`
     snapshot_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS paper_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    starting_balance REAL NOT NULL,
+    session_started_at TEXT NOT NULL,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS trading_assets (
     asset      TEXT PRIMARY KEY,
     deploy_pct REAL DEFAULT 50

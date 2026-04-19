@@ -4,6 +4,7 @@ import { fetchCoinTelegraphOnly, fearGreed } from './news-scraper.js';
 import {
   openPaperTrade, closeOpenPosition, closeTradeById,
   updateOpenTrades, getPortfolioStats, getAvailableCapital,
+  getPaperSessionStart,
 } from './paper-trading.js';
 import { checkRiskLimits }               from './risk.js';
 import { sendTelegram }                  from './telegram.js';
@@ -65,8 +66,8 @@ function applyAtrTrailingStop(asset, candles30m, currentPrice) {
   const openTrades = db.prepare(`
     SELECT id, asset, direction, entry_price, stop_loss
     FROM trades
-    WHERE status='OPEN' AND mode='PAPER' AND asset=?
-  `).all(asset);
+    WHERE status='OPEN' AND mode='PAPER' AND asset=? AND opened_at >= ?
+  `).all(asset, getPaperSessionStart());
 
   for (const trade of openTrades) {
     const isLong = trade.direction === 'LONG';
@@ -175,8 +176,8 @@ export async function handleSignal(rawSignal, source = 'server') {
 
   // Skip if we already have an open position in the same direction
   const existing = db.prepare(
-    `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=?`
-  ).get(signal.asset, direction);
+    `SELECT id FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND direction=? AND opened_at >= ?`
+  ).get(signal.asset, direction, getPaperSessionStart());
   if (existing) {
     console.log(`[BOT] Already ${direction} (trade #${existing.id}) — skipping`);
     return null;
@@ -334,8 +335,8 @@ export async function runServerLoop(broadcastFn) {
 // ============================================================
 async function checkSafetySL(asset, currentPrice) {
   const open = db.prepare(
-    `SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=?`
-  ).all(asset);
+    `SELECT * FROM trades WHERE status='OPEN' AND mode='PAPER' AND asset=? AND opened_at >= ?`
+  ).all(asset, getPaperSessionStart());
 
   for (const trade of open) {
     if (!trade.stop_loss || trade.stop_loss === 0) continue;
